@@ -1,0 +1,46 @@
+[package]
+name = "ezlog"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+memmap2 = "0.5.3"
+log = "0.4.17"
+byteorder = "1"
+flate2 = "1.0"
+aead = "0.4.3"
+aes-gcm = "0.9.4"
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.18.0"
+libc = "0.2"
+ndk-glue = "0.6.2" # Substitute this with the latest ndk-glue version you wish to use
+
+[dev-dependencies]
+dirs = "4.0"
+
+[profile.release]
+opt-level = 'z'     # Optimize for size.
+lto = true          # Enable Link Time Optimization
+codegen-units = 1   # Reduce number of codegen units to increase optimizations.
+panic = 'abort'     # Abort on panic
+strip = true        # Strip symbols from binary*
+
+[[example]]
+name = "android_hello_world"
+crate-type = ["cdylib"]
+
+[package.metadata.android.sdk]
+min_sdk_version = 23
+target_sdk_version = 30
+max_sdk_version = 29
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.WRITE_EXTERNAL_STORAGE"
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.READ_EXTERNAL_STORAGE"
+
+
+[[example]]
+name = "nix_hello_world"
