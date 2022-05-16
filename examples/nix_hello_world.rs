@@ -1,5 +1,7 @@
+use std::io::{Cursor, Seek};
 use std::path::Path;
 use std::{fs::OpenOptions};
+use ezlog::Header;
 use memmap2::MmapOptions;
 use log::{info, warn, LevelFilter};
 use log::{Record, Level, Metadata};
@@ -38,11 +40,21 @@ pub fn main() {
         println!("write byte end");
     }
 
-    (&mut mmap[0 .. 8]).write_i64::<BigEndian>(i64::MAX).unwrap();
-    (&mut mmap[8 .. 16]).write_u64::<BigEndian>(u64::MAX).unwrap();
+    (&mut mmap[100 .. 108]).write_i64::<BigEndian>(i64::MAX).unwrap();
+    (&mut mmap[108 .. 116]).write_u64::<BigEndian>(u64::MAX).unwrap();
+    let h = Header::new();
+    let w = &mut mmap[0 .. 56];
+    let mut c = Cursor::new(w);
+    
+    h.encode(&mut c).unwrap();
 
-    assert_eq!(i64::MAX, (&mmap[0 .. 8]).read_i64::<BigEndian>().unwrap());
-    assert_eq!(u64::MAX, (&mmap[8 .. 16]).read_u64::<BigEndian>().unwrap());
+    c.seek(std::io::SeekFrom::Start(0)).unwrap();
+    let decode_header = Header::decode(&mut c).unwrap();
+    
+    assert_eq!(h, decode_header);
+
+    assert_eq!(i64::MAX, (&mmap[100 .. 108]).read_i64::<BigEndian>().unwrap());
+    assert_eq!(u64::MAX, (&mmap[108 .. 116]).read_u64::<BigEndian>().unwrap());
 
 
     mmap.flush_async().unwrap();

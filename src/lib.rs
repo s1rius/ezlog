@@ -1,11 +1,12 @@
 mod errors;
 
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use errors::{LogError, ParseError};
 use log::{info, Level};
 use memmap2::MmapOptions;
 use std::{
     fs::{self, File, OpenOptions},
-    io,
+    io::{self, Cursor, Write, Read},
     path::Path,
 };
 
@@ -116,7 +117,7 @@ impl EZLogConfigBuilder {
     }
 
     pub fn build(self) -> EZLogConfig {
-        self.config.clone()
+        self.config
     }
 }
 
@@ -138,11 +139,34 @@ pub trait Encrypt {
     fn encrypt(&self, data: &[u8]) -> Vec<u8>;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum CipherKind {
     AES_128_GCM,
     AES_256_GCM,
     NONE,
+    UNKNOWN,
+}
+
+impl From<u8> for CipherKind {
+    fn from(orig: u8) -> Self {
+        match orig {
+            0x00 => CipherKind::NONE,
+            0x01 => CipherKind::AES_128_GCM,
+            0x02 => CipherKind::AES_256_GCM,
+            _ => CipherKind::UNKNOWN,
+        }
+    }
+}
+
+impl From<CipherKind> for u8 {
+    fn from(orig: CipherKind) -> Self {
+        match orig {
+            CipherKind::NONE => 0x00,
+            CipherKind::AES_128_GCM => 0x01,
+            CipherKind::AES_256_GCM => 0x02,
+            CipherKind::UNKNOWN => 0xff,
+        }
+    }
 }
 
 impl core::fmt::Display for CipherKind {
@@ -171,30 +195,84 @@ impl std::str::FromStr for CipherKind {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum CompressKind {
     ZLIB,
     NONE,
+    UNKNOWN,
+}
+
+impl From<u8> for CompressKind {
+    fn from(orig: u8) -> Self {
+        match orig {
+            0x00 => CompressKind::NONE,
+            0x01 => CompressKind::ZLIB,
+            _ => CompressKind::UNKNOWN,
+        }
+    }
+}
+
+impl From<CompressKind> for u8 {
+    fn from(orig: CompressKind) -> Self {
+        match orig {
+            CompressKind::NONE => 0x00,
+            CompressKind::ZLIB => 0x01,
+            CompressKind::UNKNOWN => 0xff,
+        }
+    }
 }
 
 /// 日志头
 /// 日志的版本，写入大小等
+#[derive(Debug, Clone, PartialEq)]
 pub struct Header {
     // 版本号，方便之后的升级
     version: u8,
     // 当前写入的下标
-    cursor: u32,
+    recorder_size: u32,
     // 压缩方式
     compress: CompressKind,
     // 加密方式
     cipher: CipherKind,
 }
 
-impl Header {}
+impl Header {
+    pub fn new() -> Self {
+        Header {
+            version: 1,
+            recorder_size: 0,
+            compress: CompressKind::ZLIB,
+            cipher: CipherKind::AES_128_GCM,
+        }
+    }
+
+    pub fn encode(&self, writer: &mut dyn Write) -> Result<(), LogError> {
+        writer.write_u8(self.version)?;
+        writer.write_u32::<BigEndian>(self.recorder_size)?;
+        writer.write_u8(self.compress.clone().into())?;
+        writer.write_u8(self.cipher.clone().into())?;
+        Ok(())
+    }
+
+    pub fn decode(reader: &mut dyn Read) -> Result<Self, errors::LogError> {
+        // let mut reader = Cursor::new(data);
+        let version = reader.read_u8()?;
+        let recorder_size = reader.read_u32::<BigEndian>()?;
+        let compress = reader.read_u8()?;
+        let cipher = reader.read_u8()?;
+        Ok(Header {
+            version,
+            recorder_size,
+            compress: CompressKind::from(compress),
+            cipher: CipherKind::from(cipher),
+        })
+    }
+}
 
 /// 单条的日志记录
 #[derive(Debug, Clone)]
 pub struct Recorder<'a> {
+    log_id: u64,
     level: Level,
     target: &'a str,
     timestamp: u128,
@@ -207,6 +285,11 @@ impl<'a> Recorder<'a> {
     #[inline]
     pub fn builder() -> RecordBuilder<'a> {
         RecordBuilder::new()
+    }
+
+    #[inline]
+    pub fn log_id(&self) -> u64 {
+        self.log_id
     }
 
     #[inline]
@@ -243,6 +326,7 @@ impl<'a> Recorder<'a> {
     pub fn to_builder(&self) -> RecordBuilder<'a> {
         RecordBuilder {
             record: Recorder {
+                log_id: self.log_id,
                 level: self.level,
                 target: self.target,
                 timestamp: self.timestamp,
@@ -263,6 +347,7 @@ impl<'a> RecordBuilder<'a> {
     pub fn new() -> RecordBuilder<'a> {
         RecordBuilder {
             record: Recorder {
+                log_id: 0,
                 level: Level::Info,
                 target: "",
                 timestamp: 0,
@@ -305,6 +390,12 @@ impl<'a> RecordBuilder<'a> {
 
     pub fn build(&mut self) -> Recorder {
         self.record.clone()
+    }
+}
+
+impl<'a> Default for RecordBuilder<'a> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

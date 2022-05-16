@@ -7,6 +7,7 @@ edition = "2021"
 memmap2 = "0.5.3"
 log = "0.4.17"
 byteorder = "1"
+lazy_static = "1.4.0"
 flate2 = "1.0"
 aead = "0.4.3"
 aes-gcm = "0.9.4"
@@ -40,7 +41,6 @@ name = "android.permission.WRITE_EXTERNAL_STORAGE"
 
 [[package.metadata.android.uses_permission]]
 name = "android.permission.READ_EXTERNAL_STORAGE"
-
 
 [[example]]
 name = "nix_hello_world"
