@@ -3,14 +3,26 @@ mod errors;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use errors::{LogError, ParseError};
 use log::{info, Level};
-use memmap2::MmapOptions;
+use memmap2::{MmapOptions, MmapMut};
+use time::{format_description, Duration, OffsetDateTime, Time};
 use std::{
     fs::{self, File, OpenOptions},
     io::{self, Cursor, Write, Read},
-    path::Path,
+    path::Path, sync::{atomic::AtomicUsize, RwLock},
 };
 
-pub struct EZLog {}
+pub const MAX_LOG_SIZE: u64 = 150 * 1024 * 1024;
+pub const MAX_LOG_HEADER_SIZE: usize = 128;
+
+pub struct EZLogger {}
+
+pub trait EZLog {
+    fn enable(&self, level: Level) -> bool;
+
+    fn log(&self, record: &EZRecord);
+
+    fn flush(&self);
+}
 
 #[derive(Debug, Clone)]
 pub struct EZLogConfig {
@@ -53,6 +65,16 @@ impl EZLogConfig {
             compress,
             cipher,
         }
+    }
+
+    pub fn now_file_name(&self, now: OffsetDateTime) -> String {
+        let format = format_description::parse("[year]_[month]_[day]")
+        .expect("Unable to create a formatter; this is a bug in tracing-appender");
+        let date = now
+        .format(&format)
+        .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
+        let str = format!("{}_{}.{}", self.name, date, self.file_suffix);
+        str
     }
 }
 
@@ -228,6 +250,8 @@ impl From<CompressKind> for u8 {
 pub struct Header {
     // 版本号，方便之后的升级
     version: u8,
+    // 标记文件是否可用
+    flag: u8,
     // 当前写入的下标
     recorder_size: u32,
     // 压缩方式
@@ -240,6 +264,7 @@ impl Header {
     pub fn new() -> Self {
         Header {
             version: 1,
+            flag: 0,
             recorder_size: 0,
             compress: CompressKind::ZLIB,
             cipher: CipherKind::AES_128_GCM,
@@ -248,6 +273,7 @@ impl Header {
 
     pub fn encode(&self, writer: &mut dyn Write) -> Result<(), LogError> {
         writer.write_u8(self.version)?;
+        writer.write_u8(self.flag)?;
         writer.write_u32::<BigEndian>(self.recorder_size)?;
         writer.write_u8(self.compress.clone().into())?;
         writer.write_u8(self.cipher.clone().into())?;
@@ -257,11 +283,13 @@ impl Header {
     pub fn decode(reader: &mut dyn Read) -> Result<Self, errors::LogError> {
         // let mut reader = Cursor::new(data);
         let version = reader.read_u8()?;
+        let flag = reader.read_u8()?;
         let recorder_size = reader.read_u32::<BigEndian>()?;
         let compress = reader.read_u8()?;
         let cipher = reader.read_u8()?;
         Ok(Header {
             version,
+            flag,
             recorder_size,
             compress: CompressKind::from(compress),
             cipher: CipherKind::from(cipher),
@@ -271,7 +299,7 @@ impl Header {
 
 /// 单条的日志记录
 #[derive(Debug, Clone)]
-pub struct Recorder<'a> {
+pub struct EZRecord<'a> {
     log_id: u64,
     level: Level,
     target: &'a str,
@@ -281,10 +309,10 @@ pub struct Recorder<'a> {
     content: &'a str,
 }
 
-impl<'a> Recorder<'a> {
+impl<'a> EZRecord<'a> {
     #[inline]
-    pub fn builder() -> RecordBuilder<'a> {
-        RecordBuilder::new()
+    pub fn builder() -> EZRecordBuilder<'a> {
+        EZRecordBuilder::new()
     }
 
     #[inline]
@@ -323,9 +351,9 @@ impl<'a> Recorder<'a> {
     }
 
     #[inline]
-    pub fn to_builder(&self) -> RecordBuilder<'a> {
-        RecordBuilder {
-            record: Recorder {
+    pub fn to_builder(&self) -> EZRecordBuilder<'a> {
+        EZRecordBuilder {
+            record: EZRecord {
                 log_id: self.log_id,
                 level: self.level,
                 target: self.target,
@@ -339,14 +367,14 @@ impl<'a> Recorder<'a> {
 }
 
 #[derive(Debug)]
-pub struct RecordBuilder<'a> {
-    record: Recorder<'a>,
+pub struct EZRecordBuilder<'a> {
+    record: EZRecord<'a>,
 }
 
-impl<'a> RecordBuilder<'a> {
-    pub fn new() -> RecordBuilder<'a> {
-        RecordBuilder {
-            record: Recorder {
+impl<'a> EZRecordBuilder<'a> {
+    pub fn new() -> EZRecordBuilder<'a> {
+        EZRecordBuilder {
+            record: EZRecord {
                 log_id: 0,
                 level: Level::Info,
                 target: "",
@@ -388,22 +416,82 @@ impl<'a> RecordBuilder<'a> {
         self
     }
 
-    pub fn build(&mut self) -> Recorder {
+    pub fn build(&mut self) -> EZRecord {
         self.record.clone()
     }
 }
 
-impl<'a> Default for RecordBuilder<'a> {
+impl<'a> Default for EZRecordBuilder<'a> {
     fn default() -> Self {
         Self::new()
     }
 }
 
 /// mmap 实现的[EZLog]
-pub struct EZLogMmapImpl {}
+pub struct EZMmapAppender<'a> {
+    config: &'a EZLogConfig,
+    state: EZMmapAppendInner,
+}
+
+pub struct EZMmapAppendInner {
+    header: Header,
+    log_file: File,
+    mmap: MmapMut,
+    // writer: RwLock<Cursor<&'a mut [u8]>>,
+    next_date: AtomicUsize,
+    
+}
+
+impl EZMmapAppendInner {
+
+    pub fn new(config: &EZLogConfig) -> Result<Self, LogError> {
+        let now = OffsetDateTime::now_utc();
+        let file_name = config.now_file_name(now);
+        let log_file = create_mmap_file(&config.dir_path, &file_name)?;
+        let mut mmap = unsafe { MmapOptions::new().map_mut(&log_file)? };
+        let mut c = Cursor::new(&mut mmap[0 ..MAX_LOG_HEADER_SIZE]);
+        let header = Header::decode(&mut c)?;
+
+        let inner = EZMmapAppendInner {
+            header,
+            log_file,
+            mmap,
+            // writer: RwLock::new(c.clone()),
+            next_date: AtomicUsize::new(0),
+        };
+
+        Ok(inner)
+    }    
+}
 
 /// 内存缓存实现的[EZLog]
 pub struct EZLogMemoryImpl {}
+
+pub fn create_mmap_file(directory: &str, filename: &str) ->  io::Result<File> {
+    let path = Path::new(directory).join(filename);
+
+    if let Some(p) = path.parent() {
+        if !p.exists() {
+            fs::create_dir_all(p)?;
+        }
+    }
+
+    // create file
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(path)?;
+
+    // check file lenth ok or set len
+    let len = file.metadata()?.len();
+    if len == 0 {
+        info!("set file len");
+        file.set_len(MAX_LOG_SIZE)?;
+    }
+    Ok(file)
+
+}
 
 pub fn init_mmap_temp_file(path: &Path) -> io::Result<File> {
     // check dir exists, else create
@@ -424,7 +512,7 @@ pub fn init_mmap_temp_file(path: &Path) -> io::Result<File> {
     let len = file.metadata()?.len();
     if len == 0 {
         info!("set file len");
-        file.set_len(150 * 1024)?;
+        file.set_len(MAX_LOG_SIZE)?;
     }
     Ok(file)
 }
