@@ -1,18 +1,23 @@
+mod appender;
 mod errors;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use errors::{LogError, ParseError};
 use log::{info, Level};
-use memmap2::{MmapOptions, MmapMut};
-use time::{format_description, Duration, OffsetDateTime, Time};
+use memmap2::{MmapMut, MmapOptions};
 use std::{
     fs::{self, File, OpenOptions},
-    io::{self, Cursor, Write, Read},
-    path::Path, sync::{atomic::AtomicUsize, RwLock},
+    io::{self, Cursor, Read, Write},
+    path::Path,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        RwLock,
+    },
 };
+use time::{format_description, Duration, OffsetDateTime, Time};
 
-pub const MAX_LOG_SIZE: u64 = 150 * 1024 * 1024;
-pub const MAX_LOG_HEADER_SIZE: usize = 128;
+pub const MAX_LOG_SIZE: u64 = 150 * 1024;
+pub const V1_LOG_HEADER_SIZE: usize = 8;
 
 pub struct EZLogger {}
 
@@ -26,6 +31,7 @@ pub trait EZLog {
 
 #[derive(Debug, Clone)]
 pub struct EZLogConfig {
+    version: Version,
     // 文件夹目录
     dir_path: String,
     // 文件的前缀名
@@ -46,6 +52,7 @@ pub struct EZLogConfig {
 
 impl EZLogConfig {
     pub fn new(
+        version: Version,
         dir_path: String,
         name: String,
         file_suffix: String,
@@ -56,6 +63,7 @@ impl EZLogConfig {
         cipher: CipherKind,
     ) -> Self {
         EZLogConfig {
+            version,
             dir_path,
             name,
             file_suffix,
@@ -69,12 +77,18 @@ impl EZLogConfig {
 
     pub fn now_file_name(&self, now: OffsetDateTime) -> String {
         let format = format_description::parse("[year]_[month]_[day]")
-        .expect("Unable to create a formatter; this is a bug in tracing-appender");
+            .expect("Unable to create a formatter; this is a bug in tracing-appender");
         let date = now
-        .format(&format)
-        .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
+            .format(&format)
+            .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
         let str = format!("{}_{}.{}", self.name, date, self.file_suffix);
         str
+    }
+}
+
+impl Default for EZLogConfig {
+    fn default() -> Self {
+        EZLogConfigBuilder::new().build()
     }
 }
 
@@ -86,6 +100,7 @@ impl EZLogConfigBuilder {
     pub fn new() -> Self {
         EZLogConfigBuilder {
             config: EZLogConfig {
+                version: Version::V1,
                 dir_path: "".to_string(),
                 name: "".to_string(),
                 file_suffix: "".to_string(),
@@ -161,7 +176,31 @@ pub trait Encrypt {
     fn encrypt(&self, data: &[u8]) -> Vec<u8>;
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Version {
+    V1,
+    UNKNOWN
+}
+
+impl From<u8> for Version {
+    fn from(v: u8) -> Self {
+        match v {
+            1 => Version::V1,
+            _ => Version::UNKNOWN,
+        }
+    }
+}
+
+impl From<Version> for u8 {
+    fn from(v: Version) -> Self {
+        match v {
+            Version::V1 => 1,
+            Version::UNKNOWN => 0,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum CipherKind {
     AES_128_GCM,
     AES_256_GCM,
@@ -217,7 +256,7 @@ impl std::str::FromStr for CipherKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum CompressKind {
     ZLIB,
     NONE,
@@ -249,7 +288,7 @@ impl From<CompressKind> for u8 {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Header {
     // 版本号，方便之后的升级
-    version: u8,
+    version: Version,
     // 标记文件是否可用
     flag: u8,
     // 当前写入的下标
@@ -263,7 +302,7 @@ pub struct Header {
 impl Header {
     pub fn new() -> Self {
         Header {
-            version: 1,
+            version: Version::V1,
             flag: 0,
             recorder_size: 0,
             compress: CompressKind::ZLIB,
@@ -271,12 +310,22 @@ impl Header {
         }
     }
 
+    pub fn create(config: &EZLogConfig) -> Self {
+        Header {
+            version: config.version,
+            flag: 0,
+            recorder_size: 0,
+            compress: config.compress,
+            cipher: config.cipher,
+        }
+    }
+
     pub fn encode(&self, writer: &mut dyn Write) -> Result<(), LogError> {
-        writer.write_u8(self.version)?;
+        writer.write_u8(self.version.into())?;
         writer.write_u8(self.flag)?;
         writer.write_u32::<BigEndian>(self.recorder_size)?;
-        writer.write_u8(self.compress.clone().into())?;
-        writer.write_u8(self.cipher.clone().into())?;
+        writer.write_u8(self.compress.into())?;
+        writer.write_u8(self.cipher.into())?;
         Ok(())
     }
 
@@ -288,12 +337,16 @@ impl Header {
         let compress = reader.read_u8()?;
         let cipher = reader.read_u8()?;
         Ok(Header {
-            version,
+            version: Version::from(version),
             flag,
             recorder_size,
             compress: CompressKind::from(compress),
             cipher: CipherKind::from(cipher),
         })
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.version != Version::UNKNOWN
     }
 }
 
@@ -427,47 +480,14 @@ impl<'a> Default for EZRecordBuilder<'a> {
     }
 }
 
-/// mmap 实现的[EZLog]
-pub struct EZMmapAppender<'a> {
-    config: &'a EZLogConfig,
-    state: EZMmapAppendInner,
-}
-
-pub struct EZMmapAppendInner {
-    header: Header,
-    log_file: File,
-    mmap: MmapMut,
-    // writer: RwLock<Cursor<&'a mut [u8]>>,
-    next_date: AtomicUsize,
-    
-}
-
-impl EZMmapAppendInner {
-
-    pub fn new(config: &EZLogConfig) -> Result<Self, LogError> {
-        let now = OffsetDateTime::now_utc();
-        let file_name = config.now_file_name(now);
-        let log_file = create_mmap_file(&config.dir_path, &file_name)?;
-        let mut mmap = unsafe { MmapOptions::new().map_mut(&log_file)? };
-        let mut c = Cursor::new(&mut mmap[0 ..MAX_LOG_HEADER_SIZE]);
-        let header = Header::decode(&mut c)?;
-
-        let inner = EZMmapAppendInner {
-            header,
-            log_file,
-            mmap,
-            // writer: RwLock::new(c.clone()),
-            next_date: AtomicUsize::new(0),
-        };
-
-        Ok(inner)
-    }    
-}
-
 /// 内存缓存实现的[EZLog]
 pub struct EZLogMemoryImpl {}
 
-pub fn create_mmap_file(directory: &str, filename: &str) ->  io::Result<File> {
+pub fn next_date(time: OffsetDateTime) -> OffsetDateTime {
+    time.date().midnight().assume_utc() + Duration::days(1)
+}
+
+pub fn create_mmap_file(directory: &str, filename: &str) -> io::Result<File> {
     let path = Path::new(directory).join(filename);
 
     if let Some(p) = path.parent() {
@@ -490,7 +510,6 @@ pub fn create_mmap_file(directory: &str, filename: &str) ->  io::Result<File> {
         file.set_len(MAX_LOG_SIZE)?;
     }
     Ok(file)
-
 }
 
 pub fn init_mmap_temp_file(path: &Path) -> io::Result<File> {
@@ -521,12 +540,14 @@ pub fn init_mmap_temp_file(path: &Path) -> io::Result<File> {
 mod tests {
     use std::{
         io::{Read, Write},
-        time::SystemTime,
+        time::SystemTime, mem,
     };
 
     use aes_gcm::aead::{Aead, NewAead};
     use aes_gcm::{Aes256Gcm, Key, Nonce}; // Or `Aes128Gcm`
     use flate2::{bufread::ZlibDecoder, write::ZlibEncoder, Compression};
+
+    use crate::{Header, V1_LOG_HEADER_SIZE};
 
     #[test]
     fn it_works() {
@@ -538,6 +559,14 @@ mod tests {
             .unwrap()
             .as_millis();
         println!("{}", unix_now);
+    }
+
+    #[test]
+    fn test_header_size() {
+        let header = Header::new();
+        let mut v = Vec::new();
+        header.encode(&mut v).unwrap();
+        assert_eq!(v.len(), V1_LOG_HEADER_SIZE);
     }
 
     #[test]
