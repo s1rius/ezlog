@@ -16,7 +16,7 @@ use std::{
 };
 use time::{format_description, Duration, OffsetDateTime, Time};
 
-pub const MAX_LOG_SIZE: u64 = 150 * 1024;
+pub const DEFAULT_MAX_LOG_SIZE: u64 = 150 * 1024;
 pub const V1_LOG_HEADER_SIZE: usize = 8;
 
 pub struct EZLogger {}
@@ -41,7 +41,7 @@ pub struct EZLogConfig {
     // 文件缓存的时间
     duration_ts: usize,
     // 日志文件的最大大小
-    max_size: usize,
+    max_size: u64,
     // 单条日志的分隔符
     seperate: char,
     // 压缩方式
@@ -57,7 +57,7 @@ impl EZLogConfig {
         name: String,
         file_suffix: String,
         duration_ts: usize,
-        max_size: usize,
+        max_size: u64,
         seperate: char,
         compress: CompressKind,
         cipher: CipherKind,
@@ -84,6 +84,35 @@ impl EZLogConfig {
         let str = format!("{}_{}.{}", self.name, date, self.file_suffix);
         str
     }
+
+    pub fn create_mmap_file(directory: &str, filename: &str, max_size: u64) -> io::Result<File> {
+        let path = Path::new(directory).join(filename);
+
+        if let Some(p) = path.parent() {
+            if !p.exists() {
+                fs::create_dir_all(p)?;
+            }
+        }
+
+        // create file
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(path)?;
+
+        // check file lenth ok or set len
+        let mut len = file.metadata()?.len();
+        if len == 0 {
+            info!("set file len");
+            len = max_size;
+            if len == 0 {
+                len = DEFAULT_MAX_LOG_SIZE;
+            }
+            file.set_len(len)?;
+        }
+        Ok(file)
+    }
 }
 
 impl Default for EZLogConfig {
@@ -105,7 +134,7 @@ impl EZLogConfigBuilder {
                 name: "".to_string(),
                 file_suffix: "".to_string(),
                 duration_ts: 0,
-                max_size: 0,
+                max_size: DEFAULT_MAX_LOG_SIZE,
                 seperate: '\n',
                 compress: CompressKind::NONE,
                 cipher: CipherKind::NONE,
@@ -133,7 +162,7 @@ impl EZLogConfigBuilder {
         self
     }
 
-    pub fn max_size(mut self, max_size: usize) -> Self {
+    pub fn max_size(mut self, max_size: u64) -> Self {
         self.config.max_size = max_size;
         self
     }
@@ -167,19 +196,27 @@ impl EZLogConfigBuilder {
 pub struct Encoder {}
 
 /// 压缩
-pub trait Compress {
+pub trait Compression {
     fn compress(&self, data: &[u8]) -> Vec<u8>;
 }
 
+pub trait Decompression {
+    fn decompress(&self, data: &[u8]) -> Vec<u8>;
+}
+
 /// 加密
-pub trait Encrypt {
+pub trait Encryptor {
     fn encrypt(&self, data: &[u8]) -> Vec<u8>;
+}
+
+pub trait Decryptor {
+    fn decrypt(&self, data: &[u8]) -> Vec<u8>;
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Version {
     V1,
-    UNKNOWN
+    UNKNOWN,
 }
 
 impl From<u8> for Version {
@@ -345,8 +382,10 @@ impl Header {
         })
     }
 
-    pub fn is_valid(&self) -> bool {
-        self.version != Version::UNKNOWN
+    pub fn is_valid(&self, config: &EZLogConfig) -> bool {
+        self.version == config.version
+            && self.compress == config.compress
+            && self.cipher == config.cipher
     }
 }
 
@@ -487,31 +526,6 @@ pub fn next_date(time: OffsetDateTime) -> OffsetDateTime {
     time.date().midnight().assume_utc() + Duration::days(1)
 }
 
-pub fn create_mmap_file(directory: &str, filename: &str) -> io::Result<File> {
-    let path = Path::new(directory).join(filename);
-
-    if let Some(p) = path.parent() {
-        if !p.exists() {
-            fs::create_dir_all(p)?;
-        }
-    }
-
-    // create file
-    let file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open(path)?;
-
-    // check file lenth ok or set len
-    let len = file.metadata()?.len();
-    if len == 0 {
-        info!("set file len");
-        file.set_len(MAX_LOG_SIZE)?;
-    }
-    Ok(file)
-}
-
 pub fn init_mmap_temp_file(path: &Path) -> io::Result<File> {
     // check dir exists, else create
     if let Some(p) = path.parent() {
@@ -531,7 +545,7 @@ pub fn init_mmap_temp_file(path: &Path) -> io::Result<File> {
     let len = file.metadata()?.len();
     if len == 0 {
         info!("set file len");
-        file.set_len(MAX_LOG_SIZE)?;
+        file.set_len(DEFAULT_MAX_LOG_SIZE)?;
     }
     Ok(file)
 }
@@ -540,7 +554,8 @@ pub fn init_mmap_temp_file(path: &Path) -> io::Result<File> {
 mod tests {
     use std::{
         io::{Read, Write},
-        time::SystemTime, mem,
+        mem,
+        time::SystemTime,
     };
 
     use aes_gcm::aead::{Aead, NewAead};
