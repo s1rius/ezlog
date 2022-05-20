@@ -16,6 +16,10 @@ impl<'a> EZMmapAppender<'a> {
         Ok(Self { config, inner })
     }
 
+    pub fn check_rolling(&mut self, buf_size: usize) -> Result<(), LogError> {
+        self.check_refresh_inner(OffsetDateTime::now_utc(), buf_size)
+    }
+
     pub fn check_refresh_inner(
         &mut self,
         time: OffsetDateTime,
@@ -23,13 +27,13 @@ impl<'a> EZMmapAppender<'a> {
     ) -> Result<(), LogError> {
         if self.inner.is_overtime(time) {
             self.flush().ok();
-            *(&mut self.inner) = EZMmapAppendInner::new(self.config, time)?;
+            self.inner = EZMmapAppendInner::new(self.config, time)?;
         }
 
         if self.inner.is_oversize(buf_size) {
             self.flush().ok();
             self.inner.rename_current_file()?;
-            *(&mut self.inner) = EZMmapAppendInner::new(self.config, time)?;
+            self.inner = EZMmapAppendInner::new(self.config, time)?;
         }
         Ok(())
     }
@@ -109,10 +113,13 @@ impl EZMmapAppendInner {
 
 impl Write for EZMmapAppender<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.check_rolling(buf.len())
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         Ok(0)
     }
 
     fn flush(&mut self) -> io::Result<()> {
+        self.inner.mmap.flush()?;
         Ok(())
     }
 }

@@ -1,8 +1,6 @@
-
-use std::{fs::OpenOptions};
+use std::fs::OpenOptions;
 
 #[cfg_attr(target_os = "android", ndk_glue::main(backtrace = "on"))]
 fn main() {
     println!("hello world")
 }
-

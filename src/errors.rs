@@ -1,10 +1,15 @@
-use std::{error::Error, io, fmt::{self, Display}};
+use std::{
+    error::Error,
+    fmt::{self, Display},
+    io,
+};
 
 #[derive(Debug)]
 pub enum LogError {
     Encoding(EncodingError),
     IoError(io::Error),
     Parse(ParseError),
+    Crypto(CrytoError),
 }
 
 #[derive(Debug)]
@@ -24,11 +29,7 @@ impl EncodingError {
 impl Display for EncodingError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match &self.underlying {
-            Some(underlying) => write!(
-                fmt,
-                "Format error encoding :\n{}",
-                underlying,
-            ),
+            Some(underlying) => write!(fmt, "Format error encoding :\n{}", underlying,),
             None => write!(fmt, "Format error encoding"),
         }
     }
@@ -49,6 +50,7 @@ impl Error for LogError {
             LogError::Encoding(err) => err.source(),
             LogError::IoError(err) => err.source(),
             LogError::Parse(err) => err.source(),
+            LogError::Crypto(err) => err.source(),
         }
     }
 }
@@ -60,21 +62,51 @@ pub struct ParseError {
 
 impl ParseError {
     pub fn new(message: String) -> Self {
-        ParseError {
-            message
-        }
+        ParseError { message }
     }
 }
 
 impl Display for ParseError {
-    
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "error: {}", self.message)
     }
 }
 
 impl Error for ParseError {}
-    
+
+#[derive(Debug)]
+pub struct CrytoError {
+    underlying: Option<Box<dyn Error + Send + Sync>>,
+}
+
+impl CrytoError {
+    pub fn new(err: impl Into<Box<dyn Error + Send + Sync>>) -> Self {
+        CrytoError {
+            underlying: Some(err.into()),
+        }
+    }
+}
+
+impl Display for CrytoError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.underlying)
+    }
+}
+
+impl Error for CrytoError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match &self.underlying {
+            None => None,
+            Some(source) => Some(&**source),
+        }
+    }
+}
+
+impl From<aead::Error> for CrytoError {
+    fn from(err: aead::Error) -> Self {
+        CrytoError::new(format!("{:?}", err))
+    }
+}
 
 impl Display for LogError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
@@ -82,6 +114,7 @@ impl Display for LogError {
             LogError::Encoding(err) => err.fmt(fmt),
             LogError::IoError(err) => err.fmt(fmt),
             LogError::Parse(err) => err.fmt(fmt),
+            LogError::Crypto(err) => err.fmt(fmt),
         }
     }
 }

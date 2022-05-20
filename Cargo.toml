@@ -3,6 +3,10 @@ name = "ezlog"
 version = "0.1.0"
 edition = "2021"
 
+# todo
+# [lib]
+# crate-type = ["cdylib"]
+
 [dependencies]
 memmap2 = "0.5.3"
 log = "0.4.17"
@@ -45,3 +49,4 @@ name = "android.permission.READ_EXTERNAL_STORAGE"
 
 [[example]]
 name = "nix_hello_world"
+crate-type = ["bin"]

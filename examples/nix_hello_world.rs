@@ -1,28 +1,32 @@
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use ezlog::{init_mmap_temp_file, Header};
+use log::{info, warn, LevelFilter};
+use log::{Level, Metadata, Record};
+use memmap2::MmapOptions;
+use std::fs::OpenOptions;
 use std::io::{Cursor, Seek};
 use std::path::Path;
-use std::{fs::OpenOptions};
-use ezlog::Header;
-use memmap2::MmapOptions;
-use log::{info, warn, LevelFilter};
-use log::{Record, Level, Metadata};
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 static LOGGER: SimpleLogger = SimpleLogger;
 
 pub fn main() {
     log::set_logger(&LOGGER)
-        .map(|()| log::set_max_level(LevelFilter::Trace)).unwrap();
-    
+        .map(|()| log::set_max_level(LevelFilter::Trace))
+        .unwrap();
+
     let download_dir = dirs::download_dir().unwrap();
 
     let path = download_dir.join("1/1.mmp");
-    let file = ezlog::init_mmap_temp_file(&path).unwrap();
-    
-    let mut mmap = unsafe { MmapOptions::new().map_mut(&file).expect("failed to map the file") };
+    let file = init_mmap_temp_file(&path).unwrap();
+
+    let mut mmap = unsafe {
+        MmapOptions::new()
+            .map_mut(&file)
+            .expect("failed to map the file")
+    };
     // println!("Hello, wtf!");
     // (&mut mmap[..]).write(b"Hello, world!").unwrap();
     // mmap.flush().unwrap();
-
 
     println!("write byte");
     let ustr = "asdf";
@@ -40,22 +44,25 @@ pub fn main() {
         println!("write byte end");
     }
 
-    (&mut mmap[100 .. 108]).write_i64::<BigEndian>(i64::MAX).unwrap();
-    (&mut mmap[108 .. 116]).write_u64::<BigEndian>(u64::MAX).unwrap();
+    (&mut mmap[100..108])
+        .write_i64::<BigEndian>(i64::MAX)
+        .unwrap();
+    (&mut mmap[108..116])
+        .write_u64::<BigEndian>(u64::MAX)
+        .unwrap();
     let h = Header::new();
-    let w = &mut mmap[0 .. 56];
+    let w = &mut mmap[0..56];
     let mut c = Cursor::new(w);
-    
+
     h.encode(&mut c).unwrap();
 
     c.seek(std::io::SeekFrom::Start(0)).unwrap();
     let decode_header = Header::decode(&mut c).unwrap();
-    
+
     assert_eq!(h, decode_header);
 
-    assert_eq!(i64::MAX, (&mmap[100 .. 108]).read_i64::<BigEndian>().unwrap());
-    assert_eq!(u64::MAX, (&mmap[108 .. 116]).read_u64::<BigEndian>().unwrap());
-
+    assert_eq!(i64::MAX, (&mmap[100..108]).read_i64::<BigEndian>().unwrap());
+    assert_eq!(u64::MAX, (&mmap[108..116]).read_u64::<BigEndian>().unwrap());
 
     mmap.flush_async().unwrap();
 }

@@ -1,23 +1,31 @@
 mod appender;
+mod compress;
+mod crypto;
 mod errors;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use errors::{LogError, ParseError};
+use errors::{CrytoError, LogError, ParseError};
 use log::{info, Level};
 use memmap2::{MmapMut, MmapOptions};
 use std::{
     fs::{self, File, OpenOptions},
     io::{self, Cursor, Read, Write},
     path::Path,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        RwLock,
-    },
 };
 use time::{format_description, Duration, OffsetDateTime, Time};
 
 pub const DEFAULT_MAX_LOG_SIZE: u64 = 150 * 1024;
 pub const V1_LOG_HEADER_SIZE: usize = 8;
+
+#[no_mangle]
+pub extern "C" fn hello_from_rust() {
+    println!("Hello from Rust!");
+}
+
+#[no_mangle]
+pub extern "C" fn create_ezlog() {
+    println!("Hello from Rust!");
+}
 
 pub struct EZLogger {}
 
@@ -48,6 +56,10 @@ pub struct EZLogConfig {
     compress: CompressKind,
     // 加密方式
     cipher: CipherKind,
+    // 加密的密钥
+    cipher_key: Option<Vec<u8>>,
+    // 加密的nonce
+    cipher_nonce: Option<Vec<u8>>,
 }
 
 impl EZLogConfig {
@@ -61,6 +73,8 @@ impl EZLogConfig {
         seperate: char,
         compress: CompressKind,
         cipher: CipherKind,
+        cipher_key: Option<Vec<u8>>,
+        cipher_nonce: Option<Vec<u8>>,
     ) -> Self {
         EZLogConfig {
             version,
@@ -72,6 +86,8 @@ impl EZLogConfig {
             seperate,
             compress,
             cipher,
+            cipher_key,
+            cipher_nonce,
         }
     }
 
@@ -138,6 +154,8 @@ impl EZLogConfigBuilder {
                 seperate: '\n',
                 compress: CompressKind::NONE,
                 cipher: CipherKind::NONE,
+                cipher_key: None,
+                cipher_nonce: None,
             },
         }
     }
@@ -182,6 +200,16 @@ impl EZLogConfigBuilder {
         self
     }
 
+    pub fn cipher_key(mut self, cipher_key: Vec<u8>) -> Self {
+        self.config.cipher_key = Some(cipher_key);
+        self
+    }
+
+    pub fn cipher_nonce(mut self, cipher_nonce: Vec<u8>) -> Self {
+        self.config.cipher_nonce = Some(cipher_nonce);
+        self
+    }
+
     pub fn build(self) -> EZLogConfig {
         self.config
     }
@@ -197,20 +225,20 @@ pub struct Encoder {}
 
 /// 压缩
 pub trait Compression {
-    fn compress(&self, data: &[u8]) -> Vec<u8>;
+    fn compress(&self, data: &[u8]) -> std::io::Result<Vec<u8>>;
 }
 
 pub trait Decompression {
-    fn decompress(&self, data: &[u8]) -> Vec<u8>;
+    fn decompress(&self, data: &[u8]) -> std::io::Result<Vec<u8>>;
 }
 
 /// 加密
 pub trait Encryptor {
-    fn encrypt(&self, data: &[u8]) -> Vec<u8>;
+    fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, CrytoError>;
 }
 
 pub trait Decryptor {
-    fn decrypt(&self, data: &[u8]) -> Vec<u8>;
+    fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, CrytoError>;
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -558,6 +586,7 @@ mod tests {
         time::SystemTime,
     };
 
+    use aead::generic_array::sequence::GenericSequence;
     use aes_gcm::aead::{Aead, NewAead};
     use aes_gcm::{Aes256Gcm, Key, Nonce}; // Or `Aes128Gcm`
     use flate2::{bufread::ZlibDecoder, write::ZlibEncoder, Compression};
