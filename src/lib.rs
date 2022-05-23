@@ -3,19 +3,40 @@ mod compress;
 mod crypto;
 mod errors;
 
+use appender::EZMmapAppender;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use errors::{CrytoError, LogError, ParseError};
+use compress::ZlibCodec;
+use crossbeam_channel::{Sender, Receiver};
+use crypto::{Aes128Gcm, Aes256Gcm};
+use errors::{CryptoError, LogError, ParseError};
 use log::{info, Level};
 use memmap2::{MmapMut, MmapOptions};
 use std::{
     fs::{self, File, OpenOptions},
     io::{self, Cursor, Read, Write},
     path::Path,
+    rc::Rc, mem::MaybeUninit, ptr, sync::Once, thread,
 };
 use time::{format_description, Duration, OffsetDateTime, Time};
 
 pub const DEFAULT_MAX_LOG_SIZE: u64 = 150 * 1024;
 pub const V1_LOG_HEADER_SIZE: usize = 8;
+
+
+static mut CHANNEL: MaybeUninit<(Sender<EZMsg>, Receiver<EZMsg>)> = MaybeUninit::uninit();
+static CHANNEL_INIT: Once = Once::new();
+static ONE_RECEIVER: Once = Once::new();
+
+#[inline]
+fn get_channel() -> &'static (Sender<EZMsg>, Receiver<EZMsg>) {
+    CHANNEL_INIT.call_once(|| unsafe {
+        ptr::write(CHANNEL.as_mut_ptr(), crossbeam_channel::unbounded());
+    });
+    
+    unsafe {
+        &*CHANNEL.as_ptr()
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn hello_from_rust() {
@@ -27,7 +48,75 @@ pub extern "C" fn create_ezlog() {
     println!("Hello from Rust!");
 }
 
-pub struct EZLogger {}
+pub fn init() {
+    ONE_RECEIVER.call_once(||{
+        thread::spawn(|| {
+            loop {
+                get_channel().1.recv().unwrap();
+            }
+        });
+    });
+}
+
+enum EZMsg {
+    CreateMsg(EZLogConfig),
+    RecordMsg(EZRecord),
+}
+
+pub struct EZLogger {
+    config: Rc<EZLogConfig>,
+    appender: EZMmapAppender,
+    compression: Option<Box<dyn Compression>>,
+    cryptor: Option<Box<dyn Encryptor>>,
+}
+
+impl EZLogger {
+    pub fn new(config: EZLogConfig) -> Result<Self, LogError> {
+        let rc_conf = Rc::new(config);
+        let appender = EZMmapAppender::new(Rc::clone(&rc_conf))?;
+        let compression = EZLogger::create_compression(&rc_conf)?;
+        let cryptor = EZLogger::create_cryptor(&rc_conf)?;
+        Ok(Self {
+            config: Rc::clone(&rc_conf),
+            appender,
+            compression,
+            cryptor,
+        })
+    }
+
+    pub fn create_cryptor(config: &EZLogConfig) -> Result<Option<Box<dyn Encryptor>>, CryptoError> {
+        if let Some(key) = &config.cipher_key {
+            if let Some(nonce) = &config.cipher_nonce {
+                match config.cipher {
+                    CipherKind::AES_128_GCM => {
+                        let encryptor = Aes128Gcm::new(key, nonce)?;
+                        Ok(Some(Box::new(encryptor)))
+                    }
+                    CipherKind::AES_256_GCM => {
+                        let encryptor = Aes256Gcm::new(key, nonce)?;
+                        Ok(Some(Box::new(encryptor)))
+                    }
+                    CipherKind::NONE => Ok(None),
+                    CipherKind::UNKNOWN => Ok(None),
+                }
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn create_compression(
+        config: &EZLogConfig,
+    ) -> Result<Option<Box<dyn Compression>>, LogError> {
+        match config.compress {
+            CompressKind::ZLIB => Ok(Some(Box::new(ZlibCodec::new(&config.compress_level)))),
+            CompressKind::NONE => Ok(None),
+            CompressKind::UNKNOWN => Ok(None),
+        }
+    }
+}
 
 pub trait EZLog {
     fn enable(&self, level: Level) -> bool;
@@ -40,25 +129,27 @@ pub trait EZLog {
 #[derive(Debug, Clone)]
 pub struct EZLogConfig {
     version: Version,
-    // 文件夹目录
+    /// 文件夹目录
     dir_path: String,
-    // 文件的前缀名
+    /// 文件的前缀名
     name: String,
-    // 文件的后缀名
+    /// 文件的后缀名
     file_suffix: String,
-    // 文件缓存的时间
-    duration_ts: usize,
-    // 日志文件的最大大小
+    /// 文件缓存的时间
+    duration: Duration,
+    /// 日志文件的最大大小
     max_size: u64,
-    // 单条日志的分隔符
+    /// 单条日志的分隔符
     seperate: char,
     // 压缩方式
     compress: CompressKind,
-    // 加密方式
+    /// 压缩等级
+    compress_level: CompressLevel,
+    /// 加密方式
     cipher: CipherKind,
-    // 加密的密钥
+    /// 加密的密钥
     cipher_key: Option<Vec<u8>>,
-    // 加密的nonce
+    /// 加密的nonce
     cipher_nonce: Option<Vec<u8>>,
 }
 
@@ -68,10 +159,11 @@ impl EZLogConfig {
         dir_path: String,
         name: String,
         file_suffix: String,
-        duration_ts: usize,
+        duration: Duration,
         max_size: u64,
         seperate: char,
         compress: CompressKind,
+        compress_level: CompressLevel,
         cipher: CipherKind,
         cipher_key: Option<Vec<u8>>,
         cipher_nonce: Option<Vec<u8>>,
@@ -81,10 +173,11 @@ impl EZLogConfig {
             dir_path,
             name,
             file_suffix,
-            duration_ts,
+            duration,
             max_size,
             seperate,
             compress,
+            compress_level,
             cipher,
             cipher_key,
             cipher_nonce,
@@ -149,10 +242,11 @@ impl EZLogConfigBuilder {
                 dir_path: "".to_string(),
                 name: "".to_string(),
                 file_suffix: "".to_string(),
-                duration_ts: 0,
+                duration: Duration::days(7),
                 max_size: DEFAULT_MAX_LOG_SIZE,
                 seperate: '\n',
                 compress: CompressKind::NONE,
+                compress_level: CompressLevel::Default,
                 cipher: CipherKind::NONE,
                 cipher_key: None,
                 cipher_nonce: None,
@@ -175,8 +269,8 @@ impl EZLogConfigBuilder {
         self
     }
 
-    pub fn duration_ts(mut self, duration_ts: usize) -> Self {
-        self.config.duration_ts = duration_ts;
+    pub fn duration(mut self, duration: Duration) -> Self {
+        self.config.duration = duration;
         self
     }
 
@@ -234,11 +328,11 @@ pub trait Decompression {
 
 /// 加密
 pub trait Encryptor {
-    fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, CrytoError>;
+    fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, CryptoError>;
 }
 
 pub trait Decryptor {
-    fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, CrytoError>;
+    fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, CryptoError>;
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -348,6 +442,34 @@ impl From<CompressKind> for u8 {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum CompressLevel {
+    Fast,
+    Default,
+    Best,
+}
+
+impl From<u8> for CompressLevel {
+    fn from(orig: u8) -> Self {
+        match orig {
+            0x00 => CompressLevel::Default,
+            0x01 => CompressLevel::Fast,
+            0x02 => CompressLevel::Best,
+            _ => CompressLevel::Default,
+        }
+    }
+}
+
+impl From<CompressLevel> for u8 {
+    fn from(orig: CompressLevel) -> Self {
+        match orig {
+            CompressLevel::Default => 0x00,
+            CompressLevel::Fast => 0x01,
+            CompressLevel::Best => 0x02,
+        }
+    }
+}
+
 /// 日志头
 /// 日志的版本，写入大小等
 #[derive(Debug, Clone, PartialEq)]
@@ -419,19 +541,19 @@ impl Header {
 
 /// 单条的日志记录
 #[derive(Debug, Clone)]
-pub struct EZRecord<'a> {
+pub struct EZRecord {
     log_id: u64,
     level: Level,
-    target: &'a str,
+    target: String,
     timestamp: u128,
     thread_id: u64,
-    thread_name: &'a str,
-    content: &'a str,
+    thread_name: String,
+    content: String,
 }
 
-impl<'a> EZRecord<'a> {
+impl EZRecord {
     #[inline]
-    pub fn builder() -> EZRecordBuilder<'a> {
+    pub fn builder() -> EZRecordBuilder {
         EZRecordBuilder::new()
     }
 
@@ -446,8 +568,8 @@ impl<'a> EZRecord<'a> {
     }
 
     #[inline]
-    pub fn target(&self) -> &'a str {
-        self.target
+    pub fn target(&self) -> &str {
+        self.target.as_str()
     }
 
     #[inline]
@@ -461,47 +583,47 @@ impl<'a> EZRecord<'a> {
     }
 
     #[inline]
-    pub fn thread_name(&self) -> &'a str {
-        self.thread_name
+    pub fn thread_name(&self) -> &str {
+        self.thread_name.as_str()
     }
 
     #[inline]
-    pub fn content(&self) -> &'a str {
-        self.content
+    pub fn content(&self) -> &str {
+        self.content.as_str()
     }
 
     #[inline]
-    pub fn to_builder(&self) -> EZRecordBuilder<'a> {
+    pub fn to_builder(&self) -> EZRecordBuilder {
         EZRecordBuilder {
             record: EZRecord {
                 log_id: self.log_id,
                 level: self.level,
-                target: self.target,
+                target: self.target.clone(),
                 timestamp: self.timestamp,
                 thread_id: self.thread_id,
-                thread_name: self.thread_name,
-                content: self.content,
+                thread_name: self.thread_name.clone(),
+                content: self.content.clone(),
             },
         }
     }
 }
 
 #[derive(Debug)]
-pub struct EZRecordBuilder<'a> {
-    record: EZRecord<'a>,
+pub struct EZRecordBuilder {
+    record: EZRecord,
 }
 
-impl<'a> EZRecordBuilder<'a> {
-    pub fn new() -> EZRecordBuilder<'a> {
+impl<'a> EZRecordBuilder {
+    pub fn new() -> EZRecordBuilder {
         EZRecordBuilder {
             record: EZRecord {
                 log_id: 0,
                 level: Level::Info,
-                target: "",
+                target: "".to_string(),
                 timestamp: 0,
                 thread_id: 0,
-                thread_name: "",
-                content: "",
+                thread_name: "".to_string(),
+                content: "".to_string(),
             },
         }
     }
@@ -512,7 +634,7 @@ impl<'a> EZRecordBuilder<'a> {
     }
 
     pub fn target(&mut self, target: &'a str) -> &mut Self {
-        self.record.target = target;
+        self.record.target = target.to_string();
         self
     }
 
@@ -527,12 +649,12 @@ impl<'a> EZRecordBuilder<'a> {
     }
 
     pub fn thread_name(&mut self, thread_name: &'a str) -> &mut Self {
-        self.record.thread_name = thread_name;
+        self.record.thread_name = thread_name.to_string();
         self
     }
 
     pub fn content(&mut self, content: &'a str) -> &mut Self {
-        self.record.content = content;
+        self.record.content = content.to_string();
         self
     }
 
@@ -541,7 +663,7 @@ impl<'a> EZRecordBuilder<'a> {
     }
 }
 
-impl<'a> Default for EZRecordBuilder<'a> {
+impl<'a> Default for EZRecordBuilder {
     fn default() -> Self {
         Self::new()
     }

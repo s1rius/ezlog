@@ -1,9 +1,25 @@
 use std::io::{Read, Write};
 
-use crate::{Compression, Decompression};
+use crate::{CompressLevel, Compression, Decompression};
 
 pub struct ZlibCodec {
     level: flate2::Compression,
+}
+
+impl ZlibCodec {
+    pub fn new(level: &CompressLevel) -> Self {
+        match level {
+            CompressLevel::Fast => Self {
+                level: flate2::Compression::fast(),
+            },
+            CompressLevel::Default => Self {
+                level: flate2::Compression::default(),
+            },
+            CompressLevel::Best => Self {
+                level: flate2::Compression::best(),
+            },
+        }
+    }
 }
 
 impl Compression for ZlibCodec {

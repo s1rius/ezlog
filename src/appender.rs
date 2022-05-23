@@ -1,18 +1,18 @@
-use std::path::PathBuf;
+use std::{borrow::Borrow, path::PathBuf, rc::Rc};
 
 use time::OffsetDateTime;
 
 use crate::*;
 
 /// mmap 实现的[EZLog]
-pub struct EZMmapAppender<'a> {
-    config: &'a EZLogConfig,
+pub struct EZMmapAppender {
+    config: Rc<EZLogConfig>,
     inner: EZMmapAppendInner,
 }
 
-impl<'a> EZMmapAppender<'a> {
-    pub fn new(config: &'a EZLogConfig) -> Result<Self, LogError> {
-        let inner = EZMmapAppendInner::new_now(config)?;
+impl EZMmapAppender {
+    pub fn new(config: Rc<EZLogConfig>) -> Result<Self, LogError> {
+        let inner = EZMmapAppendInner::new_now(&config)?;
         Ok(Self { config, inner })
     }
 
@@ -27,13 +27,13 @@ impl<'a> EZMmapAppender<'a> {
     ) -> Result<(), LogError> {
         if self.inner.is_overtime(time) {
             self.flush().ok();
-            self.inner = EZMmapAppendInner::new(self.config, time)?;
+            self.inner = EZMmapAppendInner::new(&self.config, time)?;
         }
 
         if self.inner.is_oversize(buf_size) {
             self.flush().ok();
             self.inner.rename_current_file()?;
-            self.inner = EZMmapAppendInner::new(self.config, time)?;
+            self.inner = EZMmapAppendInner::new(&self.config, time)?;
         }
         Ok(())
     }
@@ -54,8 +54,8 @@ impl EZMmapAppendInner {
         let mut mmap = unsafe { MmapOptions::new().map_mut(&log_file)? };
         let mut c = Cursor::new(&mut mmap[0..V1_LOG_HEADER_SIZE]);
         let mut header = Header::decode(&mut c)?;
-        if !header.is_valid(config) {
-            header = Header::create(config);
+        if !header.is_valid(&config) {
+            header = Header::create(&config);
         }
         let next_date = next_date(time);
         let file_path = Path::new(&config.dir_path).join(&file_name);
@@ -111,7 +111,7 @@ impl EZMmapAppendInner {
     }
 }
 
-impl Write for EZMmapAppender<'_> {
+impl Write for EZMmapAppender {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.check_rolling(buf.len())
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
@@ -154,8 +154,8 @@ mod tests {
 
     #[test]
     fn test_appender_rollover() {
-        let config = create_config();
-        let mut appender = EZMmapAppender::new(&config).unwrap();
+        let config = Rc::new(create_config());
+        let mut appender = EZMmapAppender::new(Rc::clone(&config)).unwrap();
         appender
             .check_refresh_inner(OffsetDateTime::now_utc() + Duration::days(1), 0)
             .unwrap();
@@ -167,5 +167,7 @@ mod tests {
         appender
             .check_refresh_inner(OffsetDateTime::now_utc() + Duration::days(1), 1025)
             .unwrap();
+
+        drop(config);
     }
 }

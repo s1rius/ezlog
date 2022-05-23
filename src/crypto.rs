@@ -1,7 +1,7 @@
 use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::{Key, Nonce}; // Or `Aes128Gcm`
 
-use crate::errors::{CrytoError, ParseError};
+use crate::errors::{CryptoError, ParseError};
 use crate::{Decryptor, Encryptor};
 
 pub struct Aes256Gcm {
@@ -12,16 +12,16 @@ pub struct Aes256Gcm {
 }
 
 impl Aes256Gcm {
-    pub fn new(key: &[u8], nonce: &[u8]) -> Result<Self, CrytoError> {
+    pub fn new(key: &[u8], nonce: &[u8]) -> Result<Self, CryptoError> {
         if key.len() != 32 {
             // todo s1rius correct error type
-            return Err(CrytoError::new(ParseError::new(format!(
+            return Err(CryptoError::new(ParseError::new(format!(
                 "key must be 32 bytes long"
             ))));
         }
 
         if nonce.len() != 12 {
-            return Err(CrytoError::new(ParseError::new(format!(
+            return Err(CryptoError::new(ParseError::new(format!(
                 "nonce must be 12 bytes long"
             ))));
         }
@@ -34,7 +34,7 @@ impl Aes256Gcm {
 }
 
 impl Encryptor for Aes256Gcm {
-    fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, CrytoError> {
+    fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
         let key = Key::from_slice(&self.key);
         let cipher = aes_gcm::Aes256Gcm::new(key);
 
@@ -45,7 +45,7 @@ impl Encryptor for Aes256Gcm {
 }
 
 impl Decryptor for Aes256Gcm {
-    fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, CrytoError> {
+    fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
         let key = Key::from_slice(&self.key);
         let cipher = aes_gcm::Aes256Gcm::new(key);
 
@@ -63,15 +63,15 @@ pub struct Aes128Gcm {
 }
 
 impl Aes128Gcm {
-    pub fn new(key: &[u8], nonce: &[u8]) -> Result<Self, CrytoError> {
+    pub fn new(key: &[u8], nonce: &[u8]) -> Result<Self, CryptoError> {
         if key.len() != 16 {
-            return Err(CrytoError::new(ParseError::new(format!(
+            return Err(CryptoError::new(ParseError::new(format!(
                 "key must be 32 bytes long"
             ))));
         }
 
         if nonce.len() != 12 {
-            return Err(CrytoError::new(ParseError::new(format!(
+            return Err(CryptoError::new(ParseError::new(format!(
                 "nonce must be 12 bytes long"
             ))));
         }
@@ -84,7 +84,7 @@ impl Aes128Gcm {
 }
 
 impl Encryptor for Aes128Gcm {
-    fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, CrytoError> {
+    fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
         let key = Key::from_slice(&self.key);
         let cipher = aes_gcm::Aes128Gcm::new(key);
 
@@ -95,7 +95,7 @@ impl Encryptor for Aes128Gcm {
 }
 
 impl Decryptor for Aes128Gcm {
-    fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, CrytoError> {
+    fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
         let key = Key::from_slice(&self.key);
         let cipher = aes_gcm::Aes128Gcm::new(key);
 
