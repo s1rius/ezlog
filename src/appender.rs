@@ -39,11 +39,24 @@ impl EZMmapAppender {
     }
 }
 
+impl Write for EZMmapAppender {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.check_rolling(buf.len())
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        self.inner.write(buf)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.inner.flush()
+    }
+}
+
 pub struct EZMmapAppendInner {
     header: Header,
     file_path: PathBuf,
     mmap: MmapMut,
     next_date: i64,
+    seperate: char,
 }
 
 impl EZMmapAppendInner {
@@ -65,6 +78,7 @@ impl EZMmapAppendInner {
             file_path,
             mmap,
             next_date: next_date.unix_timestamp(),
+            seperate: config.seperate,
         };
         Ok(inner)
     }
@@ -111,21 +125,36 @@ impl EZMmapAppendInner {
     }
 }
 
-impl Write for EZMmapAppender {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.check_rolling(buf.len())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-        Ok(0)
+impl Write for EZMmapAppendInner {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let s = self.seperate.to_string();
+        let b = s.as_bytes();
+        let start = V1_LOG_HEADER_SIZE + self.header.recorder_size as usize;
+        let end = start + buf.len() + b.len();
+        let mut cursor = Cursor::new(&mut self.mmap[start..end]);
+        cursor.write(buf)?;
+
+        self.header.recorder_size += buf.len() as u32;
+        self.header.recorder_size += b.len() as u32;
+
+        cursor.write(b)?;
+        Ok(buf.len())
     }
 
-    fn flush(&mut self) -> io::Result<()> {
-        self.inner.mmap.flush()?;
-        Ok(())
+    fn flush(&mut self) -> std::io::Result<()> {
+        let mut c = Cursor::new(&mut self.mmap[0..V1_LOG_HEADER_SIZE]);
+        self.header.encode(&mut c).or(Err(io::Error::new(
+            io::ErrorKind::Other,
+            "header encode error",
+        )))?;
+        self.mmap.flush()
     }
 }
 
 #[cfg(test)]
 mod tests {
+
+    use std::io::BufReader;
 
     use super::*;
 
@@ -141,6 +170,27 @@ mod tests {
             .name(String::from("test"))
             .file_suffix(String::from("mmap"))
             .max_size(1024)
+            .build()
+    }
+
+    fn create_all_feature_config() -> EZLogConfig {
+        let key = b"an example very very secret key.";
+        let nonce = b"unique nonce";
+        EZLogConfigBuilder::new()
+            .dir_path(
+                dirs::desktop_dir()
+                    .unwrap()
+                    .into_os_string()
+                    .into_string()
+                    .unwrap(),
+            )
+            .name(String::from("all_feature"))
+            .file_suffix(String::from("mmap"))
+            .max_size(1024)
+            .compress(CompressKind::ZLIB)
+            .cipher(CipherKind::AES_128_GCM)
+            .cipher_key(key.to_vec())
+            .cipher_nonce(nonce.to_vec())
             .build()
     }
 
@@ -169,5 +219,21 @@ mod tests {
             .unwrap();
 
         drop(config);
+    }
+
+    #[test]
+    fn test_write() {
+        let buf = b"hello an other log, let's go";
+        let config = Rc::new(create_config());
+        let mut appender = EZMmapAppender::new(Rc::clone(&config)).unwrap();
+        appender.write(buf).unwrap();
+        appender.flush().unwrap();
+
+        let mut read_buf = vec![0u8; buf.len()];
+        let file = appender.inner.current_file().unwrap();
+        let mut reader = BufReader::new(file);
+        reader.seek_relative(V1_LOG_HEADER_SIZE as i64).unwrap();
+        reader.read(&mut read_buf).unwrap();
+        assert_eq!(read_buf, buf);
     }
 }
