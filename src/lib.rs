@@ -1,3 +1,5 @@
+#![feature(thread_id_value)]
+
 mod appender;
 mod compress;
 mod crypto;
@@ -9,11 +11,13 @@ use compress::ZlibCodec;
 use crossbeam_channel::{Receiver, Sender};
 use crypto::{Aes128Gcm, Aes256Gcm};
 use errors::{CryptoError, LogError, ParseError};
-use log::{info, Level};
+use log::{Level, Record};
 use memmap2::{MmapMut, MmapOptions};
 use std::{
-    collections::HashMap,
+    collections::{hash_map::DefaultHasher, HashMap},
+    env,
     fs::{self, File, OpenOptions},
+    hash::{Hash, Hasher},
     io::{self, Cursor, Read, Write},
     mem::MaybeUninit,
     path::Path,
@@ -25,6 +29,10 @@ use std::{
 use time::{format_description, Duration, OffsetDateTime};
 
 pub const FILE_SIGNATURE: &'static [u8; 2] = b"ez";
+pub const DEFAULT_LOG_NAME: &'static str = "default";
+pub const DEFAULT_LOG_FILE_SUFFIX: &'static str = "mmap";
+pub const DEFAULT_LOG_SEPRATE: &'static str = "\n";
+pub const UNKNOWN: &'static str = "UNKNOWN";
 
 pub const DEFAULT_MAX_LOG_SIZE: u64 = 150 * 1024;
 pub const V1_LOG_HEADER_SIZE: usize = 10;
@@ -41,6 +49,7 @@ static ONE_RECEIVER: Once = Once::new();
 fn get_channel() -> &'static (Sender<EZMsg>, Receiver<EZMsg>) {
     CHANNEL_INIT.call_once(|| unsafe {
         ptr::write(CHANNEL.as_mut_ptr(), crossbeam_channel::unbounded());
+        println!("channel create")
     });
 
     unsafe { &*CHANNEL.as_ptr() }
@@ -50,8 +59,8 @@ fn get_channel() -> &'static (Sender<EZMsg>, Receiver<EZMsg>) {
 fn get_map() -> &'static mut HashMap<u64, EZLogger> {
     LOG_MAP_INIT.call_once(|| unsafe {
         ptr::write(LOG_MAP.as_mut_ptr(), HashMap::new());
+        println!("map create");
     });
-
     unsafe { &mut (*LOG_MAP.as_mut_ptr()) }
 }
 
@@ -79,38 +88,56 @@ pub(crate) fn init_receiver() {
     ONE_RECEIVER.call_once(|| {
         thread::spawn(|| loop {
             if let Some(msg) = get_channel().1.recv().ok() {
+                println!("message recv");
                 match msg {
                     EZMsg::CreateMsg(config) => {
-                        let log = match EZLogger::new(config) {
-                            Ok(log) => log,
+                        let log_id = config.log_id();
+                        println!("create log id: {}", log_id);
+                        match EZLogger::new(config) {
+                            Ok(log) => {
+                                let map = get_map();
+                                map.insert(log_id, log);
+                            },
                             Err(e) => {
-                                info!("create logger error: {:?}", e);
-                                continue;
+                                println!("create logger error:{:?}", e);
                             }
                         };
-                        let map = get_map();
-                        map.insert(log.id(), log);
+                        
                     }
                     EZMsg::RecordMsg(record) => {
                         let log = match get_map().get_mut(&record.log_id) {
                             Some(l) => l,
                             None => {
-                                info!("log lost : {:?}", record);
+                                println!("log lost : {:?}", record);
                                 continue;
                             }
                         };
                         if log.config.level > record.level {
-                            info!("log level ");
-                            continue;
+                            println!("log level ");
                         }
                         match log.append(&record) {
-                            Ok(_) => (),
+                            Ok(_) => {
+                                println!("append record ok: {:?}", record);
+                            },
                             Err(_) => {
-                                info!("append record error: {:?}", record);
-                                continue;
+                                println!("append record error: {:?}", record);
                             }
                         }
                     }
+                    EZMsg::ForceFlush(name) => {
+                        let mut hasher = DefaultHasher::new();
+                        name.hash(&mut hasher);
+                        let id = hasher.finish();
+                        let log = match get_map().get_mut(&id) {
+                            Some(l) => l,
+                            None => {
+                                println!("log lost : {:?}", name);
+                                continue;
+                            }
+                        };
+                        log.appender.flush().ok();
+                        println!("log flush : {:?}", name);
+                    },
                 }
             }
         });
@@ -119,23 +146,55 @@ pub(crate) fn init_receiver() {
 
 pub fn create_log(config: EZLogConfig) {
     let msg = EZMsg::CreateMsg(config);
-    match get_sender().try_send(msg) {
-        Ok(_) => {}
-        Err(_) => {}
+    match get_sender().send(msg) {
+        Ok(_) => {
+            println!("send create log")
+        }
+        Err(_) => {
+            println!("create log error: ");
+        }
     }
 }
 
 pub fn log(record: EZRecord) {
     let msg = EZMsg::RecordMsg(record);
     match get_sender().try_send(msg) {
-        Ok(_) => {}
-        Err(_) => {}
+        Ok(_) => {
+            println!("send record")
+        }
+        Err(_) => {
+            println!("log error: ");
+        }
     }
 }
 
-enum EZMsg {
+pub fn flush(log_name: &str) {
+    let msg = EZMsg::ForceFlush(log_name.to_string());
+    match get_sender().try_send(msg) {
+        Ok(_) => {
+            println!("flush log")
+        }
+        Err(_) => {
+            println!("flush error: ");
+        }
+    }
+}
+
+pub fn post_msg(msg: EZMsg) -> Result<(), crossbeam_channel::TrySendError<EZMsg>> {
+    get_sender().try_send(msg)
+}
+
+pub fn log_id(name: &str) -> u64{
+    let mut hasher = DefaultHasher::new();
+    name.hash(&mut hasher);
+    hasher.finish()
+}
+
+#[derive(Debug, Clone)]
+pub enum EZMsg {
     CreateMsg(EZLogConfig),
     RecordMsg(EZRecord),
+    ForceFlush(String),
 }
 
 pub struct EZLogger {
@@ -151,6 +210,7 @@ impl EZLogger {
         let appender = EZMmapAppender::new(Rc::clone(&rc_conf))?;
         let compression = EZLogger::create_compression(&rc_conf)?;
         let cryptor = EZLogger::create_cryptor(&rc_conf)?;
+
         Ok(Self {
             config: Rc::clone(&rc_conf),
             appender,
@@ -163,11 +223,11 @@ impl EZLogger {
         if let Some(key) = &config.cipher_key {
             if let Some(nonce) = &config.cipher_nonce {
                 match config.cipher {
-                    CipherKind::AES_128_GCM => {
+                    CipherKind::AES128GCM => {
                         let encryptor = Aes128Gcm::new(key, nonce)?;
                         Ok(Some(Box::new(encryptor)))
                     }
-                    CipherKind::AES_256_GCM => {
+                    CipherKind::AES256GCM => {
                         let encryptor = Aes256Gcm::new(key, nonce)?;
                         Ok(Some(Box::new(encryptor)))
                     }
@@ -193,10 +253,11 @@ impl EZLogger {
     }
 
     fn append(&mut self, record: &EZRecord) -> Result<(), LogError> {
-        if self.config.level > record.level {
-            // todo
-            return Ok(());
-        }
+        // if self.config.level > record.level {
+        //     // todo
+        //     println!("just return");
+        //     return Ok(());
+        // }
         let mut buf = self.format(record);
         if let Some(encryptor) = &self.cryptor {
             buf = encryptor.encrypt(&buf)?;
@@ -209,11 +270,7 @@ impl EZLogger {
     }
 
     fn format(&self, record: &EZRecord) -> Vec<u8> {
-        todo!()
-    }
-
-    fn id(&self) -> u64 {
-        todo!()
+        return format!("{:?}", record).into_bytes()
     }
 }
 
@@ -234,7 +291,7 @@ pub struct EZLogConfig {
     /// 日志文件的最大大小
     max_size: u64,
     /// 单条日志的分隔符
-    seperate: char,
+    seperate: String,
     // 压缩方式
     compress: CompressKind,
     /// 压缩等级
@@ -256,7 +313,7 @@ impl EZLogConfig {
         file_suffix: String,
         duration: Duration,
         max_size: u64,
-        seperate: char,
+        seperate: String,
         compress: CompressKind,
         compress_level: CompressLevel,
         cipher: CipherKind,
@@ -309,7 +366,7 @@ impl EZLogConfig {
         // check file lenth ok or set len
         let mut len = file.metadata()?.len();
         if len == 0 {
-            info!("set file len");
+            println!("set file len");
             len = max_size;
             if len == 0 {
                 len = DEFAULT_MAX_LOG_SIZE;
@@ -318,15 +375,44 @@ impl EZLogConfig {
         }
         Ok(file)
     }
+
+    fn log_id(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.name.hash(&mut hasher);
+        hasher.finish()
+    }
 }
 
 impl Default for EZLogConfig {
     fn default() -> Self {
-        EZLogConfigBuilder::new().build()
+        EZLogConfigBuilder::new()
+            .dir_path(
+                env::current_dir()
+                    .unwrap()
+                    .into_os_string()
+                    .into_string()
+                    .unwrap(),
+            )
+            .name(DEFAULT_LOG_NAME.to_string())
+            .file_suffix(String::from("mmap"))
+            .max_size(1024)
+            .build()
     }
 }
 
-struct EZLogConfigBuilder {
+impl Hash for EZLogConfig {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.version.hash(state);
+        self.dir_path.hash(state);
+        self.name.hash(state);
+        self.compress.hash(state);
+        self.cipher.hash(state);
+        self.cipher_key.hash(state);
+        self.cipher_nonce.hash(state);
+    }
+}
+
+pub struct EZLogConfigBuilder {
     config: EZLogConfig,
 }
 
@@ -337,11 +423,11 @@ impl EZLogConfigBuilder {
                 level: Level::Trace,
                 version: Version::V1,
                 dir_path: "".to_string(),
-                name: "".to_string(),
-                file_suffix: "".to_string(),
+                name: DEFAULT_LOG_NAME.to_string(),
+                file_suffix: DEFAULT_LOG_FILE_SUFFIX.to_string(),
                 duration: Duration::days(7),
                 max_size: DEFAULT_MAX_LOG_SIZE,
-                seperate: '\n',
+                seperate: DEFAULT_LOG_SEPRATE.to_string(),
                 compress: CompressKind::NONE,
                 compress_level: CompressLevel::Default,
                 cipher: CipherKind::NONE,
@@ -376,7 +462,7 @@ impl EZLogConfigBuilder {
         self
     }
 
-    pub fn separate(mut self, separate: char) -> Self {
+    pub fn separate(mut self, separate: String) -> Self {
         self.config.seperate = separate;
         self
     }
@@ -432,7 +518,7 @@ pub trait Decryptor {
     fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, CryptoError>;
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
 pub enum Version {
     V1,
     UNKNOWN,
@@ -456,10 +542,10 @@ impl From<Version> for u8 {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
 pub enum CipherKind {
-    AES_128_GCM,
-    AES_256_GCM,
+    AES128GCM,
+    AES256GCM,
     NONE,
     UNKNOWN,
 }
@@ -468,8 +554,8 @@ impl From<u8> for CipherKind {
     fn from(orig: u8) -> Self {
         match orig {
             0x00 => CipherKind::NONE,
-            0x01 => CipherKind::AES_128_GCM,
-            0x02 => CipherKind::AES_256_GCM,
+            0x01 => CipherKind::AES128GCM,
+            0x02 => CipherKind::AES256GCM,
             _ => CipherKind::UNKNOWN,
         }
     }
@@ -479,8 +565,8 @@ impl From<CipherKind> for u8 {
     fn from(orig: CipherKind) -> Self {
         match orig {
             CipherKind::NONE => 0x00,
-            CipherKind::AES_128_GCM => 0x01,
-            CipherKind::AES_256_GCM => 0x02,
+            CipherKind::AES128GCM => 0x01,
+            CipherKind::AES256GCM => 0x02,
             CipherKind::UNKNOWN => 0xff,
         }
     }
@@ -489,8 +575,8 @@ impl From<CipherKind> for u8 {
 impl core::fmt::Display for CipherKind {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match self {
-            CipherKind::AES_128_GCM => write!(f, "AES_128_GCM"),
-            CipherKind::AES_256_GCM => write!(f, "AES_256_GCM"),
+            CipherKind::AES128GCM => write!(f, "AES_128_GCM"),
+            CipherKind::AES256GCM => write!(f, "AES_256_GCM"),
             CipherKind::NONE => write!(f, "NONE"),
             _ => write!(f, "UNKNOWN"),
         }
@@ -502,8 +588,8 @@ impl std::str::FromStr for CipherKind {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "AES_128_GCM" => Ok(CipherKind::AES_128_GCM),
-            "AES_256_GCM" => Ok(CipherKind::AES_256_GCM),
+            "AES_128_GCM" => Ok(CipherKind::AES128GCM),
+            "AES_256_GCM" => Ok(CipherKind::AES256GCM),
             "NONE" => Ok(CipherKind::NONE),
             _ => Err(errors::LogError::Parse(ParseError::new(String::from(
                 "unknown cipher kind",
@@ -512,7 +598,7 @@ impl std::str::FromStr for CipherKind {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
 pub enum CompressKind {
     ZLIB,
     NONE,
@@ -539,7 +625,7 @@ impl From<CompressKind> for u8 {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum CompressLevel {
     Fast,
     Default,
@@ -590,7 +676,7 @@ impl Header {
             flag: 0,
             recorder_size: 0,
             compress: CompressKind::ZLIB,
-            cipher: CipherKind::AES_128_GCM,
+            cipher: CipherKind::AES128GCM,
         }
     }
 
@@ -644,7 +730,7 @@ pub struct EZRecord {
     log_id: u64,
     level: Level,
     target: String,
-    timestamp: u128,
+    time: OffsetDateTime,
     thread_id: u64,
     thread_name: String,
     content: String,
@@ -672,8 +758,8 @@ impl EZRecord {
     }
 
     #[inline]
-    pub fn timestamp(&self) -> u128 {
-        self.timestamp
+    pub fn timestamp(&self) -> i64 {
+        self.time.unix_timestamp()
     }
 
     #[inline]
@@ -698,12 +784,27 @@ impl EZRecord {
                 log_id: self.log_id,
                 level: self.level,
                 target: self.target.clone(),
-                timestamp: self.timestamp,
+                time: self.time,
                 thread_id: self.thread_id,
                 thread_name: self.thread_name.clone(),
                 content: self.content.clone(),
             },
         }
+    }
+
+    pub fn from(r: &Record) -> Self {
+        let t = thread::current();
+        let t_id = t.id().as_u64().get();
+        let t_name = t.name().unwrap_or(UNKNOWN);
+        EZRecordBuilder::new()
+            .id(crate::log_id(DEFAULT_LOG_NAME))
+            .level(r.metadata().level())
+            .target(r.target().to_string())
+            .time(OffsetDateTime::now_utc())
+            .thread_id(t_id)
+            .thread_name(t_name.to_string())
+            .content(format!("{}", r.args()))
+            .build()
     }
 }
 
@@ -719,7 +820,7 @@ impl<'a> EZRecordBuilder {
                 log_id: 0,
                 level: Level::Info,
                 target: "".to_string(),
-                timestamp: 0,
+                time: OffsetDateTime::now_utc(),
                 thread_id: 0,
                 thread_name: "".to_string(),
                 content: "".to_string(),
@@ -732,13 +833,19 @@ impl<'a> EZRecordBuilder {
         self
     }
 
-    pub fn target(&mut self, target: &'a str) -> &mut Self {
-        self.record.target = target.to_string();
+    pub fn target(&mut self, target: String) -> &mut Self {
+        self.record.target = target;
         self
     }
 
-    pub fn timestamp(&mut self, timestamp: u128) -> &mut Self {
-        self.record.timestamp = timestamp;
+    pub fn timestamp(&mut self, timestamp: i64) -> &mut Self {
+        let time = OffsetDateTime::from_unix_timestamp(timestamp).unwrap_or(OffsetDateTime::now_utc());
+        self.record.time = time;
+        self
+    }
+
+    pub fn time(&mut self, time: OffsetDateTime) -> &mut Self {
+        self.record.time = time;
         self
     }
 
@@ -747,13 +854,18 @@ impl<'a> EZRecordBuilder {
         self
     }
 
-    pub fn thread_name(&mut self, thread_name: &'a str) -> &mut Self {
-        self.record.thread_name = thread_name.to_string();
+    pub fn thread_name(&mut self, thread_name: String) -> &mut Self {
+        self.record.thread_name = thread_name;
         self
     }
 
-    pub fn content(&mut self, content: &'a str) -> &mut Self {
-        self.record.content = content.to_string();
+    pub fn content(&mut self, content: String) -> &mut Self {
+        self.record.content = content;
+        self
+    }
+
+    pub fn id(&mut self, id: u64) -> &mut Self {
+        self.record.log_id = id;
         self
     }
 
@@ -793,7 +905,7 @@ pub fn init_mmap_temp_file(path: &Path) -> io::Result<File> {
     // check file lenth ok or set len
     let len = file.metadata()?.len();
     if len == 0 {
-        info!("set file len");
+        println!("set file len");
         file.set_len(DEFAULT_MAX_LOG_SIZE)?;
     }
     Ok(file)
@@ -810,7 +922,34 @@ mod tests {
     use aes_gcm::{Aes256Gcm, Key, Nonce}; // Or `Aes128Gcm`
     use flate2::{bufread::ZlibDecoder, write::ZlibEncoder, Compression};
 
-    use crate::{Header, V1_LOG_HEADER_SIZE};
+    use crate::{
+        CipherKind, CompressKind, EZLogConfig, EZLogConfigBuilder, Header, V1_LOG_HEADER_SIZE,
+    };
+
+    fn create_config() -> EZLogConfig {
+        EZLogConfig::default()
+    }
+
+    fn create_all_feature_config() -> EZLogConfig {
+        let key = b"an example very very secret key.";
+        let nonce = b"unique nonce";
+        EZLogConfigBuilder::new()
+            .dir_path(
+                dirs::desktop_dir()
+                    .unwrap()
+                    .into_os_string()
+                    .into_string()
+                    .unwrap(),
+            )
+            .name(String::from("all_feature"))
+            .file_suffix(String::from("mmap"))
+            .max_size(1024)
+            .compress(CompressKind::ZLIB)
+            .cipher(CipherKind::AES128GCM)
+            .cipher_key(key.to_vec())
+            .cipher_nonce(nonce.to_vec())
+            .build()
+    }
 
     #[test]
     fn it_works() {
@@ -868,5 +1007,11 @@ mod tests {
             .expect("decryption failure!"); // NOTE: handle this error to avoid panics!
 
         assert_eq!(&plaintext, b"plaintext message");
+    }
+
+    #[test]
+    fn test_create_log() {
+        create_config();
+        create_all_feature_config();
     }
 }

@@ -16,13 +16,13 @@ impl Aes256Gcm {
         if key.len() != 32 {
             // todo s1rius correct error type
             return Err(CryptoError::new(ParseError::new(format!(
-                "key must be 32 bytes long"
+                "key must be 32 bytes long {}", key.len()
             ))));
         }
 
         if nonce.len() != 12 {
             return Err(CryptoError::new(ParseError::new(format!(
-                "nonce must be 12 bytes long"
+                "nonce must be 12 bytes long {}", nonce.len()
             ))));
         }
 
@@ -66,13 +66,13 @@ impl Aes128Gcm {
     pub fn new(key: &[u8], nonce: &[u8]) -> Result<Self, CryptoError> {
         if key.len() != 16 {
             return Err(CryptoError::new(ParseError::new(format!(
-                "key must be 32 bytes long"
+                "key must be 32 bytes long {}", key.len()
             ))));
         }
 
         if nonce.len() != 12 {
             return Err(CryptoError::new(ParseError::new(format!(
-                "nonce must be 12 bytes long"
+                "nonce must be 12 bytes long {}", key.len()
             ))));
         }
 

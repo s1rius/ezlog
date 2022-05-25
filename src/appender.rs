@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, path::PathBuf, rc::Rc};
+use std::{path::PathBuf, rc::Rc};
 
 use time::OffsetDateTime;
 
@@ -56,7 +56,7 @@ pub struct EZMmapAppendInner {
     file_path: PathBuf,
     mmap: MmapMut,
     next_date: i64,
-    seperate: char,
+    seperate: String,
 }
 
 impl EZMmapAppendInner {
@@ -66,7 +66,7 @@ impl EZMmapAppendInner {
             EZLogConfig::create_mmap_file(&config.dir_path, &file_name, config.max_size)?;
         let mut mmap = unsafe { MmapOptions::new().map_mut(&log_file)? };
         let mut c = Cursor::new(&mut mmap[0..V1_LOG_HEADER_SIZE]);
-        let mut header = Header::decode(&mut c)?;
+        let mut header = Header::decode(&mut c).unwrap_or(Header::new());
         if !header.is_valid(&config) {
             header = Header::create(&config);
         }
@@ -78,7 +78,7 @@ impl EZMmapAppendInner {
             file_path,
             mmap,
             next_date: next_date.unix_timestamp(),
-            seperate: config.seperate,
+            seperate: config.seperate.clone(),
         };
         Ok(inner)
     }
@@ -188,7 +188,7 @@ mod tests {
             .file_suffix(String::from("mmap"))
             .max_size(1024)
             .compress(CompressKind::ZLIB)
-            .cipher(CipherKind::AES_128_GCM)
+            .cipher(CipherKind::AES128GCM)
             .cipher_key(key.to_vec())
             .cipher_nonce(nonce.to_vec())
             .build()
