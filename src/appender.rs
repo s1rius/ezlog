@@ -61,17 +61,16 @@ pub struct EZMmapAppendInner {
 
 impl EZMmapAppendInner {
     pub fn new(config: &EZLogConfig, time: OffsetDateTime) -> Result<EZMmapAppendInner, LogError> {
-        let file_name = config.now_file_name(time);
-        let log_file =
-            EZLogConfig::create_mmap_file(&config.dir_path, &file_name, config.max_size)?;
+        let (log_file, file_path) = config.create_mmap_file(time)?;
         let mut mmap = unsafe { MmapOptions::new().map_mut(&log_file)? };
         let mut c = Cursor::new(&mut mmap[0..V1_LOG_HEADER_SIZE]);
         let mut header = Header::decode(&mut c).unwrap_or(Header::new());
         if !header.is_valid(&config) {
+            // todo
+            // if not match create new file?
             header = Header::create(&config);
         }
         let next_date = next_date(time);
-        let file_path = Path::new(&config.dir_path).join(&file_name);
 
         let inner = EZMmapAppendInner {
             header,

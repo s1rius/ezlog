@@ -20,7 +20,7 @@ use std::{
     hash::{Hash, Hasher},
     io::{self, Cursor, Read, Write},
     mem::MaybeUninit,
-    path::Path,
+    path::{Path, PathBuf},
     ptr,
     rc::Rc,
     sync::Once,
@@ -97,12 +97,11 @@ pub(crate) fn init_receiver() {
                             Ok(log) => {
                                 let map = get_map();
                                 map.insert(log_id, log);
-                            },
+                            }
                             Err(e) => {
                                 println!("create logger error:{:?}", e);
                             }
                         };
-                        
                     }
                     EZMsg::RecordMsg(record) => {
                         let log = match get_map().get_mut(&record.log_id) {
@@ -112,13 +111,14 @@ pub(crate) fn init_receiver() {
                                 continue;
                             }
                         };
-                        if log.config.level > record.level {
-                            println!("log level ");
+                        if log.config.level < record.level {
+                            println!("log leve filter : {:?}", &record.level);
+                            continue;
                         }
                         match log.append(&record) {
                             Ok(_) => {
                                 println!("append record ok: {:?}", record);
-                            },
+                            }
                             Err(_) => {
                                 println!("append record error: {:?}", record);
                             }
@@ -137,7 +137,7 @@ pub(crate) fn init_receiver() {
                         };
                         log.appender.flush().ok();
                         println!("log flush : {:?}", name);
-                    },
+                    }
                 }
             }
         });
@@ -184,7 +184,7 @@ pub fn post_msg(msg: EZMsg) -> Result<(), crossbeam_channel::TrySendError<EZMsg>
     get_sender().try_send(msg)
 }
 
-pub fn log_id(name: &str) -> u64{
+pub fn log_id(name: &str) -> u64 {
     let mut hasher = DefaultHasher::new();
     name.hash(&mut hasher);
     hasher.finish()
@@ -242,9 +242,44 @@ impl EZLogger {
         }
     }
 
+    pub fn create_decryptor(
+        config: &EZLogConfig,
+    ) -> Result<Option<Box<dyn Decryptor>>, CryptoError> {
+        if let Some(key) = &config.cipher_key {
+            if let Some(nonce) = &config.cipher_nonce {
+                match config.cipher {
+                    CipherKind::AES128GCM => {
+                        let encryptor = Aes128Gcm::new(key, nonce)?;
+                        Ok(Some(Box::new(encryptor)))
+                    }
+                    CipherKind::AES256GCM => {
+                        let encryptor = Aes256Gcm::new(key, nonce)?;
+                        Ok(Some(Box::new(encryptor)))
+                    }
+                    CipherKind::NONE => Ok(None),
+                    CipherKind::UNKNOWN => Ok(None),
+                }
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
     pub fn create_compression(
         config: &EZLogConfig,
     ) -> Result<Option<Box<dyn Compression>>, LogError> {
+        match config.compress {
+            CompressKind::ZLIB => Ok(Some(Box::new(ZlibCodec::new(&config.compress_level)))),
+            CompressKind::NONE => Ok(None),
+            CompressKind::UNKNOWN => Ok(None),
+        }
+    }
+
+    pub fn create_decompression(
+        config: &EZLogConfig,
+    ) -> Result<Option<Box<dyn Decompression>>, LogError> {
         match config.compress {
             CompressKind::ZLIB => Ok(Some(Box::new(ZlibCodec::new(&config.compress_level)))),
             CompressKind::NONE => Ok(None),
@@ -270,7 +305,7 @@ impl EZLogger {
     }
 
     fn format(&self, record: &EZRecord) -> Vec<u8> {
-        return format!("{:?}", record).into_bytes()
+        return format!("{:?}", record).into_bytes();
     }
 }
 
@@ -347,8 +382,10 @@ impl EZLogConfig {
         str
     }
 
-    pub fn create_mmap_file(directory: &str, filename: &str, max_size: u64) -> io::Result<File> {
-        let path = Path::new(directory).join(filename);
+    pub fn create_mmap_file(&self, time: OffsetDateTime) -> io::Result<(File, PathBuf)> {
+        let file_name = self.now_file_name(time);
+        let max_size = self.max_size;
+        let path = Path::new(&self.dir_path).join(file_name);
 
         if let Some(p) = path.parent() {
             if !p.exists() {
@@ -361,7 +398,7 @@ impl EZLogConfig {
             .read(true)
             .write(true)
             .create(true)
-            .open(path)?;
+            .open(&path)?;
 
         // check file lenth ok or set len
         let mut len = file.metadata()?.len();
@@ -373,7 +410,8 @@ impl EZLogConfig {
             }
             file.set_len(len)?;
         }
-        Ok(file)
+
+        Ok((file, path))
     }
 
     fn log_id(&self) -> u64 {
@@ -435,6 +473,11 @@ impl EZLogConfigBuilder {
                 cipher_nonce: None,
             },
         }
+    }
+
+    pub fn level(mut self, level: Level) -> Self {
+        self.config.level = level;
+        self
     }
 
     pub fn dir_path(mut self, dir_path: String) -> Self {
@@ -839,7 +882,8 @@ impl<'a> EZRecordBuilder {
     }
 
     pub fn timestamp(&mut self, timestamp: i64) -> &mut Self {
-        let time = OffsetDateTime::from_unix_timestamp(timestamp).unwrap_or(OffsetDateTime::now_utc());
+        let time =
+            OffsetDateTime::from_unix_timestamp(timestamp).unwrap_or(OffsetDateTime::now_utc());
         self.record.time = time;
         self
     }
@@ -952,10 +996,12 @@ mod tests {
     }
 
     #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
+    fn teset_level() {
+        assert!(crate::Level::Debug < crate::Level::Trace);
+    }
 
+    #[test]
+    fn it_works() {
         let unix_now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
