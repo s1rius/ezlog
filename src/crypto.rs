@@ -2,7 +2,7 @@ use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::{Key, Nonce}; // Or `Aes128Gcm`
 
 use crate::errors::{CryptoError, ParseError};
-use crate::{Decryptor, Encryptor};
+use crate::{Cryptor, Decryptor, Encryptor};
 
 pub struct Aes256Gcm {
     // 256-bits; key
@@ -58,7 +58,7 @@ impl Decryptor for Aes256Gcm {
 }
 
 pub struct Aes128Gcm {
-    // 256-bits; key
+    // 128-bits; key
     key: Vec<u8>,
     // 96-bits; unique per message
     nonce: Vec<u8>,
@@ -68,7 +68,7 @@ impl Aes128Gcm {
     pub fn new(key: &[u8], nonce: &[u8]) -> Result<Self, CryptoError> {
         if key.len() != 16 {
             return Err(CryptoError::new(ParseError::new(format!(
-                "key must be 32 bytes long {}",
+                "key must be 16 bytes long {}",
                 key.len()
             ))));
         }

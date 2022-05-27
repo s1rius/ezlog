@@ -56,7 +56,6 @@ pub struct EZMmapAppendInner {
     file_path: PathBuf,
     mmap: MmapMut,
     next_date: i64,
-    seperate: String,
 }
 
 impl EZMmapAppendInner {
@@ -77,7 +76,6 @@ impl EZMmapAppendInner {
             file_path,
             mmap,
             next_date: next_date.unix_timestamp(),
-            seperate: config.seperate.clone(),
         };
         Ok(inner)
     }
@@ -88,7 +86,7 @@ impl EZMmapAppendInner {
 
     fn is_oversize(&self, buf_size: usize) -> bool {
         let max_len = self.mmap.len();
-        return V1_LOG_HEADER_SIZE + self.header.recorder_size as usize + buf_size > max_len;
+        return V1_LOG_HEADER_SIZE + self.header.recorder_position as usize + buf_size > max_len;
     }
 
     fn is_overtime(&self, time: OffsetDateTime) -> bool {
@@ -126,18 +124,11 @@ impl EZMmapAppendInner {
 
 impl Write for EZMmapAppendInner {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let s = self.seperate.to_string();
-        let b = s.as_bytes();
-        let start = V1_LOG_HEADER_SIZE + self.header.recorder_size as usize;
-        let end = start + buf.len() + b.len();
+        let start = self.header.recorder_position as usize;
+        let end = start + buf.len();
+        self.header.recorder_position += buf.len() as u32;
         let mut cursor = Cursor::new(&mut self.mmap[start..end]);
-        cursor.write(buf)?;
-
-        self.header.recorder_size += buf.len() as u32;
-        self.header.recorder_size += b.len() as u32;
-
-        cursor.write(b)?;
-        Ok(buf.len())
+        cursor.write(buf)
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
@@ -146,7 +137,7 @@ impl Write for EZMmapAppendInner {
             io::ErrorKind::Other,
             "header encode error",
         )))?;
-        self.mmap.flush()
+        self.mmap.flush_async()
     }
 }
 
@@ -216,8 +207,6 @@ mod tests {
         appender
             .check_refresh_inner(OffsetDateTime::now_utc() + Duration::days(1), 1025)
             .unwrap();
-
-        drop(config);
     }
 
     #[test]
