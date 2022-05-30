@@ -2,6 +2,7 @@ mod appender;
 mod compress;
 mod crypto;
 mod errors;
+mod events;
 
 use appender::EZMmapAppender;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -49,7 +50,7 @@ static ONE_RECEIVER: Once = Once::new();
 fn get_channel() -> &'static (Sender<EZMsg>, Receiver<EZMsg>) {
     CHANNEL_INIT.call_once(|| unsafe {
         ptr::write(CHANNEL.as_mut_ptr(), crossbeam_channel::unbounded());
-        println!("channel create")
+        ezlog_init!()
     });
 
     unsafe { &*CHANNEL.as_ptr() }
@@ -87,58 +88,62 @@ pub fn init() {
 pub(crate) fn init_receiver() {
     ONE_RECEIVER.call_once(|| {
         thread::spawn(|| loop {
-            if let Some(msg) = get_channel().1.recv().ok() {
-                println!("message recv");
-                match msg {
-                    EZMsg::CreateLogger(config) => {
-                        let log_id = config.log_id();
-                        println!("create log id: {}", log_id);
-                        match EZLogger::new(config) {
-                            Ok(log) => {
-                                let map = get_map();
-                                map.insert(log_id, log);
-                            }
-                            Err(e) => {
-                                println!("create logger error:{:?}", e);
-                            }
-                        };
-                    }
-                    EZMsg::RecordMsg(record) => {
-                        let log = match get_map().get_mut(&record.log_id) {
-                            Some(l) => l,
-                            None => {
-                                println!("log lost : {:?}", record);
+            match get_channel().1.recv() {
+                Ok(msg) => {
+                    match msg {
+                        EZMsg::CreateLogger(config) => {
+                            let log_id = config.log_id();
+                            println!("create log id: {}", log_id);
+                            match EZLogger::new(config) {
+                                Ok(log) => {
+                                    let map = get_map();
+                                    map.insert(log_id, log);
+                                }
+                                Err(e) => {
+                                    println!("create logger error:{:?}", e);
+                                }
+                            };
+                        }
+                        EZMsg::RecordMsg(record) => {
+                            let log = match get_map().get_mut(&record.log_id) {
+                                Some(l) => l,
+                                None => {
+                                    println!("log lost : {:?}", record);
+                                    continue;
+                                }
+                            };
+                            if log.config.level < record.level {
+                                println!("log leve filter : {:?}", &record.level);
                                 continue;
                             }
-                        };
-                        if log.config.level < record.level {
-                            println!("log leve filter : {:?}", &record.level);
-                            continue;
-                        }
-                        match log.append(&record) {
-                            Ok(_) => {
-                                println!("append record ok: {:?}", record);
-                            }
-                            Err(_) => {
-                                println!("append record error: {:?}", record);
+                            match log.append(&record) {
+                                Ok(_) => {
+                                    println!("append record ok: {:?}", record);
+                                }
+                                Err(_) => {
+                                    println!("append record error: {:?}", record);
+                                }
                             }
                         }
+                        EZMsg::ForceFlush(name) => {
+                            let mut hasher = DefaultHasher::new();
+                            name.hash(&mut hasher);
+                            let id = hasher.finish();
+                            let log = match get_map().get_mut(&id) {
+                                Some(l) => l,
+                                None => {
+                                    println!("log lost : {:?}", name);
+                                    continue;
+                                }
+                            };
+                            log.appender.flush().ok();
+                            println!("log flush : {:?}", name);
+                        }
                     }
-                    EZMsg::ForceFlush(name) => {
-                        let mut hasher = DefaultHasher::new();
-                        name.hash(&mut hasher);
-                        let id = hasher.finish();
-                        let log = match get_map().get_mut(&id) {
-                            Some(l) => l,
-                            None => {
-                                println!("log lost : {:?}", name);
-                                continue;
-                            }
-                        };
-                        log.appender.flush().ok();
-                        println!("log flush : {:?}", name);
-                    }
-                }
+                },
+                Err(err) => {
+                    event!(log_create);
+                },
             }
         });
     });
@@ -1054,7 +1059,7 @@ mod tests {
 
     use crate::{
         CipherKind, CompressKind, EZLogConfig, EZLogConfigBuilder, EZLogger, EZRecord,
-        EZRecordBuilder, Header, RECORD_SIGNATURE_END, RECORD_SIGNATURE_START, V1_LOG_HEADER_SIZE,
+        EZRecordBuilder, Header, RECORD_SIGNATURE_END, RECORD_SIGNATURE_START, V1_LOG_HEADER_SIZE, event,
     };
 
     fn create_config() -> EZLogConfig {
@@ -1178,5 +1183,12 @@ mod tests {
 
         let decode = logger.decode_from_read(&mut reader).unwrap();
         println!("{}", String::from_utf8(decode).unwrap())
+    }
+
+    #[test]
+    fn macro_test() {
+        event!(log_create);
+
+        event!(log_create "logger fail");
     }
 }
