@@ -7,7 +7,7 @@ mod events;
 use appender::EZMmapAppender;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use compress::ZlibCodec;
-use crossbeam_channel::{Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, TrySendError};
 use crypto::{Aes128Gcm, Aes256Gcm};
 use errors::{CryptoError, LogError, ParseError};
 use log::{Level, Record};
@@ -50,7 +50,7 @@ static ONE_RECEIVER: Once = Once::new();
 fn get_channel() -> &'static (Sender<EZMsg>, Receiver<EZMsg>) {
     CHANNEL_INIT.call_once(|| unsafe {
         ptr::write(CHANNEL.as_mut_ptr(), crossbeam_channel::unbounded());
-        ezlog_init!()
+        event!(init);
     });
 
     unsafe { &*CHANNEL.as_ptr() }
@@ -89,104 +89,111 @@ pub(crate) fn init_receiver() {
     ONE_RECEIVER.call_once(|| {
         thread::spawn(|| loop {
             match get_channel().1.recv() {
-                Ok(msg) => {
-                    match msg {
-                        EZMsg::CreateLogger(config) => {
-                            let log_id = config.log_id();
-                            println!("create log id: {}", log_id);
-                            match EZLogger::new(config) {
-                                Ok(log) => {
-                                    let map = get_map();
-                                    map.insert(log_id, log);
-                                }
-                                Err(e) => {
-                                    println!("create logger error:{:?}", e);
-                                }
-                            };
-                        }
-                        EZMsg::RecordMsg(record) => {
-                            let log = match get_map().get_mut(&record.log_id) {
-                                Some(l) => l,
-                                None => {
-                                    println!("log lost : {:?}", record);
-                                    continue;
-                                }
-                            };
-                            if log.config.level < record.level {
-                                println!("log leve filter : {:?}", &record.level);
+                Ok(msg) => match msg {
+                    EZMsg::CreateLogger(config) => {
+                        let name = config.name.clone();
+                        match EZLogger::new(config) {
+                            Ok(log) => {
+                                let log_id = log.config.log_id();
+                                let map = get_map();
+                                map.insert(log_id, log);
+                                event!(log_create name);
+                            }
+                            Err(e) => {
+                                event!(log_create_fail name, e);
+                            }
+                        };
+                    }
+                    EZMsg::RecordMsg(record) => {
+                        let log = match get_map().get_mut(&record.log_id) {
+                            Some(l) => l,
+                            None => {
+                                event!(logger_not_match record.log_id());
                                 continue;
                             }
-                            match log.append(&record) {
-                                Ok(_) => {
-                                    println!("append record ok: {:?}", record);
-                                }
-                                Err(_) => {
-                                    println!("append record error: {:?}", record);
-                                }
+                        };
+                        if log.config.level < record.level {
+                            event!(
+                                record_filter_out & record.id(),
+                                &record.level,
+                                &log.config.level
+                            );
+                            continue;
+                        }
+                        match log.append(&record) {
+                            Ok(_) => {
+                                event!(record_complete record.id());
                             }
-                        }
-                        EZMsg::ForceFlush(name) => {
-                            let mut hasher = DefaultHasher::new();
-                            name.hash(&mut hasher);
-                            let id = hasher.finish();
-                            let log = match get_map().get_mut(&id) {
-                                Some(l) => l,
-                                None => {
-                                    println!("log lost : {:?}", name);
-                                    continue;
+                            Err(err) => match err {
+                                LogError::Encoding(_) => todo!(),
+                                LogError::IoError(_) => todo!(),
+                                LogError::Parse(_) => todo!(),
+                                LogError::Crypto(c) => {
+                                    event!(encrypt_fail record.id(), c)
                                 }
-                            };
-                            log.appender.flush().ok();
-                            println!("log flush : {:?}", name);
+                            },
                         }
+                    }
+                    EZMsg::ForceFlush(name) => {
+                        let id = log_id(&name);
+                        let log = match get_map().get_mut(&id) {
+                            Some(l) => l,
+                            None => {
+                                event!(logger_not_match name);
+                                continue;
+                            }
+                        };
+                        log.appender.flush().ok();
+                        event!(logger_force_flush name);
                     }
                 },
                 Err(err) => {
-                    event!(log_create);
-                },
+                    event!(channel_recv_err err);
+                }
             }
         });
     });
 }
 
 pub fn create_log(config: EZLogConfig) {
+    let name = config.name.clone();
     let msg = EZMsg::CreateLogger(config);
-    match get_sender().send(msg) {
+    match post_msg(msg) {
         Ok(_) => {
-            println!("send create log")
+            event!(channel_send_log_create name);
         }
-        Err(_) => {
-            println!("create log error: ");
-        }
+        _ => {}
     }
 }
 
 pub fn log(record: EZRecord) {
+    let id = &record.id();
     let msg = EZMsg::RecordMsg(record);
-    match get_sender().try_send(msg) {
+
+    match post_msg(msg) {
         Ok(_) => {
-            println!("send record")
+            event!(channel_send_record id)
         }
-        Err(_) => {
-            println!("log error: ");
-        }
+        _ => {}
     }
 }
 
 pub fn flush(log_name: &str) {
     let msg = EZMsg::ForceFlush(log_name.to_string());
-    match get_sender().try_send(msg) {
+    match post_msg(msg) {
         Ok(_) => {
-            println!("flush log")
+            event!(channel_send_flush log_name)
         }
-        Err(_) => {
-            println!("flush error: ");
-        }
+        _ => {}
     }
 }
 
-pub fn post_msg(msg: EZMsg) -> Result<(), crossbeam_channel::TrySendError<EZMsg>> {
-    get_sender().try_send(msg)
+pub fn post_msg(msg: EZMsg) -> Result<(), ()> {
+    get_sender().try_send(msg).map_err(on_channel_send_err)
+}
+
+fn on_channel_send_err<T>(err: TrySendError<T>) {
+    event!(channel_send_err err);
 }
 
 pub fn log_id(name: &str) -> u64 {
@@ -931,6 +938,14 @@ impl EZRecord {
             .content(format!("{}", r.args()))
             .build()
     }
+
+    /// get EZRecord unique id
+    pub fn id(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.content.hash(&mut hasher);
+        self.time.hash(&mut hasher);
+        hasher.finish()
+    }
 }
 
 #[derive(Debug)]
@@ -1058,8 +1073,8 @@ mod tests {
     use time::OffsetDateTime;
 
     use crate::{
-        CipherKind, CompressKind, EZLogConfig, EZLogConfigBuilder, EZLogger, EZRecord,
-        EZRecordBuilder, Header, RECORD_SIGNATURE_END, RECORD_SIGNATURE_START, V1_LOG_HEADER_SIZE, event,
+        event, CipherKind, CompressKind, EZLogConfig, EZLogConfigBuilder, EZLogger, EZRecord,
+        EZRecordBuilder, Header, RECORD_SIGNATURE_END, RECORD_SIGNATURE_START, V1_LOG_HEADER_SIZE,
     };
 
     fn create_config() -> EZLogConfig {
@@ -1187,7 +1202,7 @@ mod tests {
 
     #[test]
     fn macro_test() {
-        event!(log_create);
+        event!(log_create "default");
 
         event!(log_create "logger fail");
     }

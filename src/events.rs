@@ -1,52 +1,75 @@
 /// # [eventlisteners are good](https://publicobject.com/2022/05/01/eventlisteners-are-good/)
-/// 
-/// 
-#[macro_export]
-macro_rules! ezlog_init {
-    () => ($crate::events::init());
-    ($($arg:tt)*) => ({
-        $crate::events::init();
-        //$crate::io::_print($crate::format_args_nl!($($arg)*));
-    });
-}
-
-pub fn init() {
-
-}
-
-macro_rules! logger_create {
-    () => {
-        
-    };
-    ($($arg:tt)*) => ({
-        
-    });
-}
-
+///
+///
 #[macro_export]
 macro_rules! event {
-    () => ({
-        $(
-            println!("sdfsfa");
-        )*
-    });
-    (log_create $($args: expr),*) => {
-        $(
-            print!(", {}",$args);
-        )*
-        println!("131231"); // to get a new line at the end
+    (init) => {
+        println!("init");
     };
-    ($($args: expr),*) => {
-        print!("TRACE: file: {}, line: {}", file!(), line!());
-        $(
-            print!(", {}: {}", stringify!($args), $args);
-        )*
-        println!(""); // to get a new line at the end
-    }
+    (log_create $log_name:expr) => {
+        println!("log create name={}", $log_name);
+    };
+    (log_create_fail $log_name:expr, $err_msg:expr) => {
+        println!("log create fail name={}, err={}", $log_name, $err_msg);
+    };
+    (compress_start $record_id:tt) => {
+        println!("record compress start {}", $record_id);
+    };
+    (compress_end $record_id:tt) => {
+        println!("record compress end {}", $record_id);
+    };
+    (compress_fail $record_id:tt) => {
+        println!("record compress fail {}", $record_id);
+    };
+    (encrypt_start $record_id:tt) => {
+        println!("encrypt start {}", $record_id);
+    };
+    (encrypt_end $record_id:tt $start_time_ns:tt) => {
+        println!("encrypt end {}", $record_id);
+    };
+    (encrypt_fail $record_id:expr, $e:expr) => {
+        println!("fail reason: {}", $e)
+    };
+    (record_complete $record_id:expr) => {
+        println!("record complete {}", $record_id)
+    };
+    (record_filter_out $record_id:expr, $record_level:expr, $target_level:expr) => {
+        println!(
+            "record filter out {} level = {}, target level = {}",
+            $record_id, $record_level, $target_level
+        )
+    };
+    (logger_not_match $log_name:expr) => {
+        println!("log get from map err {}", $log_name)
+    };
+    (channel_send_log_create $log_name:expr) => {
+        println!("send create msg {}", $log_name);
+    };
+    (channel_send_record $record_id:expr) => {
+        println!("send record msg {}", $record_id);
+    };
+    (channel_send_flush $log_name:expr) => {
+        println!("send flush msg {}", $log_name);
+    };
+    (channel_send_err $e:tt) => {
+        println!("channel err {}", $e);
+    };
+    (channel_recv_err $e:tt) => {
+        println!("channel err {}", $e);
+    };
+    (logger_force_flush $log_name:expr) => {
+        println!("log flush {}", $log_name)
+    };
 }
 
 pub struct EventListener();
 
-impl EventListener {
-    
+impl EventListener {}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_event() {
+        event!(log_create_fail "default", "unknown err");
+    }
 }
