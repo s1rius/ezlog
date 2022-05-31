@@ -6,6 +6,9 @@ macro_rules! event {
     (init) => {
         println!("init");
     };
+    (map_create) => {
+        println!("log map create");
+    };
     (log_create $log_name:expr) => {
         println!("log create name={}", $log_name);
     };
@@ -45,20 +48,23 @@ macro_rules! event {
     (channel_send_log_create $log_name:expr) => {
         println!("send create msg {}", $log_name);
     };
+    (logger_force_flush $log_name:expr) => {
+        println!("log flush {}", $log_name)
+    };
     (channel_send_record $record_id:expr) => {
         println!("send record msg {}", $record_id);
     };
     (channel_send_flush $log_name:expr) => {
         println!("send flush msg {}", $log_name);
     };
+    (channel_send_flush_all) => {
+        println!("send flush all msg")
+    };
     (channel_send_err $e:tt) => {
         println!("channel err {}", $e);
     };
     (channel_recv_err $e:tt) => {
         println!("channel err {}", $e);
-    };
-    (logger_force_flush $log_name:expr) => {
-        println!("log flush {}", $log_name)
     };
 }
 

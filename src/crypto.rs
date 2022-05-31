@@ -2,13 +2,13 @@ use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::{Key, Nonce}; // Or `Aes128Gcm`
 
 use crate::errors::{CryptoError, ParseError};
-use crate::{Cryptor, Decryptor, Encryptor};
+use crate::{Decryptor, Encryptor};
 
 pub struct Aes256Gcm {
-    // 256-bits; key
-    key: Vec<u8>,
     // 96-bits; unique per message
     nonce: Vec<u8>,
+    // aes256gcm
+    cipher: aes_gcm::Aes256Gcm,
 }
 
 impl Aes256Gcm {
@@ -27,41 +27,33 @@ impl Aes256Gcm {
                 nonce.len()
             ))));
         }
-
+        let _key = Key::from_slice(key);
         Ok(Aes256Gcm {
-            key: key.to_owned(),
             nonce: nonce.to_owned(),
+            cipher: aes_gcm::Aes256Gcm::new(_key),
         })
     }
 }
 
 impl Encryptor for Aes256Gcm {
     fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
-        let key = Key::from_slice(&self.key);
-        let cipher = aes_gcm::Aes256Gcm::new(key);
-
         let nonce = Nonce::from_slice(&self.nonce); // 96-bits; unique per message
-
-        cipher.encrypt(nonce, data).map_err(|e| e.into())
+        self.cipher.encrypt(nonce, data).map_err(|e| e.into())
     }
 }
 
 impl Decryptor for Aes256Gcm {
     fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
-        let key = Key::from_slice(&self.key);
-        let cipher = aes_gcm::Aes256Gcm::new(key);
-
         let nonce = Nonce::from_slice(&self.nonce);
-
-        cipher.decrypt(nonce, data).map_err(|e| e.into())
+        self.cipher.decrypt(nonce, data).map_err(|e| e.into())
     }
 }
 
 pub struct Aes128Gcm {
-    // 128-bits; key
-    key: Vec<u8>,
     // 96-bits; unique per message
     nonce: Vec<u8>,
+    // aes128gcm
+    cipher: aes_gcm::Aes128Gcm,
 }
 
 impl Aes128Gcm {
@@ -80,31 +72,25 @@ impl Aes128Gcm {
             ))));
         }
 
+        let _key = Key::from_slice(&key);
+
         Ok(Aes128Gcm {
-            key: key.to_owned(),
             nonce: nonce.to_owned(),
+            cipher: aes_gcm::Aes128Gcm::new(_key),
         })
     }
 }
 
 impl Encryptor for Aes128Gcm {
     fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
-        let key = Key::from_slice(&self.key);
-        let cipher = aes_gcm::Aes128Gcm::new(key);
-
         let nonce = Nonce::from_slice(&self.nonce); // 96-bits; unique per message
-
-        cipher.encrypt(nonce, data).map_err(|e| e.into())
+        self.cipher.encrypt(nonce, data).map_err(|e| e.into())
     }
 }
 
 impl Decryptor for Aes128Gcm {
     fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, CryptoError> {
-        let key = Key::from_slice(&self.key);
-        let cipher = aes_gcm::Aes128Gcm::new(key);
-
         let nonce = Nonce::from_slice(&self.nonce);
-
-        cipher.decrypt(nonce, data).map_err(|e| e.into())
+        self.cipher.decrypt(nonce, data).map_err(|e| e.into())
     }
 }

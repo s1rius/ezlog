@@ -137,7 +137,7 @@ impl Write for EZMmapAppendInner {
             io::ErrorKind::Other,
             "header encode error",
         )))?;
-        self.mmap.flush_async()
+        self.mmap.flush()
     }
 }
 

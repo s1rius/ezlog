@@ -3,6 +3,7 @@ mod compress;
 mod crypto;
 mod errors;
 mod events;
+mod config;
 
 use appender::EZMmapAppender;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -10,7 +11,7 @@ use compress::ZlibCodec;
 use crossbeam_channel::{Receiver, Sender, TrySendError};
 use crypto::{Aes128Gcm, Aes256Gcm};
 use errors::{CryptoError, LogError, ParseError};
-use log::{Level, Record};
+use log::{Record};
 use memmap2::{MmapMut, MmapOptions};
 use std::{
     collections::{hash_map::DefaultHasher, HashMap},
@@ -23,20 +24,21 @@ use std::{
     ptr,
     rc::Rc,
     sync::Once,
-    thread,
+    thread, cmp, fmt,
 };
 use time::{format_description, Duration, OffsetDateTime};
 
-pub const FILE_SIGNATURE: &'static [u8; 2] = b"ez";
-pub const DEFAULT_LOG_NAME: &'static str = "default";
-pub const DEFAULT_LOG_FILE_SUFFIX: &'static str = "mmap";
+pub(crate) const FILE_SIGNATURE: &'static [u8; 2] = b"ez";
+pub(crate) const DEFAULT_LOG_NAME: &'static str = "default";
+pub(crate) const DEFAULT_LOG_FILE_SUFFIX: &'static str = "mmap";
+static LOG_LEVEL_NAMES: [&str; 6] = ["OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"];
 /// ";"
-pub const RECORD_SIGNATURE_START: u8 = 0x3b;
-pub const RECORD_SIGNATURE_END: u8 = 0x21;
-pub const UNKNOWN: &'static str = "UNKNOWN";
+pub(crate) const RECORD_SIGNATURE_START: u8 = 0x3b;
+pub(crate) const RECORD_SIGNATURE_END: u8 = 0x21;
+pub(crate) const UNKNOWN: &'static str = "UNKNOWN";
 
-pub const DEFAULT_MAX_LOG_SIZE: u64 = 150 * 1024;
-pub const V1_LOG_HEADER_SIZE: usize = 10;
+pub(crate) const DEFAULT_MAX_LOG_SIZE: u64 = 150 * 1024;
+pub(crate) const V1_LOG_HEADER_SIZE: usize = 10;
 
 static mut CHANNEL: MaybeUninit<(Sender<EZMsg>, Receiver<EZMsg>)> = MaybeUninit::uninit();
 static CHANNEL_INIT: Once = Once::new();
@@ -60,7 +62,7 @@ fn get_channel() -> &'static (Sender<EZMsg>, Receiver<EZMsg>) {
 fn get_map() -> &'static mut HashMap<u64, EZLogger> {
     LOG_MAP_INIT.call_once(|| unsafe {
         ptr::write(LOG_MAP.as_mut_ptr(), HashMap::new());
-        println!("map create");
+        event!(map_create);
     });
     unsafe { &mut (*LOG_MAP.as_mut_ptr()) }
 }
@@ -104,8 +106,8 @@ pub(crate) fn init_receiver() {
                             }
                         };
                     }
-                    EZMsg::RecordMsg(record) => {
-                        let log = match get_map().get_mut(&record.log_id) {
+                    EZMsg::Record(record) => {
+                        let log = match get_map().get_mut(&record.log_id()) {
                             Some(l) => l,
                             None => {
                                 event!(logger_not_match record.log_id());
@@ -146,6 +148,11 @@ pub(crate) fn init_receiver() {
                         log.appender.flush().ok();
                         event!(logger_force_flush name);
                     }
+                    EZMsg::FlushAll() => {
+                        get_map().values_mut().for_each(|item| {
+                            item.flush().ok();
+                        })
+                    },
                 },
                 Err(err) => {
                     event!(channel_recv_err err);
@@ -168,7 +175,7 @@ pub fn create_log(config: EZLogConfig) {
 
 pub fn log(record: EZRecord) {
     let id = &record.id();
-    let msg = EZMsg::RecordMsg(record);
+    let msg = EZMsg::Record(record);
 
     match post_msg(msg) {
         Ok(_) => {
@@ -185,6 +192,16 @@ pub fn flush(log_name: &str) {
             event!(channel_send_flush log_name)
         }
         _ => {}
+    }
+}
+
+pub fn flush_all() {
+    let msg = EZMsg::FlushAll();
+    match post_msg(msg) {
+        Ok(_)=> {
+            event!(channel_send_flush_all)
+        }
+        _ =>{}
     }
 }
 
@@ -205,8 +222,9 @@ pub fn log_id(name: &str) -> u64 {
 #[derive(Debug, Clone)]
 pub enum EZMsg {
     CreateLogger(EZLogConfig),
-    RecordMsg(EZRecord),
+    Record(EZRecord),
     ForceFlush(String),
+    FlushAll(),
 }
 
 pub struct EZLogger {
@@ -331,17 +349,15 @@ impl EZLogger {
         let mut chunk: Vec<u8> = Vec::new();
         match size {
             // u8::MAX
-            0usize..=255usize => {
+            size if size < (u8::MAX as usize) => {
                 chunk.write_u8(1)?;
                 chunk.write_u8(size as u8)?;
             }
-            // u16::MAX
-            256usize..=65535usize => {
+            size if size >= (u8::MAX as usize) && size < (u32::MAX as usize) => {
                 chunk.write_u8(2)?;
                 chunk.write_u16::<BigEndian>(size as u16)?;
             }
-            // u32::MAX
-            65536usize..=4294967295usize => {
+            size if size >= (u32::MAX as usize) => {
                 chunk.write_u8(4)?;
                 chunk.write_u32::<BigEndian>(size as u32)?;
             }
@@ -393,222 +409,6 @@ impl EZLogger {
 
     fn flush(&mut self) -> Result<(), io::Error> {
         self.appender.flush()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct EZLogConfig {
-    /// log等级
-    level: Level,
-    /// 版本号
-    version: Version,
-    /// 文件夹目录
-    dir_path: String,
-    /// 文件的前缀名
-    name: String,
-    /// 文件的后缀名
-    file_suffix: String,
-    /// 文件缓存的时间
-    duration: Duration,
-    /// 日志文件的最大大小
-    max_size: u64,
-    // 压缩方式
-    compress: CompressKind,
-    /// 压缩等级
-    compress_level: CompressLevel,
-    /// 加密方式
-    cipher: CipherKind,
-    /// 加密的密钥
-    cipher_key: Option<Vec<u8>>,
-    /// 加密的nonce
-    cipher_nonce: Option<Vec<u8>>,
-}
-
-impl EZLogConfig {
-    pub fn new(
-        level: Level,
-        version: Version,
-        dir_path: String,
-        name: String,
-        file_suffix: String,
-        duration: Duration,
-        max_size: u64,
-        compress: CompressKind,
-        compress_level: CompressLevel,
-        cipher: CipherKind,
-        cipher_key: Option<Vec<u8>>,
-        cipher_nonce: Option<Vec<u8>>,
-    ) -> Self {
-        EZLogConfig {
-            level,
-            version,
-            dir_path,
-            name,
-            file_suffix,
-            duration,
-            max_size,
-            compress,
-            compress_level,
-            cipher,
-            cipher_key,
-            cipher_nonce,
-        }
-    }
-
-    pub fn now_file_name(&self, now: OffsetDateTime) -> String {
-        let format = format_description::parse("[year]_[month]_[day]")
-            .expect("Unable to create a formatter; this is a bug in tracing-appender");
-        let date = now
-            .format(&format)
-            .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
-        let str = format!("{}_{}.{}", self.name, date, self.file_suffix);
-        str
-    }
-
-    pub fn create_mmap_file(&self, time: OffsetDateTime) -> io::Result<(File, PathBuf)> {
-        let file_name = self.now_file_name(time);
-        let max_size = self.max_size;
-        let path = Path::new(&self.dir_path).join(file_name);
-
-        if let Some(p) = path.parent() {
-            if !p.exists() {
-                fs::create_dir_all(p)?;
-            }
-        }
-
-        // create file
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(&path)?;
-
-        // check file lenth ok or set len
-        let mut len = file.metadata()?.len();
-        if len == 0 {
-            println!("set file len");
-            len = max_size;
-            if len == 0 {
-                len = DEFAULT_MAX_LOG_SIZE;
-            }
-            file.set_len(len)?;
-        }
-
-        Ok((file, path))
-    }
-
-    fn log_id(&self) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        self.name.hash(&mut hasher);
-        hasher.finish()
-    }
-}
-
-impl Default for EZLogConfig {
-    fn default() -> Self {
-        EZLogConfigBuilder::new()
-            .dir_path(
-                env::current_dir()
-                    .unwrap()
-                    .into_os_string()
-                    .into_string()
-                    .unwrap(),
-            )
-            .name(DEFAULT_LOG_NAME.to_string())
-            .file_suffix(String::from("mmap"))
-            .max_size(1024)
-            .build()
-    }
-}
-
-impl Hash for EZLogConfig {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.version.hash(state);
-        self.dir_path.hash(state);
-        self.name.hash(state);
-        self.compress.hash(state);
-        self.cipher.hash(state);
-        self.cipher_key.hash(state);
-        self.cipher_nonce.hash(state);
-    }
-}
-
-pub struct EZLogConfigBuilder {
-    config: EZLogConfig,
-}
-
-impl EZLogConfigBuilder {
-    pub fn new() -> Self {
-        EZLogConfigBuilder {
-            config: EZLogConfig {
-                level: Level::Trace,
-                version: Version::V1,
-                dir_path: "".to_string(),
-                name: DEFAULT_LOG_NAME.to_string(),
-                file_suffix: DEFAULT_LOG_FILE_SUFFIX.to_string(),
-                duration: Duration::days(7),
-                max_size: DEFAULT_MAX_LOG_SIZE,
-                compress: CompressKind::NONE,
-                compress_level: CompressLevel::Default,
-                cipher: CipherKind::NONE,
-                cipher_key: None,
-                cipher_nonce: None,
-            },
-        }
-    }
-
-    pub fn level(mut self, level: Level) -> Self {
-        self.config.level = level;
-        self
-    }
-
-    pub fn dir_path(mut self, dir_path: String) -> Self {
-        self.config.dir_path = dir_path;
-        self
-    }
-
-    pub fn name(mut self, name: String) -> Self {
-        self.config.name = name;
-        self
-    }
-
-    pub fn file_suffix(mut self, file_suffix: String) -> Self {
-        self.config.file_suffix = file_suffix;
-        self
-    }
-
-    pub fn duration(mut self, duration: Duration) -> Self {
-        self.config.duration = duration;
-        self
-    }
-
-    pub fn max_size(mut self, max_size: u64) -> Self {
-        self.config.max_size = max_size;
-        self
-    }
-
-    pub fn compress(mut self, compress: CompressKind) -> Self {
-        self.config.compress = compress;
-        self
-    }
-
-    pub fn cipher(mut self, cipher: CipherKind) -> Self {
-        self.config.cipher = cipher;
-        self
-    }
-
-    pub fn cipher_key(mut self, cipher_key: Vec<u8>) -> Self {
-        self.config.cipher_key = Some(cipher_key);
-        self
-    }
-
-    pub fn cipher_nonce(mut self, cipher_nonce: Vec<u8>) -> Self {
-        self.config.cipher_nonce = Some(cipher_nonce);
-        self
-    }
-
-    pub fn build(self) -> EZLogConfig {
-        self.config
     }
 }
 
@@ -859,7 +659,7 @@ impl Header {
 /// 单条的日志记录
 #[derive(Debug, Clone)]
 pub struct EZRecord {
-    log_id: u64,
+    log_name: String,
     level: Level,
     target: String,
     time: OffsetDateTime,
@@ -876,7 +676,7 @@ impl EZRecord {
 
     #[inline]
     pub fn log_id(&self) -> u64 {
-        self.log_id
+        crate::log_id(&self.log_name)
     }
 
     #[inline]
@@ -913,7 +713,7 @@ impl EZRecord {
     pub fn to_builder(&self) -> EZRecordBuilder {
         EZRecordBuilder {
             record: EZRecord {
-                log_id: self.log_id,
+                log_name: self.log_name.clone(),
                 level: self.level,
                 target: self.target.clone(),
                 time: self.time,
@@ -929,8 +729,8 @@ impl EZRecord {
         let t_id = thread_id::get();
         let t_name = t.name().unwrap_or(UNKNOWN);
         EZRecordBuilder::new()
-            .id(crate::log_id(DEFAULT_LOG_NAME))
-            .level(r.metadata().level())
+            .log_name(DEFAULT_LOG_NAME.to_string())
+            .level(r.metadata().level().into())
             .target(r.target().to_string())
             .time(OffsetDateTime::now_utc())
             .thread_id(t_id)
@@ -957,7 +757,7 @@ impl<'a> EZRecordBuilder {
     pub fn new() -> EZRecordBuilder {
         EZRecordBuilder {
             record: EZRecord {
-                log_id: 0,
+                log_name: DEFAULT_LOG_NAME.to_string(),
                 level: Level::Info,
                 target: "".to_string(),
                 time: OffsetDateTime::now_utc(),
@@ -1005,8 +805,8 @@ impl<'a> EZRecordBuilder {
         self
     }
 
-    pub fn id(&mut self, id: u64) -> &mut Self {
-        self.record.log_id = id;
+    pub fn log_name(&mut self, name: String) -> &mut Self {
+        self.record.log_name = name;
         self
     }
 
@@ -1019,7 +819,7 @@ impl<'a> Default for EZRecordBuilder {
     fn default() -> Self {
         EZRecordBuilder {
             record: EZRecord {
-                log_id: 0,
+                log_name: DEFAULT_LOG_NAME.to_string(),
                 level: Level::Info,
                 target: "".to_string(),
                 time: OffsetDateTime::now_utc(),
@@ -1028,6 +828,144 @@ impl<'a> Default for EZRecordBuilder {
                 content: "".to_string(),
             },
         }
+    }
+}
+
+#[repr(usize)]
+#[derive(Copy, Eq, Debug, Hash)]
+pub enum Level {
+    /// The "error" level.
+    ///
+    /// Designates very serious errors.
+    // This way these line up with the discriminants for LevelFilter below
+    // This works because Rust treats field-less enums the same way as C does:
+    // https://doc.rust-lang.org/reference/items/enumerations.html#custom-discriminant-values-for-field-less-enumerations
+    Error = 1,
+    /// The "warn" level.
+    ///
+    /// Designates hazardous situations.
+    Warn,
+    /// The "info" level.
+    ///
+    /// Designates useful information.
+    Info,
+    /// The "debug" level.
+    ///
+    /// Designates lower priority information.
+    Debug,
+    /// The "trace" level.
+    ///
+    /// Designates very low priority, often extremely verbose, information.
+    Trace,
+}
+
+impl Level {
+    fn from_usize(u: usize) -> Option<Level> {
+        match u {
+            1 => Some(Level::Error),
+            2 => Some(Level::Warn),
+            3 => Some(Level::Info),
+            4 => Some(Level::Debug),
+            5 => Some(Level::Trace),
+            _ => None,
+        }
+    }
+
+    /// Returns the most verbose logging level.
+    #[inline]
+    pub fn max() -> Level {
+        Level::Trace
+    }
+
+    /// Returns the string representation of the `Level`.
+    ///
+    /// This returns the same string as the `fmt::Display` implementation.
+    pub fn as_str(&self) -> &'static str {
+        LOG_LEVEL_NAMES[*self as usize]
+    }
+
+    /// Iterate through all supported logging levels.
+    ///
+    /// The order of iteration is from more severe to less severe log messages.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use log::Level;
+    ///
+    /// let mut levels = Level::iter();
+    ///
+    /// assert_eq!(Some(Level::Error), levels.next());
+    /// assert_eq!(Some(Level::Trace), levels.last());
+    /// ```
+    pub fn iter() -> impl Iterator<Item = Self> {
+        (1..6).map(|i| Self::from_usize(i).unwrap())
+    }
+}
+
+impl Clone for Level {
+    #[inline]
+    fn clone(&self) -> Level {
+        *self
+    }
+}
+
+impl PartialEq for Level {
+    #[inline]
+    fn eq(&self, other: &Level) -> bool {
+        *self as usize == *other as usize
+    }
+}
+
+impl PartialOrd for Level {
+    #[inline]
+    fn partial_cmp(&self, other: &Level) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+
+    #[inline]
+    fn lt(&self, other: &Level) -> bool {
+        (*self as usize) < *other as usize
+    }
+
+    #[inline]
+    fn le(&self, other: &Level) -> bool {
+        *self as usize <= *other as usize
+    }
+
+    #[inline]
+    fn gt(&self, other: &Level) -> bool {
+        *self as usize > *other as usize
+    }
+
+    #[inline]
+    fn ge(&self, other: &Level) -> bool {
+        *self as usize >= *other as usize
+    }
+}
+
+impl Ord for Level {
+    #[inline]
+    fn cmp(&self, other: &Level) -> cmp::Ordering {
+        (*self as usize).cmp(&(*other as usize))
+    }
+}
+
+impl From<log::Level> for Level {
+    fn from(log_level: log::Level) -> Self {
+        match log_level {
+            log::Level::Error => Level::Error,
+            log::Level::Warn => Level::Warn,
+            log::Level::Info => Level::Info,
+            log::Level::Debug => Level::Debug,
+            log::Level::Trace => Level::Trace,
+        }
+    }
+}
+
+impl fmt::Display for Level {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.pad(self.as_str())
     }
 }
 
@@ -1056,7 +994,6 @@ pub fn init_mmap_temp_file(path: &Path) -> io::Result<File> {
     // check file lenth ok or set len
     let len = file.metadata()?.len();
     if len == 0 {
-        println!("set file len");
         file.set_len(DEFAULT_MAX_LOG_SIZE)?;
     }
     Ok(file)
@@ -1073,7 +1010,7 @@ mod tests {
     use time::OffsetDateTime;
 
     use crate::{
-        event, CipherKind, CompressKind, EZLogConfig, EZLogConfigBuilder, EZLogger, EZRecord,
+        event, CipherKind, CompressKind, EZLogConfig, EZLogConfigBuilder, EZLogger,
         EZRecordBuilder, Header, RECORD_SIGNATURE_END, RECORD_SIGNATURE_START, V1_LOG_HEADER_SIZE,
     };
 
