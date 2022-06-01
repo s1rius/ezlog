@@ -32,7 +32,7 @@ impl EZMmapAppender {
 
         if self.inner.is_oversize(buf_size) {
             self.flush().ok();
-            self.inner.rename_current_file()?;
+            rename_current_file(&self.inner.file_path)?;
             self.inner = EZMmapAppendInner::new(&self.config, time)?;
         }
         Ok(())
@@ -60,16 +60,18 @@ pub struct EZMmapAppendInner {
 
 impl EZMmapAppendInner {
     pub fn new(config: &EZLogConfig, time: OffsetDateTime) -> Result<EZMmapAppendInner, LogError> {
-        let (log_file, file_path) = config.create_mmap_file(time)?;
-        let mut mmap = unsafe { MmapOptions::new().map_mut(&log_file)? };
+        let (mut file_path, mut mmap) = config.create_mmap_file(time)?;
         let mut c = Cursor::new(&mut mmap[0..V1_LOG_HEADER_SIZE]);
-        let mut header = Header::decode(&mut c).unwrap_or(Header::new());
-        if !header.is_valid(&config) {
-            // todo
-            // if not match create new file?
-            header = Header::create(&config);
-        }
+        let mut header = Header::decode(&mut c).unwrap_or_else(|_| Header::new());
         let next_date = next_date(time);
+
+        if header.is_empty() {
+            header = Header::create(config);
+        } else if !header.is_empty() && !header.is_valid(config) {
+            rename_current_file(&file_path)?;
+            (file_path, mmap) = config.create_mmap_file(time)?;
+            header = Header::create(config);
+        }
 
         let inner = EZMmapAppendInner {
             header,
@@ -86,15 +88,11 @@ impl EZMmapAppendInner {
 
     fn is_oversize(&self, buf_size: usize) -> bool {
         let max_len = self.mmap.len();
-        return V1_LOG_HEADER_SIZE + self.header.recorder_position as usize + buf_size > max_len;
+        V1_LOG_HEADER_SIZE + self.header.recorder_position as usize + buf_size > max_len
     }
 
     fn is_overtime(&self, time: OffsetDateTime) -> bool {
-        return time.unix_timestamp() > self.next_date;
-    }
-
-    fn advance_date(&mut self, now: OffsetDateTime) {
-        self.next_date = next_date(now).unix_timestamp();
+        time.unix_timestamp() > self.next_date
     }
 
     fn current_file(&self) -> Result<File, errors::LogError> {
@@ -104,21 +102,6 @@ impl EZMmapAppendInner {
             .create(false)
             .open(&self.file_path)?;
         Ok(file)
-    }
-
-    pub fn rename_current_file(&self) -> Result<(), errors::LogError> {
-        let mut count = 1;
-        loop {
-            if let Some(ext) = self.file_path.extension() {
-                let new_ext = format!("{}.{}", count, ext.to_str().unwrap_or_else(|| { "mmap" }));
-                let new_path = self.file_path.with_extension(new_ext);
-                if !new_path.exists() {
-                    std::fs::rename(&self.file_path, &new_path)?;
-                    return Ok(());
-                }
-            }
-            count += 1;
-        }
     }
 }
 
@@ -133,11 +116,23 @@ impl Write for EZMmapAppendInner {
 
     fn flush(&mut self) -> std::io::Result<()> {
         let mut c = Cursor::new(&mut self.mmap[0..V1_LOG_HEADER_SIZE]);
-        self.header.encode(&mut c).or(Err(io::Error::new(
-            io::ErrorKind::Other,
-            "header encode error",
-        )))?;
+        self.header.encode(&mut c)?;
         self.mmap.flush()
+    }
+}
+
+pub fn rename_current_file(file_path: &PathBuf) -> Result<(), errors::LogError> {
+    let mut count = 1;
+    loop {
+        if let Some(ext) = file_path.extension() {
+            let new_ext = format!("{}.{}", count, ext.to_str().unwrap_or("mmap"));
+            let new_path = file_path.with_extension(new_ext);
+            if !new_path.exists() {
+                std::fs::rename(file_path, &new_path)?;
+                return Ok(());
+            }
+        }
+        count += 1;
     }
 }
 
@@ -145,6 +140,8 @@ impl Write for EZMmapAppendInner {
 mod tests {
 
     use std::io::BufReader;
+
+    use crate::config::EZLogConfigBuilder;
 
     use super::*;
 
@@ -163,7 +160,8 @@ mod tests {
             .build()
     }
 
-    fn create_all_feature_config() -> EZLogConfig {
+    #[test]
+    fn create_all_feature_config() {
         let key = b"an example very very secret key.";
         let nonce = b"unique nonce";
         EZLogConfigBuilder::new()
@@ -181,7 +179,7 @@ mod tests {
             .cipher(CipherKind::AES128GCM)
             .cipher_key(key.to_vec())
             .cipher_nonce(nonce.to_vec())
-            .build()
+            .build();
     }
 
     #[test]

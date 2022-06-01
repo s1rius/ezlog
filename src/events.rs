@@ -4,13 +4,13 @@
 #[macro_export]
 macro_rules! event {
     (init) => {
-        println!("init");
+        println!("init")
     };
     (map_create) => {
-        println!("log map create");
+        println!("log map create")
     };
     (log_create $log_name:expr) => {
-        println!("log create name={}", $log_name);
+        println!("log create name={}", $log_name)
     };
     (log_create_fail $log_name:expr, $err_msg:expr) => {
         println!("log create fail name={}, err={}", $log_name, $err_msg);
@@ -52,10 +52,10 @@ macro_rules! event {
         println!("log flush {}", $log_name)
     };
     (channel_send_record $record_id:expr) => {
-        println!("send record msg {}", $record_id);
+        println!("send record msg {}", $record_id)
     };
     (channel_send_flush $log_name:expr) => {
-        println!("send flush msg {}", $log_name);
+        println!("send flush msg {}", $log_name)
     };
     (channel_send_flush_all) => {
         println!("send flush all msg")
@@ -67,10 +67,6 @@ macro_rules! event {
         println!("channel err {}", $e);
     };
 }
-
-pub struct EventListener();
-
-impl EventListener {}
 
 #[cfg(test)]
 mod tests {

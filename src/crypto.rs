@@ -72,7 +72,7 @@ impl Aes128Gcm {
             ))));
         }
 
-        let _key = Key::from_slice(&key);
+        let _key = Key::from_slice(key);
 
         Ok(Aes128Gcm {
             nonce: nonce.to_owned(),

@@ -1,9 +1,12 @@
 mod appender;
 mod compress;
+mod config;
 mod crypto;
 mod errors;
 mod events;
-mod config;
+
+pub use self::config::EZLogConfig;
+pub use self::config::EZLogConfigBuilder;
 
 use appender::EZMmapAppender;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -11,34 +14,37 @@ use compress::ZlibCodec;
 use crossbeam_channel::{Receiver, Sender, TrySendError};
 use crypto::{Aes128Gcm, Aes256Gcm};
 use errors::{CryptoError, LogError, ParseError};
-use log::{Record};
-use memmap2::{MmapMut, MmapOptions};
+use log::Record;
+use memmap2::MmapMut;
 use std::{
+    cmp,
     collections::{hash_map::DefaultHasher, HashMap},
-    env,
+    fmt,
     fs::{self, File, OpenOptions},
     hash::{Hash, Hasher},
     io::{self, Cursor, Read, Write},
     mem::MaybeUninit,
-    path::{Path, PathBuf},
+    path::Path,
     ptr,
     rc::Rc,
     sync::Once,
-    thread, cmp, fmt,
+    thread,
 };
-use time::{format_description, Duration, OffsetDateTime};
+use time::format_description::well_known::Rfc3339;
+use time::{Duration, OffsetDateTime};
 
-pub(crate) const FILE_SIGNATURE: &'static [u8; 2] = b"ez";
-pub(crate) const DEFAULT_LOG_NAME: &'static str = "default";
-pub(crate) const DEFAULT_LOG_FILE_SUFFIX: &'static str = "mmap";
+pub const DEFAULT_LOG_NAME: &str = "default";
+pub(crate) const FILE_SIGNATURE: &[u8; 2] = b"ez";
+
+pub(crate) const DEFAULT_LOG_FILE_SUFFIX: &str = "mmap";
 static LOG_LEVEL_NAMES: [&str; 6] = ["OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"];
-/// ";"
+pub(crate) const UNKNOWN: &str = "UNKNOWN";
+
 pub(crate) const RECORD_SIGNATURE_START: u8 = 0x3b;
 pub(crate) const RECORD_SIGNATURE_END: u8 = 0x21;
-pub(crate) const UNKNOWN: &'static str = "UNKNOWN";
 
 pub(crate) const DEFAULT_MAX_LOG_SIZE: u64 = 150 * 1024;
-pub(crate) const V1_LOG_HEADER_SIZE: usize = 10;
+pub const V1_LOG_HEADER_SIZE: usize = 10;
 
 static mut CHANNEL: MaybeUninit<(Sender<EZMsg>, Receiver<EZMsg>)> = MaybeUninit::uninit();
 static CHANNEL_INIT: Once = Once::new();
@@ -47,6 +53,21 @@ static mut LOG_MAP: MaybeUninit<HashMap<u64, EZLogger>> = MaybeUninit::uninit();
 static LOG_MAP_INIT: Once = Once::new();
 
 static ONE_RECEIVER: Once = Once::new();
+
+
+
+
+#[no_mangle]
+pub extern "C" fn log_create() {
+    println!("Hello from Rust!");
+}
+
+#[no_mangle]
+pub extern "C" fn record() {
+    println!("Hello from Rust!");
+}
+
+
 
 #[inline]
 fn get_channel() -> &'static (Sender<EZMsg>, Receiver<EZMsg>) {
@@ -70,16 +91,6 @@ fn get_map() -> &'static mut HashMap<u64, EZLogger> {
 #[inline]
 fn get_sender() -> Sender<EZMsg> {
     get_channel().0.clone()
-}
-
-#[no_mangle]
-pub extern "C" fn hello_from_rust() {
-    println!("Hello from Rust!");
-}
-
-#[no_mangle]
-pub extern "C" fn create_ezlog() {
-    println!("Hello from Rust!");
 }
 
 /// 初始化
@@ -148,11 +159,9 @@ pub(crate) fn init_receiver() {
                         log.appender.flush().ok();
                         event!(logger_force_flush name);
                     }
-                    EZMsg::FlushAll() => {
-                        get_map().values_mut().for_each(|item| {
-                            item.flush().ok();
-                        })
-                    },
+                    EZMsg::FlushAll() => get_map().values_mut().for_each(|item| {
+                        item.flush().ok();
+                    }),
                 },
                 Err(err) => {
                     event!(channel_recv_err err);
@@ -165,48 +174,38 @@ pub(crate) fn init_receiver() {
 pub fn create_log(config: EZLogConfig) {
     let name = config.name.clone();
     let msg = EZMsg::CreateLogger(config);
-    match post_msg(msg) {
-        Ok(_) => {
-            event!(channel_send_log_create name);
-        }
-        _ => {}
+    if post_msg(msg).is_some() {
+        event!(channel_send_log_create name);
     }
 }
 
 pub fn log(record: EZRecord) {
     let id = &record.id();
     let msg = EZMsg::Record(record);
-
-    match post_msg(msg) {
-        Ok(_) => {
-            event!(channel_send_record id)
-        }
-        _ => {}
+    if post_msg(msg).is_some() {
+        event!(channel_send_record id)
     }
 }
 
 pub fn flush(log_name: &str) {
     let msg = EZMsg::ForceFlush(log_name.to_string());
-    match post_msg(msg) {
-        Ok(_) => {
-            event!(channel_send_flush log_name)
-        }
-        _ => {}
+    if post_msg(msg).is_some() {
+        event!(channel_send_flush log_name)
     }
 }
 
 pub fn flush_all() {
     let msg = EZMsg::FlushAll();
-    match post_msg(msg) {
-        Ok(_)=> {
-            event!(channel_send_flush_all)
-        }
-        _ =>{}
+    if post_msg(msg).is_some() {
+        event!(channel_send_flush_all)
     }
 }
 
-pub fn post_msg(msg: EZMsg) -> Result<(), ()> {
-    get_sender().try_send(msg).map_err(on_channel_send_err)
+pub fn post_msg(msg: EZMsg) -> Option<()> {
+    match get_sender().try_send(msg).map_err(on_channel_send_err) {
+        Ok(_) => Some(()),
+        Err(_) => None,
+    }
 }
 
 fn on_channel_send_err<T>(err: TrySendError<T>) {
@@ -317,7 +316,7 @@ impl EZLogger {
 
     fn append(&mut self, record: &EZRecord) -> Result<(), LogError> {
         let buf = self.encode_as_block(record)?;
-        self.appender.write(&buf)?;
+        self.appender.write_all(&buf)?;
         Ok(())
     }
 
@@ -335,13 +334,13 @@ impl EZLogger {
     ///
     pub fn encode_as_block(&mut self, record: &EZRecord) -> Result<Vec<u8>, LogError> {
         let mut chunk: Vec<u8> = Vec::new();
-        chunk.push(RECORD_SIGNATURE_START);
+        chunk.append(&mut vec![RECORD_SIGNATURE_START]);
         let mut buf = self.encode(record)?;
         let size = buf.len();
         let mut size_chunk = EZLogger::create_size_chunk(size)?;
         chunk.append(&mut size_chunk);
         chunk.append(&mut buf);
-        chunk.push(RECORD_SIGNATURE_END);
+        chunk.append(&mut vec![RECORD_SIGNATURE_END]);
         Ok(chunk)
     }
 
@@ -387,7 +386,7 @@ impl EZLogger {
                 "record end sign error".to_string(),
             )));
         }
-        self.decode(&mut chunk)
+        self.decode(&chunk)
     }
 
     pub fn decode(&mut self, chunk: &[u8]) -> Result<Vec<u8>, LogError> {
@@ -404,7 +403,20 @@ impl EZLogger {
     }
 
     fn format(&self, record: &EZRecord) -> Vec<u8> {
-        return format!("{:?}", record).into_bytes();
+        let time = record
+            .time
+            .format(&Rfc3339)
+            .unwrap_or_else(|_| "unknown".to_string());
+        format!(
+            "{} {} {} [{}:{}] {}",
+            time,
+            record.level(),
+            record.target(),
+            record.thread_name(),
+            record.thread_id(),
+            record.content()
+        )
+        .into_bytes()
     }
 
     fn flush(&mut self) -> Result<(), io::Error> {
@@ -597,6 +609,12 @@ pub struct Header {
     cipher: CipherKind,
 }
 
+impl Default for Header {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Header {
     pub fn new() -> Self {
         Header {
@@ -618,8 +636,8 @@ impl Header {
         }
     }
 
-    pub fn encode(&self, writer: &mut dyn Write) -> Result<(), LogError> {
-        writer.write(crate::FILE_SIGNATURE)?;
+    pub fn encode(&self, writer: &mut dyn Write) -> Result<(), io::Error> {
+        writer.write_all(crate::FILE_SIGNATURE)?;
         writer.write_u8(self.version.into())?;
         writer.write_u8(self.flag)?;
         writer.write_u32::<BigEndian>(self.recorder_position)?;
@@ -653,6 +671,10 @@ impl Header {
         self.version == config.version
             && self.compress == config.compress
             && self.cipher == config.cipher
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.version == Version::UNKNOWN && self.recorder_position <= V1_LOG_HEADER_SIZE as u32
     }
 }
 
@@ -755,17 +777,7 @@ pub struct EZRecordBuilder {
 
 impl<'a> EZRecordBuilder {
     pub fn new() -> EZRecordBuilder {
-        EZRecordBuilder {
-            record: EZRecord {
-                log_name: DEFAULT_LOG_NAME.to_string(),
-                level: Level::Info,
-                target: "".to_string(),
-                time: OffsetDateTime::now_utc(),
-                thread_id: 0,
-                thread_name: "".to_string(),
-                content: "".to_string(),
-            },
-        }
+        EZRecordBuilder::default()
     }
 
     pub fn level(&mut self, level: Level) -> &mut Self {
@@ -779,8 +791,8 @@ impl<'a> EZRecordBuilder {
     }
 
     pub fn timestamp(&mut self, timestamp: i64) -> &mut Self {
-        let time =
-            OffsetDateTime::from_unix_timestamp(timestamp).unwrap_or(OffsetDateTime::now_utc());
+        let time = OffsetDateTime::from_unix_timestamp(timestamp)
+            .unwrap_or_else(|_| OffsetDateTime::now_utc());
         self.record.time = time;
         self
     }
@@ -832,7 +844,7 @@ impl<'a> Default for EZRecordBuilder {
 }
 
 #[repr(usize)]
-#[derive(Copy, Eq, Debug, Hash)]
+#[derive(Copy, Eq, Debug)]
 pub enum Level {
     /// The "error" level.
     ///
@@ -1010,7 +1022,7 @@ mod tests {
     use time::OffsetDateTime;
 
     use crate::{
-        event, CipherKind, CompressKind, EZLogConfig, EZLogConfigBuilder, EZLogger,
+        config::EZLogConfigBuilder, event, CipherKind, CompressKind, EZLogConfig, EZLogger,
         EZRecordBuilder, Header, RECORD_SIGNATURE_END, RECORD_SIGNATURE_START, V1_LOG_HEADER_SIZE,
     };
 
@@ -1119,7 +1131,7 @@ mod tests {
         logger.flush().unwrap();
 
         let config = create_all_feature_config();
-        let (mut _file, path) = config.create_mmap_file(OffsetDateTime::now_utc()).unwrap();
+        let (path, _mmap) = config.create_mmap_file(OffsetDateTime::now_utc()).unwrap();
 
         let origin_log = OpenOptions::new()
             .read(true)

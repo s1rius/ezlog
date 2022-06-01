@@ -1,15 +1,13 @@
-use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
-use std::path::Path;
-use std::time::Duration;
-use std::{io, thread};
+use std::fs::OpenOptions;
+use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 
-use ezlog::{
-    CipherKind, CompressKind, EZLogConfig, EZLogConfigBuilder, EZLogger, EZRecord,
-    V1_LOG_HEADER_SIZE,
-};
+use std::thread;
+use std::time::Duration;
+
+use ezlog::{EZLogConfig, create_log, EZLogConfigBuilder};
+use ezlog::{CipherKind, CompressKind, EZLogger, EZRecord, V1_LOG_HEADER_SIZE};
 use log::{debug, error, info, trace, warn, LevelFilter};
-use log::{Level, Metadata, Record};
+use log::{Metadata, Record};
 use time::OffsetDateTime;
 
 static LOGGER: SimpleLogger = SimpleLogger;
@@ -23,7 +21,7 @@ pub fn main() {
 
     let log_config = get_config();
 
-    ezlog::create_log(log_config);
+    create_log(log_config);
 
     // thread::sleep(Duration::from_secs(1));
 
@@ -44,7 +42,7 @@ fn get_config() -> EZLogConfig {
     let key = b"an example very very secret key.";
     let nonce = b"unique nonce";
     EZLogConfigBuilder::new()
-        .level(Level::Trace)
+        .level(ezlog::Level::Trace)
         .dir_path(
             dirs::desktop_dir()
                 .unwrap()
@@ -63,11 +61,15 @@ fn get_config() -> EZLogConfig {
 
 fn read_log_file_rewrite() {
     let log_config = get_config();
-    let (file, path) = log_config
+    let (path, _mmap) = log_config
         .create_mmap_file(OffsetDateTime::now_utc())
         .unwrap();
     let mut logger = EZLogger::new(log_config).unwrap();
-
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&path)
+        .unwrap();
     let mut br = BufReader::new(&file);
 
     let mut buffer = Vec::new();

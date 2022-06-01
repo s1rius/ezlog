@@ -1,63 +1,49 @@
+use std::{
+    collections::hash_map::DefaultHasher,
+    env,
+    fs::{self, OpenOptions},
+    hash::{Hash, Hasher},
+    io,
+    path::{Path, PathBuf},
+};
+
+use memmap2::{MmapMut, MmapOptions};
+use time::{format_description, Duration, OffsetDateTime};
+
+use crate::{
+    CipherKind, CompressKind, CompressLevel, Level, Version, DEFAULT_LOG_FILE_SUFFIX,
+    DEFAULT_LOG_NAME, DEFAULT_MAX_LOG_SIZE,
+};
 
 #[derive(Debug, Clone)]
 pub struct EZLogConfig {
     /// log等级
-    level: Level,
+    pub level: Level,
     /// 版本号
-    version: Version,
+    pub version: Version,
     /// 文件夹目录
-    dir_path: String,
+    pub dir_path: String,
     /// 文件的前缀名
-    name: String,
+    pub name: String,
     /// 文件的后缀名
-    file_suffix: String,
+    pub file_suffix: String,
     /// 文件缓存的时间
-    duration: Duration,
+    pub duration: Duration,
     /// 日志文件的最大大小
-    max_size: u64,
+    pub max_size: u64,
     // 压缩方式
-    compress: CompressKind,
+    pub compress: CompressKind,
     /// 压缩等级
-    compress_level: CompressLevel,
+    pub compress_level: CompressLevel,
     /// 加密方式
-    cipher: CipherKind,
+    pub cipher: CipherKind,
     /// 加密的密钥
-    cipher_key: Option<Vec<u8>>,
+    pub cipher_key: Option<Vec<u8>>,
     /// 加密的nonce
-    cipher_nonce: Option<Vec<u8>>,
+    pub cipher_nonce: Option<Vec<u8>>,
 }
 
 impl EZLogConfig {
-    pub fn new(
-        level: Level,
-        version: Version,
-        dir_path: String,
-        name: String,
-        file_suffix: String,
-        duration: Duration,
-        max_size: u64,
-        compress: CompressKind,
-        compress_level: CompressLevel,
-        cipher: CipherKind,
-        cipher_key: Option<Vec<u8>>,
-        cipher_nonce: Option<Vec<u8>>,
-    ) -> Self {
-        EZLogConfig {
-            level,
-            version,
-            dir_path,
-            name,
-            file_suffix,
-            duration,
-            max_size,
-            compress,
-            compress_level,
-            cipher,
-            cipher_key,
-            cipher_nonce,
-        }
-    }
-
     pub fn now_file_name(&self, now: OffsetDateTime) -> String {
         let format = format_description::parse("[year]_[month]_[day]")
             .expect("Unable to create a formatter; this is a bug in tracing-appender");
@@ -68,7 +54,7 @@ impl EZLogConfig {
         str
     }
 
-    pub fn create_mmap_file(&self, time: OffsetDateTime) -> io::Result<(File, PathBuf)> {
+    pub fn create_mmap_file(&self, time: OffsetDateTime) -> io::Result<(PathBuf, MmapMut)> {
         let file_name = self.now_file_name(time);
         let max_size = self.max_size;
         let path = Path::new(&self.dir_path).join(file_name);
@@ -97,10 +83,12 @@ impl EZLogConfig {
             file.set_len(len)?;
         }
 
-        Ok((file, path))
+        let mmap = unsafe { MmapOptions::new().map_mut(&file)? };
+
+        Ok((path, mmap))
     }
 
-    fn log_id(&self) -> u64 {
+    pub fn log_id(&self) -> u64 {
         let mut hasher = DefaultHasher::new();
         self.name.hash(&mut hasher);
         hasher.finish()
@@ -212,5 +200,11 @@ impl EZLogConfigBuilder {
 
     pub fn build(self) -> EZLogConfig {
         self.config
+    }
+}
+
+impl Default for EZLogConfigBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }

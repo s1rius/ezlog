@@ -7,6 +7,11 @@
 实现变长log的输出
 
 
+## 06-01
+how to write ffi crete
+
+- [rust ffi doc](https://doc.rust-lang.org/nomicon/ffi.html)
+- [how to call rust functions from c on linux h37](https://dev.to/dandyvica/how-to-call-rust-functions-from-c-on-linux-h37)
 
 
 
