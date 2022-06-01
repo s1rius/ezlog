@@ -4,7 +4,7 @@ use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 use std::thread;
 use std::time::Duration;
 
-use ezlog::{EZLogConfig, create_log, EZLogConfigBuilder};
+use ezlog::{create_log, EZLogConfig, EZLogConfigBuilder};
 use ezlog::{CipherKind, CompressKind, EZLogger, EZRecord, V1_LOG_HEADER_SIZE};
 use log::{debug, error, info, trace, warn, LevelFilter};
 use log::{Metadata, Record};
@@ -114,7 +114,7 @@ fn read_log_file_rewrite() {
 struct SimpleLogger;
 
 impl log::Log for SimpleLogger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
+    fn enabled(&self, _metadata: &Metadata) -> bool {
         true
     }
 

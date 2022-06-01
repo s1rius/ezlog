@@ -1,0 +1,16 @@
+[package]
+name = "ezlog_jni"
+version = "0.1.0-dev"
+edition = "2021"
+description = "EZLog JNI binding"
+homepage = "https://github.com/s1rius/ezlog"
+repository = "https://github.com/s1rius/ezlog"
+license = "MIT OR Apache-2.0"
+keywords = ["ezlog"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ezlog = {path = "../ezlog_core"}
+jni = "0.19.0"

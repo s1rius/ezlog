@@ -1,3 +1,5 @@
+#![feature(core_ffi_c)]
+
 mod appender;
 mod compress;
 mod config;
@@ -16,6 +18,11 @@ use crypto::{Aes128Gcm, Aes256Gcm};
 use errors::{CryptoError, LogError, ParseError};
 use log::Record;
 use memmap2::MmapMut;
+use std::ffi::c_char;
+use std::ffi::c_uchar;
+use std::ffi::c_uint;
+use std::ffi::CStr;
+use std::slice;
 use std::{
     cmp,
     collections::{hash_map::DefaultHasher, HashMap},
@@ -54,20 +61,68 @@ static LOG_MAP_INIT: Once = Once::new();
 
 static ONE_RECEIVER: Once = Once::new();
 
-
-
-
 #[no_mangle]
-pub extern "C" fn log_create() {
+pub extern "C" fn c_create_log(
+    c_log_name: *const c_char,
+    c_level: c_uchar,
+    c_dir_path: *const c_char,
+    c_keep_days: c_uint,
+    c_compress: c_uchar,
+    c_compress_level: c_uchar,
+    c_cipher: c_uchar,
+    c_cipher_key: *const c_uchar,
+    c_key_len: usize,
+    c_cipher_nonce: *const c_uchar,
+    c_nonce_len: usize,
+) {
     println!("Hello from Rust!");
+
+    let log_name = unsafe { CStr::from_ptr(c_log_name).to_string_lossy().into_owned() };
+    let level = Level::from_usize(c_level as usize).unwrap_or_else(|| Level::Trace);
+    let dir_path = unsafe { CStr::from_ptr(c_dir_path).to_string_lossy().into_owned() };
+    let duration = Duration::days(c_keep_days as i64);
+    let compress = CompressKind::from(c_compress);
+    let compress_level = CompressLevel::from(c_compress_level);
+    let cipher = CipherKind::from(c_cipher);
+    let key_bytes = unsafe { slice::from_raw_parts(c_cipher_key, c_key_len) };
+    let cipher_key: Vec<u8> = Vec::from(key_bytes);
+    let nonce_bytes = unsafe { slice::from_raw_parts(c_cipher_nonce, c_nonce_len) };
+    let cipher_nonce: Vec<u8> = Vec::from(nonce_bytes);
+
+    let config = EZLogConfigBuilder::new()
+        .name(log_name)
+        .dir_path(dir_path)
+        .level(level)
+        .duration(duration)
+        .compress(compress)
+        .compress_level(compress_level)
+        .cipher(cipher)
+        .cipher_key(cipher_key)
+        .cipher_nonce(cipher_nonce)
+        .build();
+
+    create_log(config);
 }
 
 #[no_mangle]
-pub extern "C" fn record() {
-    println!("Hello from Rust!");
+pub extern "C" fn c_log(
+    c_log_name: *const c_char,
+    c_level: c_uchar,
+    c_target: *const c_char,
+    c_content: *const c_char,
+) {
+    let log_name = unsafe { CStr::from_ptr(c_log_name).to_string_lossy().into_owned() };
+    let level = Level::from_usize(c_level as usize).unwrap_or_else(|| Level::Trace);
+    let target = unsafe { CStr::from_ptr(c_target).to_string_lossy().into_owned() };
+    let content = unsafe { CStr::from_ptr(c_content).to_string_lossy().into_owned() };
+    let record = EZRecordBuilder::new()
+        .log_name(log_name)
+        .level(level)
+        .target(target)
+        .content(content)
+        .build();
+    log(record)
 }
-
-
 
 #[inline]
 fn get_channel() -> &'static (Sender<EZMsg>, Receiver<EZMsg>) {
@@ -1014,7 +1069,7 @@ pub fn init_mmap_temp_file(path: &Path) -> io::Result<File> {
 #[cfg(test)]
 mod tests {
     use std::fs::OpenOptions;
-    use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
+    use std::io::{BufReader, Read, Seek, SeekFrom, Write};
 
     use aes_gcm::aead::{Aead, NewAead};
     use aes_gcm::{Aes256Gcm, Key, Nonce}; // Or `Aes128Gcm`

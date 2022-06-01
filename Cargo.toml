@@ -1,23 +1,17 @@
 [package]
-name = "ezlog"
+name = "ezlog_space"
 version = "0.1.0"
 edition = "2021"
 
-# todo
-# [lib]
-# crate-type = ["cdylib"]
+[workspace]
+members = ["crates/*"]
+
 
 [dependencies]
+ezlog = {path = "crates/ezlog_core"}
 memmap2 = "0.5.3"
 log = "0.4.17"
-byteorder = "1"
-lazy_static = "1.4.0"
-flate2 = "1.0"
-aead = "0.4.3"
-aes-gcm = "0.9.4"
 time = { version = "0.3", default-features = false, features = ["formatting"] }
-crossbeam-channel = "0.5"
-thread-id = "4.0.0"
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.18.0"

@@ -183,6 +183,11 @@ impl EZLogConfigBuilder {
         self
     }
 
+    pub fn compress_level(mut self, compress_level: CompressLevel) -> Self {
+        self.config.compress_level = compress_level;
+        self
+    }
+
     pub fn cipher(mut self, cipher: CipherKind) -> Self {
         self.config.cipher = cipher;
         self

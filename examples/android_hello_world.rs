@@ -1,7 +1,4 @@
-use std::fs::OpenOptions;
-
 use ezlog::{CipherKind, CompressKind, EZLogConfig, EZLogConfigBuilder, EZRecordBuilder};
-use log::Level;
 
 #[cfg_attr(target_os = "android", ndk_glue::main(backtrace = "on"))]
 fn main() {
@@ -23,9 +20,9 @@ fn get_config() -> EZLogConfig {
         .dir_path("data/data/rust.example.android_hello_world/files/ezlog".to_string())
         .name(ezlog::DEFAULT_LOG_NAME.to_string())
         .file_suffix(String::from("mmap"))
-        //.compress(CompressKind::ZLIB)
-        //.cipher(CipherKind::AES256GCM)
-        //.cipher_key(key.to_vec())
-        //.cipher_nonce(nonce.to_vec())
+        .compress(CompressKind::ZLIB)
+        .cipher(CipherKind::AES256GCM)
+        .cipher_key(key.to_vec())
+        .cipher_nonce(nonce.to_vec())
         .build()
 }
