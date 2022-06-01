@@ -67,10 +67,12 @@ impl EZMmapAppendInner {
 
         if header.is_empty() {
             header = Header::create(config);
+            encode_header(&header, &mut mmap)?
         } else if !header.is_empty() && !header.is_valid(config) {
             rename_current_file(&file_path)?;
             (file_path, mmap) = config.create_mmap_file(time)?;
             header = Header::create(config);
+            encode_header(&header, &mut mmap)?
         }
 
         let inner = EZMmapAppendInner {
@@ -103,6 +105,8 @@ impl EZMmapAppendInner {
             .open(&self.file_path)?;
         Ok(file)
     }
+
+    
 }
 
 impl Write for EZMmapAppendInner {
@@ -110,13 +114,13 @@ impl Write for EZMmapAppendInner {
         let start = self.header.recorder_position as usize;
         let end = start + buf.len();
         self.header.recorder_position += buf.len() as u32;
+        encode_header(&self.header, &mut self.mmap)?;
         let mut cursor = Cursor::new(&mut self.mmap[start..end]);
         cursor.write(buf)
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        let mut c = Cursor::new(&mut self.mmap[0..V1_LOG_HEADER_SIZE]);
-        self.header.encode(&mut c)?;
+        encode_header(&self.header, &mut self.mmap)?;
         self.mmap.flush()
     }
 }
@@ -134,6 +138,11 @@ pub fn rename_current_file(file_path: &PathBuf) -> Result<(), errors::LogError> 
         }
         count += 1;
     }
+}
+
+fn encode_header(header: &Header,  mmap: &mut MmapMut) -> Result<(), std::io::Error> {
+    let mut c = Cursor::new(&mut mmap[0..V1_LOG_HEADER_SIZE]);
+    header.encode(&mut c)
 }
 
 #[cfg(test)]

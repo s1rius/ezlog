@@ -1,0 +1,26 @@
+import wtf.s1.buildsrc.*
+buildscript {
+    ext {
+        ossrhUsername = ""
+        ossrhPassword = ""
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath ClassPaths.gradlePlugin
+        classpath ClassPaths.kotlinPlugin
+        classpath ClassPaths.vanniktechMavenPublishPlugin
+        classpath ClassPaths.dokaa
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        mavenLocal()
+    }
+}

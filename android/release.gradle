@@ -1,0 +1,7 @@
+apply plugin: "com.vanniktech.maven.publish"
+def Properties localProperties = new Properties()
+localProperties.load(project.rootProject.file("local.properties").newDataInputStream())
+
+publishing {
+}
+

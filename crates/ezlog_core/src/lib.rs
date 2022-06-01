@@ -7,6 +7,10 @@ mod crypto;
 mod errors;
 mod events;
 
+#[cfg(target_os="android")]
+#[allow(non_snake_case)]
+mod android;
+
 pub use self::config::EZLogConfig;
 pub use self::config::EZLogConfigBuilder;
 
@@ -75,8 +79,6 @@ pub extern "C" fn c_create_log(
     c_cipher_nonce: *const c_uchar,
     c_nonce_len: usize,
 ) {
-    println!("Hello from Rust!");
-
     let log_name = unsafe { CStr::from_ptr(c_log_name).to_string_lossy().into_owned() };
     let level = Level::from_usize(c_level as usize).unwrap_or_else(|| Level::Trace);
     let dir_path = unsafe { CStr::from_ptr(c_dir_path).to_string_lossy().into_owned() };
@@ -463,7 +465,7 @@ impl EZLogger {
             .format(&Rfc3339)
             .unwrap_or_else(|_| "unknown".to_string());
         format!(
-            "{} {} {} [{}:{}] {}",
+            "\n{} {} {} [{}:{}] {}",
             time,
             record.level(),
             record.target(),
@@ -927,7 +929,7 @@ pub enum Level {
 }
 
 impl Level {
-    fn from_usize(u: usize) -> Option<Level> {
+    pub fn from_usize(u: usize) -> Option<Level> {
         match u {
             1 => Some(Level::Error),
             2 => Some(Level::Warn),
