@@ -7,7 +7,7 @@ mod crypto;
 mod errors;
 mod events;
 
-#[cfg(target_os="android")]
+#[cfg(target_os = "android")]
 #[allow(non_snake_case)]
 mod android;
 
@@ -65,8 +65,10 @@ static LOG_MAP_INIT: Once = Once::new();
 
 static ONE_RECEIVER: Once = Once::new();
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn c_create_log(
+pub unsafe extern "C" fn c_create_log(
     c_log_name: *const c_char,
     c_level: c_uchar,
     c_dir_path: *const c_char,
@@ -79,16 +81,16 @@ pub extern "C" fn c_create_log(
     c_cipher_nonce: *const c_uchar,
     c_nonce_len: usize,
 ) {
-    let log_name = unsafe { CStr::from_ptr(c_log_name).to_string_lossy().into_owned() };
-    let level = Level::from_usize(c_level as usize).unwrap_or_else(|| Level::Trace);
-    let dir_path = unsafe { CStr::from_ptr(c_dir_path).to_string_lossy().into_owned() };
+    let log_name = CStr::from_ptr(c_log_name).to_string_lossy().into_owned();
+    let level = Level::from_usize(c_level as usize).unwrap_or(Level::Trace);
+    let dir_path = CStr::from_ptr(c_dir_path).to_string_lossy().into_owned();
     let duration = Duration::days(c_keep_days as i64);
     let compress = CompressKind::from(c_compress);
     let compress_level = CompressLevel::from(c_compress_level);
     let cipher = CipherKind::from(c_cipher);
-    let key_bytes = unsafe { slice::from_raw_parts(c_cipher_key, c_key_len) };
+    let key_bytes = slice::from_raw_parts(c_cipher_key, c_key_len);
     let cipher_key: Vec<u8> = Vec::from(key_bytes);
-    let nonce_bytes = unsafe { slice::from_raw_parts(c_cipher_nonce, c_nonce_len) };
+    let nonce_bytes = slice::from_raw_parts(c_cipher_nonce, c_nonce_len);
     let cipher_nonce: Vec<u8> = Vec::from(nonce_bytes);
 
     let config = EZLogConfigBuilder::new()
@@ -106,17 +108,19 @@ pub extern "C" fn c_create_log(
     create_log(config);
 }
 
+/// # Safety
+///
 #[no_mangle]
-pub extern "C" fn c_log(
+pub unsafe extern "C" fn c_log(
     c_log_name: *const c_char,
     c_level: c_uchar,
     c_target: *const c_char,
     c_content: *const c_char,
 ) {
-    let log_name = unsafe { CStr::from_ptr(c_log_name).to_string_lossy().into_owned() };
-    let level = Level::from_usize(c_level as usize).unwrap_or_else(|| Level::Trace);
-    let target = unsafe { CStr::from_ptr(c_target).to_string_lossy().into_owned() };
-    let content = unsafe { CStr::from_ptr(c_content).to_string_lossy().into_owned() };
+    let log_name = CStr::from_ptr(c_log_name).to_string_lossy().into_owned();
+    let level = Level::from_usize(c_level as usize).unwrap_or(Level::Trace);
+    let target = CStr::from_ptr(c_target).to_string_lossy().into_owned();
+    let content = CStr::from_ptr(c_content).to_string_lossy().into_owned();
     let record = EZRecordBuilder::new()
         .log_name(log_name)
         .level(level)

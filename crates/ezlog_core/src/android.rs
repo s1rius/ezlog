@@ -1,8 +1,5 @@
 #[allow(non_snake_case)]
-
-use crate::{
-    CipherKind, CompressKind, CompressLevel, EZLogConfigBuilder, EZRecordBuilder, Level,
-};
+use crate::{CipherKind, CompressKind, CompressLevel, EZLogConfigBuilder, EZRecordBuilder, Level};
 use jni::{
     objects::{JClass, JString},
     sys::{jbyteArray, jint},
@@ -29,12 +26,8 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_createLogger(
     j_cipher_key: jbyteArray,
     j_cipher_nonce: jbyteArray,
 ) {
-    let log_name: String = env
-        .get_string(j_log_name)
-        .unwrap()
-        .into();
-    let log_level: Level =
-        Level::from_usize(j_level as usize).unwrap_or_else(|| Level::Trace);
+    let log_name: String = env.get_string(j_log_name).unwrap().into();
+    let log_level: Level = Level::from_usize(j_level as usize).unwrap_or(Level::Trace);
     let log_dir: String = env
         .get_string(j_dir_path)
         .expect("Couldn't get dir path")

@@ -97,6 +97,7 @@ impl EZMmapAppendInner {
         time.unix_timestamp() > self.next_date
     }
 
+    #[cfg(test)]
     fn current_file(&self) -> Result<File, errors::LogError> {
         let file = OpenOptions::new()
             .read(true)
@@ -105,8 +106,6 @@ impl EZMmapAppendInner {
             .open(&self.file_path)?;
         Ok(file)
     }
-
-    
 }
 
 impl Write for EZMmapAppendInner {
@@ -140,7 +139,7 @@ pub fn rename_current_file(file_path: &PathBuf) -> Result<(), errors::LogError> 
     }
 }
 
-fn encode_header(header: &Header,  mmap: &mut MmapMut) -> Result<(), std::io::Error> {
+fn encode_header(header: &Header, mmap: &mut MmapMut) -> Result<(), std::io::Error> {
     let mut c = Cursor::new(&mut mmap[0..V1_LOG_HEADER_SIZE]);
     header.encode(&mut c)
 }
