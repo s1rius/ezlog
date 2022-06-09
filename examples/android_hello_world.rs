@@ -1,8 +1,11 @@
-use ezlog::{CipherKind, CompressKind, EZLogConfig, EZLogConfigBuilder, EZRecordBuilder};
+use ezlog::{
+    init, CipherKind, CompressKind, EZLogConfig, EZLogConfigBuilder, EZRecordBuilder,
+    DEFAULT_LOG_NAME,
+};
 
 #[cfg_attr(target_os = "android", ndk_glue::main(backtrace = "on"))]
 fn main() {
-    ezlog::init();
+    init();
     let log_config = get_config();
 
     ezlog::create_log(log_config);
@@ -18,7 +21,7 @@ fn get_config() -> EZLogConfig {
     EZLogConfigBuilder::new()
         .level(ezlog::Level::Trace)
         .dir_path("data/data/rust.example.android_hello_world/files/ezlog".to_string())
-        .name(ezlog::DEFAULT_LOG_NAME.to_string())
+        .name(DEFAULT_LOG_NAME.to_string())
         .file_suffix(String::from("mmap"))
         .compress(CompressKind::ZLIB)
         .cipher(CipherKind::AES256GCM)

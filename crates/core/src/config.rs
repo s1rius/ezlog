@@ -1,9 +1,8 @@
 use std::{
     collections::hash_map::DefaultHasher,
     env,
-    fs::{self, OpenOptions},
+    fs::{self, File, OpenOptions},
     hash::{Hash, Hasher},
-    io,
     path::{Path, PathBuf},
 };
 
@@ -11,8 +10,8 @@ use memmap2::{MmapMut, MmapOptions};
 use time::{format_description, Duration, OffsetDateTime};
 
 use crate::{
-    CipherKind, CompressKind, CompressLevel, Level, Version, DEFAULT_LOG_FILE_SUFFIX,
-    DEFAULT_LOG_NAME, DEFAULT_MAX_LOG_SIZE,
+    errors::ParseError, CipherKind, CompressKind, CompressLevel, Level, Version,
+    DEFAULT_LOG_FILE_SUFFIX, DEFAULT_LOG_NAME, DEFAULT_MAX_LOG_SIZE,
 };
 
 #[derive(Debug, Clone)]
@@ -44,44 +43,28 @@ pub struct EZLogConfig {
 }
 
 impl EZLogConfig {
-    pub fn now_file_name(&self, now: OffsetDateTime) -> String {
-        let format = format_description::parse("[year]_[month]_[day]")
-            .expect("Unable to create a formatter; this is a bug in tracing-appender");
-        let date = now
-            .format(&format)
-            .expect("Unable to format OffsetDateTime; this is a bug in tracing-appender");
+    pub fn now_file_name(&self, now: OffsetDateTime) -> crate::Result<String> {
+        let format = format_description::parse("[year]_[month]_[day]").map_err(|_e| {
+            crate::errors::LogError::Parse(ParseError::new(format!(
+                "Unable to create a formatter; this is a bug in tracing-appender: {}",
+                _e
+            )))
+        })?;
+        let date = now.format(&format).map_err(|_| {
+            crate::errors::LogError::Parse(ParseError::new(
+                "Unable to format date; this is a bug in tracing-appender".to_string(),
+            ))
+        })?;
         let str = format!("{}_{}.{}", self.name, date, self.file_suffix);
-        str
+        Ok(str)
     }
 
-    pub fn create_mmap_file(&self, time: OffsetDateTime) -> io::Result<(PathBuf, MmapMut)> {
-        let file_name = self.now_file_name(time);
+    pub fn create_mmap_file(&self, time: OffsetDateTime) -> crate::Result<(PathBuf, MmapMut)> {
+        let file_name = self.now_file_name(time)?;
         let max_size = self.max_size;
         let path = Path::new(&self.dir_path).join(file_name);
 
-        if let Some(p) = path.parent() {
-            if !p.exists() {
-                fs::create_dir_all(p)?;
-            }
-        }
-
-        // create file
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(&path)?;
-
-        // check file lenth ok or set len
-        let mut len = file.metadata()?.len();
-        if len == 0 {
-            println!("set file len");
-            len = max_size;
-            if len == 0 {
-                len = DEFAULT_MAX_LOG_SIZE;
-            }
-            file.set_len(len)?;
-        }
+        let file = internal_create_log_file(&path, max_size)?;
 
         let mmap = unsafe { MmapOptions::new().map_mut(&file)? };
 
@@ -212,4 +195,26 @@ impl Default for EZLogConfigBuilder {
     fn default() -> Self {
         Self::new()
     }
+}
+
+pub(crate) fn internal_create_log_file(path: &PathBuf, max_size: u64) -> crate::Result<File> {
+    if let Some(p) = path.parent() {
+        if !p.exists() {
+            fs::create_dir_all(p)?;
+        }
+    }
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(path)?;
+    let mut len = file.metadata()?.len();
+    if len == 0 {
+        len = max_size;
+        if len == 0 {
+            len = DEFAULT_MAX_LOG_SIZE;
+        }
+        file.set_len(len)?;
+    }
+    Ok(file)
 }

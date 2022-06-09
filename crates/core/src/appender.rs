@@ -11,20 +11,16 @@ pub struct EZMmapAppender {
 }
 
 impl EZMmapAppender {
-    pub fn new(config: Rc<EZLogConfig>) -> Result<Self, LogError> {
+    pub fn new(config: Rc<EZLogConfig>) -> Result<Self> {
         let inner = EZMmapAppendInner::new_now(&config)?;
         Ok(Self { config, inner })
     }
 
-    pub fn check_rolling(&mut self, buf_size: usize) -> Result<(), LogError> {
+    pub fn check_rolling(&mut self, buf_size: usize) -> Result<()> {
         self.check_refresh_inner(OffsetDateTime::now_utc(), buf_size)
     }
 
-    pub fn check_refresh_inner(
-        &mut self,
-        time: OffsetDateTime,
-        buf_size: usize,
-    ) -> Result<(), LogError> {
+    pub fn check_refresh_inner(&mut self, time: OffsetDateTime, buf_size: usize) -> Result<()> {
         if self.inner.is_overtime(time) {
             self.flush().ok();
             self.inner = EZMmapAppendInner::new(&self.config, time)?;
@@ -59,7 +55,7 @@ pub struct EZMmapAppendInner {
 }
 
 impl EZMmapAppendInner {
-    pub fn new(config: &EZLogConfig, time: OffsetDateTime) -> Result<EZMmapAppendInner, LogError> {
+    pub fn new(config: &EZLogConfig, time: OffsetDateTime) -> Result<EZMmapAppendInner> {
         let (mut file_path, mut mmap) = config.create_mmap_file(time)?;
         let mut c = Cursor::new(&mut mmap[0..V1_LOG_HEADER_SIZE]);
         let mut header = Header::decode(&mut c).unwrap_or_else(|_| Header::new());
@@ -84,7 +80,7 @@ impl EZMmapAppendInner {
         Ok(inner)
     }
 
-    pub fn new_now(config: &EZLogConfig) -> Result<EZMmapAppendInner, LogError> {
+    pub fn new_now(config: &EZLogConfig) -> Result<EZMmapAppendInner> {
         EZMmapAppendInner::new(config, OffsetDateTime::now_utc())
     }
 
@@ -98,7 +94,7 @@ impl EZMmapAppendInner {
     }
 
     #[cfg(test)]
-    fn current_file(&self) -> Result<File, errors::LogError> {
+    fn current_file(&self) -> std::result::Result<File, errors::LogError> {
         let file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -124,7 +120,7 @@ impl Write for EZMmapAppendInner {
     }
 }
 
-pub fn rename_current_file(file_path: &PathBuf) -> Result<(), errors::LogError> {
+pub fn rename_current_file(file_path: &PathBuf) -> Result<()> {
     let mut count = 1;
     loop {
         if let Some(ext) = file_path.extension() {
@@ -139,7 +135,7 @@ pub fn rename_current_file(file_path: &PathBuf) -> Result<(), errors::LogError> 
     }
 }
 
-fn encode_header(header: &Header, mmap: &mut MmapMut) -> Result<(), std::io::Error> {
+fn encode_header(header: &Header, mmap: &mut MmapMut) -> std::result::Result<(), std::io::Error> {
     let mut c = Cursor::new(&mut mmap[0..V1_LOG_HEADER_SIZE]);
     header.encode(&mut c)
 }

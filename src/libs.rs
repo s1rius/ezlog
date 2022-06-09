@@ -1,2 +1,2 @@
 #[allow(unused_imports)]
-use ezlog::*;
+pub use ezlog::*;

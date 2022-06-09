@@ -1,4 +1,5 @@
 #![feature(core_ffi_c)]
+#![feature(core_c_str)]
 
 mod appender;
 mod compress;
@@ -11,6 +12,10 @@ mod events;
 #[allow(non_snake_case)]
 mod android;
 
+// #[allow(non_snake_case)]
+// #[cfg(target_os = "ios")]
+mod ios;
+
 pub use self::config::EZLogConfig;
 pub use self::config::EZLogConfigBuilder;
 
@@ -22,11 +27,6 @@ use crypto::{Aes128Gcm, Aes256Gcm};
 use errors::{CryptoError, LogError, ParseError};
 use log::Record;
 use memmap2::MmapMut;
-use std::ffi::c_char;
-use std::ffi::c_uchar;
-use std::ffi::c_uint;
-use std::ffi::CStr;
-use std::slice;
 use std::{
     cmp,
     collections::{hash_map::DefaultHasher, HashMap},
@@ -65,70 +65,7 @@ static LOG_MAP_INIT: Once = Once::new();
 
 static ONE_RECEIVER: Once = Once::new();
 
-/// # Safety
-///
-#[no_mangle]
-pub unsafe extern "C" fn c_create_log(
-    c_log_name: *const c_char,
-    c_level: c_uchar,
-    c_dir_path: *const c_char,
-    c_keep_days: c_uint,
-    c_compress: c_uchar,
-    c_compress_level: c_uchar,
-    c_cipher: c_uchar,
-    c_cipher_key: *const c_uchar,
-    c_key_len: usize,
-    c_cipher_nonce: *const c_uchar,
-    c_nonce_len: usize,
-) {
-    let log_name = CStr::from_ptr(c_log_name).to_string_lossy().into_owned();
-    let level = Level::from_usize(c_level as usize).unwrap_or(Level::Trace);
-    let dir_path = CStr::from_ptr(c_dir_path).to_string_lossy().into_owned();
-    let duration = Duration::days(c_keep_days as i64);
-    let compress = CompressKind::from(c_compress);
-    let compress_level = CompressLevel::from(c_compress_level);
-    let cipher = CipherKind::from(c_cipher);
-    let key_bytes = slice::from_raw_parts(c_cipher_key, c_key_len);
-    let cipher_key: Vec<u8> = Vec::from(key_bytes);
-    let nonce_bytes = slice::from_raw_parts(c_cipher_nonce, c_nonce_len);
-    let cipher_nonce: Vec<u8> = Vec::from(nonce_bytes);
-
-    let config = EZLogConfigBuilder::new()
-        .name(log_name)
-        .dir_path(dir_path)
-        .level(level)
-        .duration(duration)
-        .compress(compress)
-        .compress_level(compress_level)
-        .cipher(cipher)
-        .cipher_key(cipher_key)
-        .cipher_nonce(cipher_nonce)
-        .build();
-
-    create_log(config);
-}
-
-/// # Safety
-///
-#[no_mangle]
-pub unsafe extern "C" fn c_log(
-    c_log_name: *const c_char,
-    c_level: c_uchar,
-    c_target: *const c_char,
-    c_content: *const c_char,
-) {
-    let log_name = CStr::from_ptr(c_log_name).to_string_lossy().into_owned();
-    let level = Level::from_usize(c_level as usize).unwrap_or(Level::Trace);
-    let target = CStr::from_ptr(c_target).to_string_lossy().into_owned();
-    let content = CStr::from_ptr(c_content).to_string_lossy().into_owned();
-    let record = EZRecordBuilder::new()
-        .log_name(log_name)
-        .level(level)
-        .target(target)
-        .content(content)
-        .build();
-    log(record)
-}
+type Result<T> = std::result::Result<T, LogError>;
 
 #[inline]
 fn get_channel() -> &'static (Sender<EZMsg>, Receiver<EZMsg>) {
@@ -199,11 +136,17 @@ pub(crate) fn init_receiver() {
                                 event!(record_complete record.id());
                             }
                             Err(err) => match err {
-                                LogError::Encoding(_) => todo!(),
-                                LogError::IoError(_) => todo!(),
-                                LogError::Parse(_) => todo!(),
+                                LogError::IoError(err) => {
+                                    event!(io_error record.id(), err)
+                                }
+                                LogError::Compress(err) => {
+                                    event!(compress_fail record.id(), err)
+                                }
                                 LogError::Crypto(c) => {
                                     event!(encrypt_fail record.id(), c)
+                                }
+                                _ => {
+                                    event!(unexpect_fail record.id(), err)
                                 }
                             },
                         }
@@ -295,7 +238,7 @@ pub struct EZLogger {
 }
 
 impl EZLogger {
-    pub fn new(config: EZLogConfig) -> Result<Self, LogError> {
+    pub fn new(config: EZLogConfig) -> Result<Self> {
         let rc_conf = Rc::new(config);
         let appender = EZMmapAppender::new(Rc::clone(&rc_conf))?;
         let compression = EZLogger::create_compress(&rc_conf)?;
@@ -309,7 +252,7 @@ impl EZLogger {
         })
     }
 
-    pub fn create_cryptor(config: &EZLogConfig) -> Result<Option<Box<dyn Cryptor>>, CryptoError> {
+    pub fn create_cryptor(config: &EZLogConfig) -> Result<Option<Box<dyn Cryptor>>> {
         if let Some(key) = &config.cipher_key {
             if let Some(nonce) = &config.cipher_nonce {
                 match config.cipher {
@@ -332,32 +275,32 @@ impl EZLogger {
         }
     }
 
-    pub fn create_decryptor(
+    pub fn create_decryptor(config: &EZLogConfig) -> Result<Option<Box<dyn Decryptor>>> {
+        if let Some(key) = &config.cipher_key {
+            if let Some(nonce) = &config.cipher_nonce {
+                match config.cipher {
+                    CipherKind::AES128GCM => {
+                        let encryptor = Aes128Gcm::new(key, nonce)?;
+                        Ok(Some(Box::new(encryptor)))
+                    }
+                    CipherKind::AES256GCM => {
+                        let encryptor = Aes256Gcm::new(key, nonce)?;
+                        Ok(Some(Box::new(encryptor)))
+                    }
+                    CipherKind::NONE => Ok(None),
+                    CipherKind::UNKNOWN => Ok(None),
+                }
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn create_compress(
         config: &EZLogConfig,
-    ) -> Result<Option<Box<dyn Decryptor>>, CryptoError> {
-        if let Some(key) = &config.cipher_key {
-            if let Some(nonce) = &config.cipher_nonce {
-                match config.cipher {
-                    CipherKind::AES128GCM => {
-                        let encryptor = Aes128Gcm::new(key, nonce)?;
-                        Ok(Some(Box::new(encryptor)))
-                    }
-                    CipherKind::AES256GCM => {
-                        let encryptor = Aes256Gcm::new(key, nonce)?;
-                        Ok(Some(Box::new(encryptor)))
-                    }
-                    CipherKind::NONE => Ok(None),
-                    CipherKind::UNKNOWN => Ok(None),
-                }
-            } else {
-                Ok(None)
-            }
-        } else {
-            Ok(None)
-        }
-    }
-
-    pub fn create_compress(config: &EZLogConfig) -> Result<Option<Box<dyn Compress>>, LogError> {
+    ) -> std::result::Result<Option<Box<dyn Compress>>, LogError> {
         match config.compress {
             CompressKind::ZLIB => Ok(Some(Box::new(ZlibCodec::new(&config.compress_level)))),
             CompressKind::NONE => Ok(None),
@@ -367,7 +310,7 @@ impl EZLogger {
 
     pub fn create_decompression(
         config: &EZLogConfig,
-    ) -> Result<Option<Box<dyn Decompression>>, LogError> {
+    ) -> std::result::Result<Option<Box<dyn Decompression>>, LogError> {
         match config.compress {
             CompressKind::ZLIB => Ok(Some(Box::new(ZlibCodec::new(&config.compress_level)))),
             CompressKind::NONE => Ok(None),
@@ -375,13 +318,13 @@ impl EZLogger {
         }
     }
 
-    fn append(&mut self, record: &EZRecord) -> Result<(), LogError> {
+    fn append(&mut self, record: &EZRecord) -> Result<()> {
         let buf = self.encode_as_block(record)?;
         self.appender.write_all(&buf)?;
         Ok(())
     }
 
-    fn encode(&mut self, record: &EZRecord) -> Result<Vec<u8>, LogError> {
+    fn encode(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
         let mut buf = self.format(record);
         if let Some(encryptor) = &self.cryptor {
             buf = encryptor.encrypt(&buf)?;
@@ -393,7 +336,7 @@ impl EZLogger {
     }
 
     ///
-    pub fn encode_as_block(&mut self, record: &EZRecord) -> Result<Vec<u8>, LogError> {
+    pub fn encode_as_block(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
         let mut chunk: Vec<u8> = Vec::new();
         chunk.append(&mut vec![RECORD_SIGNATURE_START]);
         let mut buf = self.encode(record)?;
@@ -405,7 +348,7 @@ impl EZLogger {
         Ok(chunk)
     }
 
-    fn create_size_chunk(size: usize) -> Result<Vec<u8>, LogError> {
+    fn create_size_chunk(size: usize) -> Result<Vec<u8>> {
         let mut chunk: Vec<u8> = Vec::new();
         match size {
             // u8::MAX
@@ -426,7 +369,7 @@ impl EZLogger {
         Ok(chunk)
     }
 
-    pub fn decode_from_read(&mut self, reader: &mut dyn Read) -> Result<Vec<u8>, LogError> {
+    pub fn decode_from_read(&mut self, reader: &mut dyn Read) -> Result<Vec<u8>> {
         let start_sign = reader.read_u8()?;
         if RECORD_SIGNATURE_START != start_sign {
             return Err(LogError::Parse(ParseError::new(
@@ -450,7 +393,7 @@ impl EZLogger {
         self.decode(&chunk)
     }
 
-    pub fn decode(&mut self, chunk: &[u8]) -> Result<Vec<u8>, LogError> {
+    pub fn decode(&mut self, chunk: &[u8]) -> Result<Vec<u8>> {
         let mut buf = chunk.to_vec();
 
         if let Some(decompression) = &self.compression {
@@ -480,7 +423,7 @@ impl EZLogger {
         .into_bytes()
     }
 
-    fn flush(&mut self) -> Result<(), io::Error> {
+    fn flush(&mut self) -> std::result::Result<(), io::Error> {
         self.appender.flush()
     }
 }
@@ -508,11 +451,11 @@ impl<T: Compression + Decompression> Compress for T {}
 
 /// 加密
 pub trait Encryptor {
-    fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, CryptoError>;
+    fn encrypt(&self, data: &[u8]) -> std::result::Result<Vec<u8>, CryptoError>;
 }
 
 pub trait Decryptor {
-    fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, CryptoError>;
+    fn decrypt(&self, data: &[u8]) -> std::result::Result<Vec<u8>, CryptoError>;
 }
 
 impl<T: Encryptor + Decryptor> Cryptor for T {}
@@ -587,7 +530,7 @@ impl core::fmt::Display for CipherKind {
 impl std::str::FromStr for CipherKind {
     type Err = LogError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self> {
         match s {
             "AES_128_GCM" => Ok(CipherKind::AES128GCM),
             "AES_256_GCM" => Ok(CipherKind::AES256GCM),
@@ -656,7 +599,7 @@ impl From<CompressLevel> for u8 {
 
 /// 日志头
 /// 日志的版本，写入大小等
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Header {
     // 版本号，方便之后的升级
     version: Version,
@@ -697,7 +640,7 @@ impl Header {
         }
     }
 
-    pub fn encode(&self, writer: &mut dyn Write) -> Result<(), io::Error> {
+    pub fn encode(&self, writer: &mut dyn Write) -> std::result::Result<(), io::Error> {
         writer.write_all(crate::FILE_SIGNATURE)?;
         writer.write_u8(self.version.into())?;
         writer.write_u8(self.flag)?;
@@ -707,7 +650,7 @@ impl Header {
         Ok(())
     }
 
-    pub fn decode(reader: &mut dyn Read) -> Result<Self, errors::LogError> {
+    pub fn decode(reader: &mut dyn Read) -> std::result::Result<Self, errors::LogError> {
         let mut signature = [0u8; 2];
         reader.read_exact(&mut signature)?;
         let version = reader.read_u8()?;
@@ -836,7 +779,7 @@ pub struct EZRecordBuilder {
     record: EZRecord,
 }
 
-impl<'a> EZRecordBuilder {
+impl EZRecordBuilder {
     pub fn new() -> EZRecordBuilder {
         EZRecordBuilder::default()
     }
@@ -888,7 +831,7 @@ impl<'a> EZRecordBuilder {
     }
 }
 
-impl<'a> Default for EZRecordBuilder {
+impl Default for EZRecordBuilder {
     fn default() -> Self {
         EZRecordBuilder {
             record: EZRecord {

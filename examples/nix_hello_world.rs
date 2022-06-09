@@ -4,8 +4,10 @@ use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 use std::thread;
 use std::time::Duration;
 
-use ezlog::{create_log, EZLogConfig, EZLogConfigBuilder};
-use ezlog::{CipherKind, CompressKind, EZLogger, EZRecord, V1_LOG_HEADER_SIZE};
+use ezlog::{
+    create_log, CipherKind, CompressKind, EZLogConfig, EZLogConfigBuilder, EZLogger, EZRecord,
+    V1_LOG_HEADER_SIZE,
+};
 use log::{debug, error, info, trace, warn, LevelFilter};
 use log::{Metadata, Record};
 use time::OffsetDateTime;

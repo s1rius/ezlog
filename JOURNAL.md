@@ -33,3 +33,24 @@ no easy way to get rust ffi binding code from java file, I need implement them b
 - [Rust on Android](https://mozilla.github.io/firefox-browser-architecture/experiments/2017-09-21-rust-on-android.html)
 - [cargo ndk](https://github.com/bbqsrc/cargo-ndk)
 - [Minimizing Rust Binary Size](https://github.com/johnthagen/min-sized-rust)
+
+
+- [Rust 中的 bin, lib, rlib, a, so 概念介绍](https://rustcc.cn/article?id=98b96e69-7a5f-4bba-a38e-35bdd7a0a7dd)
+
+
+### for ios
+
+- [Create your own CocoaPods library](https://medium.com/@jeantimex/create-your-own-cocoapods-library-da589d5cd270)
+- [Building and Deploying a Rust library on iOS via Mozilla](https://mozilla.github.io/firefox-browser-architecture/experiments/2017-09-06-rust-on-ios.html)
+- [Rust on iOS and Mac Catalyst](https://nadim.computer/posts/2022-02-11-maccatalyst.html)
+- [Cargo Xcode](https://crates.io/crates/cargo-xcode)
+
+
+
+[How to return byte array from rust to c](https://users.rust-lang.org/t/how-to-return-byte-array-from-rust-function-to-ffi-c/18136)
+
+
+
+### build issue
+
+release flag make build fail, build debug first, then enable release flag.

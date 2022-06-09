@@ -1,6 +1,5 @@
 /// # [eventlisteners are good](https://publicobject.com/2022/05/01/eventlisteners-are-good/)
 ///
-///
 #[macro_export]
 macro_rules! event {
     (init) => {
@@ -13,7 +12,7 @@ macro_rules! event {
         println!("log create name={}", $log_name)
     };
     (log_create_fail $log_name:expr, $err_msg:expr) => {
-        println!("log create fail name={}, err={}", $log_name, $err_msg);
+        println!("log create fail name={}, err={}", $log_name, $err_msg)
     };
     (compress_start $record_id:tt) => {
         println!("record compress start {}", $record_id);
@@ -21,14 +20,14 @@ macro_rules! event {
     (compress_end $record_id:tt) => {
         println!("record compress end {}", $record_id);
     };
-    (compress_fail $record_id:tt) => {
-        println!("record compress fail {}", $record_id);
+    (compress_fail $record_id:expr, $e:expr) => {
+        println!("record compress fail {}, reason {}", $record_id, $e)
     };
     (encrypt_start $record_id:tt) => {
-        println!("encrypt start {}", $record_id);
+        println!("encrypt start {}", $record_id)
     };
     (encrypt_end $record_id:tt $start_time_ns:tt) => {
-        println!("encrypt end {}", $record_id);
+        println!("encrypt end {}", $record_id)
     };
     (encrypt_fail $record_id:expr, $e:expr) => {
         println!("fail reason: {}", $e)
@@ -42,11 +41,17 @@ macro_rules! event {
             $record_id, $record_level, $target_level
         )
     };
+    (io_error $record_id:expr, $e:expr) => {
+        println!("log {} append io err {}", $record_id, $e)
+    };
+    (unexpect_fail $record_id:expr, $e:expr) => {
+        println!("log {} append err {}", $record_id, $e)
+    };
     (logger_not_match $log_name:expr) => {
         println!("log get from map err {}", $log_name)
     };
     (channel_send_log_create $log_name:expr) => {
-        println!("send create msg {}", $log_name);
+        println!("send create msg {}", $log_name)
     };
     (logger_force_flush $log_name:expr) => {
         println!("log flush {}", $log_name)
@@ -61,10 +66,10 @@ macro_rules! event {
         println!("send flush all msg")
     };
     (channel_send_err $e:tt) => {
-        println!("channel err {}", $e);
+        println!("channel err {}", $e)
     };
     (channel_recv_err $e:tt) => {
-        println!("channel err {}", $e);
+        println!("channel err {}", $e)
     };
 }
 

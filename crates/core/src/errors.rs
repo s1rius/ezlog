@@ -6,36 +6,37 @@ use std::{
 
 #[derive(Debug)]
 pub enum LogError {
-    Encoding(EncodingError),
     IoError(io::Error),
     Parse(ParseError),
     Crypto(CryptoError),
+    Compress(CompressError),
+    IllegalArgument(IllegalArgumentError),
 }
 
 #[derive(Debug)]
-pub struct EncodingError {
+pub struct CompressError {
     underlying: Option<Box<dyn Error + Send + Sync>>,
 }
 
-impl EncodingError {
+impl CompressError {
     /// Create an `EncodingError` that stems from an arbitrary error of an underlying encoder.
     pub fn new(err: impl Into<Box<dyn Error + Send + Sync>>) -> Self {
-        EncodingError {
+        CompressError {
             underlying: Some(err.into()),
         }
     }
 }
 
-impl Display for EncodingError {
+impl Display for CompressError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match &self.underlying {
-            Some(underlying) => write!(fmt, "Format error encoding :\n{}", underlying,),
-            None => write!(fmt, "Format error encoding"),
+            Some(underlying) => write!(fmt, "compress error :\n{}", underlying,),
+            None => write!(fmt, "compress error unknown"),
         }
     }
 }
 
-impl Error for EncodingError {
+impl Error for CompressError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match &self.underlying {
             None => None,
@@ -47,15 +48,16 @@ impl Error for EncodingError {
 impl Error for LogError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            LogError::Encoding(err) => err.source(),
+            LogError::Compress(err) => err.source(),
             LogError::IoError(err) => err.source(),
             LogError::Parse(err) => err.source(),
             LogError::Crypto(err) => err.source(),
+            LogError::IllegalArgument(err) => err.source(),
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct ParseError {
     pub message: String,
 }
@@ -68,7 +70,7 @@ impl ParseError {
 
 impl Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "error: {}", self.message)
+        write!(f, "parse error: {}", self.message)
     }
 }
 
@@ -108,13 +110,33 @@ impl From<aead::Error> for CryptoError {
     }
 }
 
+#[derive(Debug)]
+pub struct IllegalArgumentError {
+    pub err_msg: String,
+}
+
+impl IllegalArgumentError {
+    pub fn new(err_msg: String) -> Self {
+        IllegalArgumentError { err_msg }
+    }
+}
+
+impl Display for IllegalArgumentError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.err_msg)
+    }
+}
+
+impl Error for IllegalArgumentError {}
+
 impl Display for LogError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
-            LogError::Encoding(err) => err.fmt(fmt),
+            LogError::Compress(err) => err.fmt(fmt),
             LogError::IoError(err) => err.fmt(fmt),
             LogError::Parse(err) => err.fmt(fmt),
             LogError::Crypto(err) => err.fmt(fmt),
+            LogError::IllegalArgument(err) => err.fmt(fmt),
         }
     }
 }
@@ -128,5 +150,11 @@ impl From<io::Error> for LogError {
 impl From<CryptoError> for LogError {
     fn from(err: CryptoError) -> LogError {
         LogError::Crypto(err)
+    }
+}
+
+impl From<IllegalArgumentError> for LogError {
+    fn from(err: IllegalArgumentError) -> Self {
+        LogError::IllegalArgument(err)
     }
 }

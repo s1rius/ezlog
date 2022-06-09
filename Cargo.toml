@@ -12,25 +12,20 @@ opt-level = "z"     # Optimize for size.
 lto = true          # Enable Link Time Optimization
 codegen-units = 1   # Reduce number of codegen units to increase optimizations.
 # panic = 'abort'     # Abort on panic
-strip = true        # Strip symbols from binary*
-
+# strip = true        # Strip symbols from binary*
 
 [dependencies]
-ezlog = {path = "crates/ezlog_core"}
+ezlog = {path = "crates/core"}
 memmap2 = "0.5.3"
 log = "0.4.17"
 time = { version = "0.3", default-features = false, features = ["formatting"] }
-
-[target.'cfg(target_os = "android")'.dependencies]
-jni = "0.19.0"
-libc = "0.2"
-ndk-glue = "0.6.2" # Substitute this with the latest ndk-glue version you wish to use
 
 [dev-dependencies]
 dirs = "4.0"
 
 [[example]]
 name = "android_hello_world"
+path = "examples/android_hello_world.rs"
 crate-type = ["cdylib"]
 
 [package.metadata.android.sdk]
@@ -46,4 +41,5 @@ name = "android.permission.READ_EXTERNAL_STORAGE"
 
 [[example]]
 name = "nix_hello_world"
+path = "examples/nix_hello_world.rs"
 crate-type = ["bin"]

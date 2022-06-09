@@ -1,7 +1,7 @@
 use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::{Key, Nonce}; // Or `Aes128Gcm`
 
-use crate::errors::{CryptoError, ParseError};
+use crate::errors::{CryptoError, IllegalArgumentError};
 use crate::{Decryptor, Encryptor};
 
 pub struct Aes256Gcm {
@@ -12,20 +12,21 @@ pub struct Aes256Gcm {
 }
 
 impl Aes256Gcm {
-    pub fn new(key: &[u8], nonce: &[u8]) -> Result<Self, CryptoError> {
+    pub fn new(key: &[u8], nonce: &[u8]) -> crate::Result<Self> {
         if key.len() != 32 {
-            // todo s1rius correct error type
-            return Err(CryptoError::new(ParseError::new(format!(
+            return Err(IllegalArgumentError::new(format!(
                 "key must be 32 bytes long {}",
                 key.len()
-            ))));
+            ))
+            .into());
         }
 
         if nonce.len() != 12 {
-            return Err(CryptoError::new(ParseError::new(format!(
+            return Err(IllegalArgumentError::new(format!(
                 "nonce must be 12 bytes long {}",
                 nonce.len()
-            ))));
+            ))
+            .into());
         }
         let _key = Key::from_slice(key);
         Ok(Aes256Gcm {
@@ -57,19 +58,21 @@ pub struct Aes128Gcm {
 }
 
 impl Aes128Gcm {
-    pub fn new(key: &[u8], nonce: &[u8]) -> Result<Self, CryptoError> {
+    pub fn new(key: &[u8], nonce: &[u8]) -> crate::Result<Self> {
         if key.len() != 16 {
-            return Err(CryptoError::new(ParseError::new(format!(
+            return Err(IllegalArgumentError::new(format!(
                 "key must be 16 bytes long {}",
                 key.len()
-            ))));
+            ))
+            .into());
         }
 
         if nonce.len() != 12 {
-            return Err(CryptoError::new(ParseError::new(format!(
+            return Err(IllegalArgumentError::new(format!(
                 "nonce must be 12 bytes long {}",
                 key.len()
-            ))));
+            ))
+            .into());
         }
 
         let _key = Key::from_slice(key);
