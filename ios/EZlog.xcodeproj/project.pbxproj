@@ -7,10 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		22400FD22851DBA7000DE162 /* libezlog.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 22400FD02851DA82000DE162 /* libezlog.a */; };
+		22400FD22851DBA7000DE162 /* libezlog.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 22400FD02851DA82000DE162 /* libezlog.a */; settings = {ATTRIBUTES = (Required, ); }; };
 		22400FD32851DDCA000DE162 /* ezlog.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 225800BE2850CF9A00D0F075 /* ezlog.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		225800C22850CF9A00D0F075 /* ezlog.docc in Sources */ = {isa = PBXBuildFile; fileRef = 225800C12850CF9A00D0F075 /* ezlog.docc */; };
-		225800C32850CF9A00D0F075 /* ezlog.h in Headers */ = {isa = PBXBuildFile; fileRef = 225800C02850CF9A00D0F075 /* ezlog.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		225800C32850CF9A00D0F075 /* ezlog.h in Headers */ = {isa = PBXBuildFile; fileRef = 225800C02850CF9A00D0F075 /* ezlog.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		227673BE2850D0740088CDC1 /* EZLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 227673BD2850D0740088CDC1 /* EZLog.swift */; };
 		2285B3FA28507B27000D641C /* DemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2285B3F928507B27000D641C /* DemoApp.swift */; };
 		2285B3FC28507B27000D641C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2285B3FB28507B27000D641C /* ContentView.swift */; };
@@ -48,13 +48,11 @@
 		225800C02850CF9A00D0F075 /* ezlog.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ezlog.h; sourceTree = "<group>"; };
 		225800C12850CF9A00D0F075 /* ezlog.docc */ = {isa = PBXFileReference; lastKnownFileType = folder.documentationcatalog; path = ezlog.docc; sourceTree = "<group>"; };
 		227673BD2850D0740088CDC1 /* EZLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EZLog.swift; sourceTree = "<group>"; };
-		2285B3E328507AC7000D641C /* ezlogTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ezlogTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2285B3F728507B27000D641C /* demo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = demo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2285B3F928507B27000D641C /* DemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoApp.swift; sourceTree = "<group>"; };
 		2285B3FB28507B27000D641C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		2285B3FD28507B29000D641C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2285B40028507B29000D641C /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		22D01D062850C60B003D5C87 /* release */ = {isa = PBXFileReference; lastKnownFileType = folder; name = release; path = "../target/aarch64-apple-ios-macabi/release"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -63,13 +61,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				22400FD22851DBA7000DE162 /* libezlog.a in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		2285B3E028507AC7000D641C /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -87,7 +78,6 @@
 			isa = PBXGroup;
 			children = (
 				22400FD02851DA82000DE162 /* libezlog.a */,
-				22D01D062850C60B003D5C87 /* release */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -115,7 +105,6 @@
 		2285B3DA28507AC7000D641C /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				2285B3E328507AC7000D641C /* ezlogTests.xctest */,
 				2285B3F728507B27000D641C /* demo.app */,
 				225800BE2850CF9A00D0F075 /* ezlog.framework */,
 			);
@@ -173,23 +162,6 @@
 			productReference = 225800BE2850CF9A00D0F075 /* ezlog.framework */;
 			productType = "com.apple.product-type.framework";
 		};
-		2285B3E228507AC7000D641C /* ezlogTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 2285B3F028507AC7000D641C /* Build configuration list for PBXNativeTarget "ezlogTests" */;
-			buildPhases = (
-				2285B3DF28507AC7000D641C /* Sources */,
-				2285B3E028507AC7000D641C /* Frameworks */,
-				2285B3E128507AC7000D641C /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = ezlogTests;
-			productName = ezlogTests;
-			productReference = 2285B3E328507AC7000D641C /* ezlogTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
 		2285B3F628507B27000D641C /* demo */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 2285B40228507B29000D641C /* Build configuration list for PBXNativeTarget "demo" */;
@@ -222,9 +194,6 @@
 					225800BD2850CF9A00D0F075 = {
 						CreatedOnToolsVersion = 13.4.1;
 					};
-					2285B3E228507AC7000D641C = {
-						CreatedOnToolsVersion = 13.4.1;
-					};
 					2285B3F628507B27000D641C = {
 						CreatedOnToolsVersion = 13.4.1;
 					};
@@ -243,7 +212,6 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				2285B3E228507AC7000D641C /* ezlogTests */,
 				2285B3F628507B27000D641C /* demo */,
 				225800BD2850CF9A00D0F075 /* ezlog */,
 			);
@@ -252,13 +220,6 @@
 
 /* Begin PBXResourcesBuildPhase section */
 		225800BC2850CF9A00D0F075 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		2285B3E128507AC7000D641C /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -283,13 +244,6 @@
 			files = (
 				225800C22850CF9A00D0F075 /* ezlog.docc in Sources */,
 				227673BE2850D0740088CDC1 /* EZLog.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		2285B3DF28507AC7000D641C /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -497,40 +451,6 @@
 			};
 			name = Release;
 		};
-		2285B3F128507AC7000D641C /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = WU3FS28JLY;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.4;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = wtf.s1.ezlogTests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		2285B3F228507AC7000D641C /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = WU3FS28JLY;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.4;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = wtf.s1.ezlogTests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
 		2285B40328507B29000D641C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -554,7 +474,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				"LIBRARY_SEARCH_PATHS[arch=*]" = "/Users/aldmgmgw/repo/ezlog/target/aarch64-apple-ios-macabi/release";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = wtf.s1.demo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -612,15 +531,6 @@
 			buildConfigurations = (
 				2285B3EB28507AC7000D641C /* Debug */,
 				2285B3EC28507AC7000D641C /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		2285B3F028507AC7000D641C /* Build configuration list for PBXNativeTarget "ezlogTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				2285B3F128507AC7000D641C /* Debug */,
-				2285B3F228507AC7000D641C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

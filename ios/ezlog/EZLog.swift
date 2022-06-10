@@ -16,11 +16,11 @@ public struct EZLogger {
     }
     
     func log(level: Level, message: String, target: String? = "") {
-        c_log(self.config.name, UInt8(level.rawValue), target, message)
+        ezlog_log(self.config.name, UInt8(level.rawValue), target, message)
     }
     
     func flush() {
-        c_flush(self.config.name)
+        ezlog_flush(self.config.name)
     }
 }
 
@@ -48,7 +48,7 @@ extension EZLogger {
 }
 
 private func create(config: EZLogConfig) {
-    c_create_log(config.name,
+    ezlog_create_log(config.name,
                  UInt8(config.level.rawValue),
                  config.dirPath,
                  UInt32(config.keepDays),
@@ -62,11 +62,11 @@ private func create(config: EZLogConfig) {
 }
 
 public func ezlogInit() {
-    c_init()
+    ezlog_init()
 }
 
 public func flushAll() {
-    c_flush_all()
+    ezlog_flush_all()
 }
 
 /// The log level.

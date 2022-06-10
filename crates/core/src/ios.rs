@@ -7,14 +7,14 @@ use core::slice;
 
 /// init
 #[no_mangle]
-pub extern "C" fn c_init() {
+pub extern "C" fn ezlog_init() {
     crate::init();
 }
 
 /// # Safety
 ///
 #[no_mangle]
-pub unsafe extern "C" fn c_flush(c_log_name: *const c_char) {
+pub unsafe extern "C" fn ezlog_flush(c_log_name: *const c_char) {
     let name: String = CStr::from_ptr(c_log_name).to_string_lossy().into_owned();
     crate::flush(&name);
 }
@@ -22,14 +22,14 @@ pub unsafe extern "C" fn c_flush(c_log_name: *const c_char) {
 /// # Safety
 ///
 #[no_mangle]
-pub extern "C" fn c_flush_all() {
+pub extern "C" fn ezlog_flush_all() {
     crate::flush_all();
 }
 
 /// # Safety
 ///
 #[no_mangle]
-pub unsafe extern "C" fn c_create_log(
+pub unsafe extern "C" fn ezlog_create_log(
     c_log_name: *const c_char,
     c_level: c_uchar,
     c_dir_path: *const c_char,
@@ -72,7 +72,7 @@ pub unsafe extern "C" fn c_create_log(
 /// # Safety
 ///
 #[no_mangle]
-pub unsafe extern "C" fn c_log(
+pub unsafe extern "C" fn ezlog_log(
     c_log_name: *const c_char,
     c_level: c_uchar,
     c_target: *const c_char,
