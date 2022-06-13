@@ -25,7 +25,7 @@ public struct EZLogger {
 }
 
 extension EZLogger {
-
+    
     public func trace(_ message: @autoclosure () -> String, target: @autoclosure() -> String? = "") {
         self.log(level: Level.trace, message: message(), target: target())
     }
@@ -49,16 +49,16 @@ extension EZLogger {
 
 private func create(config: EZLogConfig) {
     ezlog_create_log(config.name,
-                 UInt8(config.level.rawValue),
-                 config.dirPath,
-                 UInt32(config.keepDays),
-                 UInt8(config.compress.rawValue),
-                 UInt8(config.compressLevel.rawValue),
-                 UInt8(config.encrypt.rawValue),
-                 config.encryptKey,
-                 UInt(config.encryptKey.count),
-                 config.encryptNonce,
-                 UInt(config.encryptNonce.count))
+                     UInt8(config.level.rawValue),
+                     config.dirPath,
+                     UInt32(config.keepDays),
+                     UInt8(config.compress?.rawValue ?? 0),
+                     UInt8(config.compressLevel?.rawValue ?? 0),
+                     UInt8(config.encrypt?.rawValue ?? 0),
+                     config.encryptKey ?? [],
+                     UInt(config.encryptKey?.count ?? 0),
+                     config.encryptNonce ?? [],
+                     UInt(config.encryptNonce?.count ?? 0))
 }
 
 public func ezlogInit() {
@@ -116,11 +116,11 @@ public struct EZLogConfig {
     var name: String
     var keepDays: Int
     var maxSize: Int
-    var compress: CompressKind
-    var compressLevel: CompressLevel
-    var encrypt: EncryptKind = EncryptKind.NONE
-    var encryptKey: [UInt8]
-    var encryptNonce: [UInt8]
+    var compress: CompressKind? = CompressKind.NONE
+    var compressLevel: CompressLevel? = CompressLevel.DEFAULT
+    var encrypt: EncryptKind? = EncryptKind.NONE
+    var encryptKey: [UInt8]? = []
+    var encryptNonce: [UInt8]? = []
     
     public init(
         level: Level,
@@ -128,21 +128,77 @@ public struct EZLogConfig {
         name: String,
         keepDays: Int,
         maxSize: Int,
-        compress: CompressKind,
-        compressLevel: CompressLevel,
-        encrypt: EncryptKind,
-        encryptKey: [UInt8],
-        encryptNonce: [UInt8]
+        compress: CompressKind?,
+        compressLevel: CompressLevel?,
+        encrypt: EncryptKind?,
+        encryptKey: [UInt8]?,
+        encryptNonce: [UInt8]?
     ) {
         self.level = level
         self.dirPath = dirPath
         self.name = name
         self.keepDays = keepDays
         self.maxSize = maxSize
-        self.compress = compress
-        self.compressLevel = compressLevel
-        self.encrypt = encrypt
-        self.encryptKey = encryptKey
-        self.encryptNonce = encryptNonce
+        self.compress = compress ?? CompressKind.NONE
+        self.compressLevel = compressLevel ?? CompressLevel.DEFAULT
+        self.encrypt = encrypt ?? EncryptKind.NONE
+        self.encryptKey = encryptKey ?? []
+        self.encryptNonce = encryptNonce ?? []
     }
+    
+    
+    public init(
+        level: Level,
+        dirPath: String,
+        name: String,
+        keepDays: Int,
+        maxSize: Int
+    ) {
+        self.level = level
+        self.dirPath = dirPath
+        self.name = name
+        self.keepDays = keepDays
+        self.maxSize = maxSize
+    }
+    
+    public init(
+        level: Level,
+        dirPath: String,
+        name: String,
+        keepDays: Int,
+        maxSize: Int,
+        compress: CompressKind?,
+        compressLevel: CompressLevel?
+    ) {
+        self.level = level
+        self.dirPath = dirPath
+        self.name = name
+        self.keepDays = keepDays
+        self.maxSize = maxSize
+        self.compress = compress ?? CompressKind.NONE
+        self.compressLevel = compressLevel ?? CompressLevel.DEFAULT
+    }
+    
+    public init(
+        level: Level,
+        dirPath: String,
+        name: String,
+        keepDays: Int,
+        maxSize: Int,
+        encrypt: EncryptKind?,
+        encryptKey: [UInt8]?,
+        encryptNonce: [UInt8]?
+    ) {
+        self.level = level
+        self.dirPath = dirPath
+        self.name = name
+        self.keepDays = keepDays
+        self.maxSize = maxSize
+        self.encrypt = encrypt ?? EncryptKind.NONE
+        self.encryptKey = encryptKey ?? []
+        self.encryptNonce = encryptNonce ?? []
+    }
+    
+    
+    
 }

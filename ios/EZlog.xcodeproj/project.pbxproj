@@ -26,6 +26,13 @@
 			remoteGlobalIDString = 225800BD2850CF9A00D0F075;
 			remoteInfo = ezlog;
 		};
+		2261EE0928575EAC0031FEE6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2285B3D028507AC7000D641C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2261EE0528575E610031FEE6;
+			remoteInfo = cargo_ios;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -101,6 +108,7 @@
 				2219CEB32850852C005AC1A6 /* Frameworks */,
 			);
 			sourceTree = "<group>";
+			usesTabs = 0;
 		};
 		2285B3DA28507AC7000D641C /* Products */ = {
 			isa = PBXGroup;
@@ -143,6 +151,23 @@
 		};
 /* End PBXHeadersBuildPhase section */
 
+/* Begin PBXLegacyTarget section */
+		2261EE0528575E610031FEE6 /* cargo_ios */ = {
+			isa = PBXLegacyTarget;
+			buildArgumentsString = b_ios.sh;
+			buildConfigurationList = 2261EE0628575E610031FEE6 /* Build configuration list for PBXLegacyTarget "cargo_ios" */;
+			buildPhases = (
+			);
+			buildToolPath = /bin/sh;
+			buildWorkingDirectory = .;
+			dependencies = (
+			);
+			name = cargo_ios;
+			passBuildSettingsInEnvironment = 1;
+			productName = cargo_ios;
+		};
+/* End PBXLegacyTarget section */
+
 /* Begin PBXNativeTarget section */
 		225800BD2850CF9A00D0F075 /* ezlog */ = {
 			isa = PBXNativeTarget;
@@ -156,6 +181,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				2261EE0A28575EAC0031FEE6 /* PBXTargetDependency */,
 			);
 			name = ezlog;
 			productName = ezlog;
@@ -194,6 +220,9 @@
 					225800BD2850CF9A00D0F075 = {
 						CreatedOnToolsVersion = 13.4.1;
 					};
+					2261EE0528575E610031FEE6 = {
+						CreatedOnToolsVersion = 13.4.1;
+					};
 					2285B3F628507B27000D641C = {
 						CreatedOnToolsVersion = 13.4.1;
 					};
@@ -214,6 +243,7 @@
 			targets = (
 				2285B3F628507B27000D641C /* demo */,
 				225800BD2850CF9A00D0F075 /* ezlog */,
+				2261EE0528575E610031FEE6 /* cargo_ios */,
 			);
 		};
 /* End PBXProject section */
@@ -264,6 +294,11 @@
 			target = 225800BD2850CF9A00D0F075 /* ezlog */;
 			targetProxy = 225800C72850CFD400D0F075 /* PBXContainerItemProxy */;
 		};
+		2261EE0A28575EAC0031FEE6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2261EE0528575E610031FEE6 /* cargo_ios */;
+			targetProxy = 2261EE0928575EAC0031FEE6 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -280,7 +315,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -311,7 +346,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -326,6 +361,33 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		2261EE0728575E610031FEE6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEBUGGING_SYMBOLS = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = WU3FS28JLY;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				OTHER_CFLAGS = "";
+				OTHER_LDFLAGS = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		2261EE0828575E610031FEE6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = WU3FS28JLY;
+				OTHER_CFLAGS = "";
+				OTHER_LDFLAGS = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
 		};
@@ -522,6 +584,15 @@
 			buildConfigurations = (
 				225800C52850CF9A00D0F075 /* Debug */,
 				225800C62850CF9A00D0F075 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2261EE0628575E610031FEE6 /* Build configuration list for PBXLegacyTarget "cargo_ios" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2261EE0728575E610031FEE6 /* Debug */,
+				2261EE0828575E610031FEE6 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

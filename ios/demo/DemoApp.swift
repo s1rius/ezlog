@@ -13,23 +13,26 @@ struct DemoApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView().onAppear {
-                print("hello world")
+                pthread_setname_np("main")
                 ezlogInit()
                 let dirPath = URL.documents.appendingPathComponent("ezlog").relativePath
-                print(FileManager.default.fileExists(atPath: dirPath))
                 let config = EZLogConfig(level: Level.trace,
                                          dirPath: dirPath,
                                          name: "demo",
                                          keepDays: 7,
                                          maxSize: 150*1024,
-                                         compress: CompressKind.ZLIB,
+                                         compress: CompressKind.NONE,
                                          compressLevel: CompressLevel.DEFAULT,
-                                         encrypt: EncryptKind.AES128GCM,
+                                         encrypt: EncryptKind.NONE,
                                          encryptKey: [UInt8]("a secret key!!!!".utf8),
                                          encryptNonce: [UInt8]("unique nonce".utf8))
                 let logger = EZLogger(config: config)
                 
                 logger.debug("first blood")
+                DispatchQueue(label: "ezlog queue").async {
+                    pthread_setname_np("ezlog-1")
+                    logger.debug(String(format: "background log %@", Thread.current.name!))
+                }
             }
         }
     }

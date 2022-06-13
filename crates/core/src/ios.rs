@@ -87,6 +87,8 @@ pub unsafe extern "C" fn ezlog_log(
         .level(level)
         .target(target)
         .content(content)
+        .thread_id(thread_id::get())
+        .thread_name(thread_name::get())
         .build();
     log(record)
 }

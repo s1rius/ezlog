@@ -37,5 +37,9 @@ public class EZLogger {
         EZLog._log(loggerName, ERROR, tag, msg);
     }
 
+    public void flush() {
+        EZLog._flush(loggerName);
+    }
+
 
 }

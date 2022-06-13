@@ -13,11 +13,11 @@ public class EZLog {
     public static final int Aes128Gcm = 1;
     public static final int Aes256Gcm = 2;
 
-    public static final int Compress_Zlib = 1;
+    public static final int CompressZlib = 1;
 
-    public static final int Compress_Default = 0;
-    public static final int Compress_Fast = 1;
-    public static final int Compress_Best = 2;
+    public static final int CompressDefault = 0;
+    public static final int CompressFast = 1;
+    public static final int CompressBest = 2;
 
     private static volatile EZLogger defaultLogger;
 
@@ -58,6 +58,10 @@ public class EZLog {
 
     public static void flush() {
         flushAll();
+    }
+
+    public static void _flush(String logName) {
+        flush(logName);
     }
 
     /**
@@ -125,6 +129,12 @@ public class EZLog {
      * native flush all logger, sync content to file
      */
     private static native void flushAll();
+
+    /**
+     *
+     * @param logName flush logger's name
+     */
+    private static native void flush(String logName);
 
     static {
         System.loadLibrary("ezlog");

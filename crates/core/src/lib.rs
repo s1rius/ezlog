@@ -7,13 +7,12 @@ mod config;
 mod crypto;
 mod errors;
 mod events;
+mod thread_name;
 
 #[cfg(target_os = "android")]
 #[allow(non_snake_case)]
 mod android;
-
-// #[allow(non_snake_case)]
-// #[cfg(target_os = "ios")]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 mod ios;
 
 pub use self::config::EZLogConfig;
