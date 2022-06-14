@@ -19,7 +19,7 @@ byteorder = "1"
 flate2 = "1.0"
 aead = "0.4.3"
 aes-gcm = "0.9.4"
-time = { version = "0.3", default-features = false, features = ["formatting"] }
+time = { version = "0.3", default-features = false, features = ["formatting", "parsing", "macros"] }
 crossbeam-channel = "0.5"
 thread-id = "4.0.0"
 

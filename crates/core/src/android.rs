@@ -109,7 +109,11 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_flushAll(_: JNIEnv, _: JClass) 
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_flush(env: JNIEnv, _: JClass, j_log_name: JString) {
+pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_flush(
+    env: JNIEnv,
+    _: JClass,
+    j_log_name: JString,
+) {
     let log_name: String = env
         .get_string(j_log_name)
         .map(|name| name.into())

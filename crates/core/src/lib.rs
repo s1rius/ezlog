@@ -165,6 +165,9 @@ pub(crate) fn init_receiver() {
                     EZMsg::FlushAll() => get_map().values_mut().for_each(|item| {
                         item.flush().ok();
                     }),
+                    EZMsg::Trim() => {
+                        get_map().values().for_each(|logger| logger.trim());
+                    }
                 },
                 Err(err) => {
                     event!(channel_recv_err err);
@@ -227,6 +230,7 @@ pub enum EZMsg {
     Record(EZRecord),
     ForceFlush(String),
     FlushAll(),
+    Trim(),
 }
 
 pub struct EZLogger {
@@ -424,6 +428,35 @@ impl EZLogger {
 
     fn flush(&mut self) -> std::result::Result<(), io::Error> {
         self.appender.flush()
+    }
+
+    fn trim(&self) {
+        match fs::read_dir(&self.config.dir_path) {
+            Ok(dir) => {
+                for file in dir {
+                    match file {
+                        Ok(file) => {
+                            if let Some(name) = file.file_name().to_str() {
+                                match self.config.is_file_out_of_date(name) {
+                                    Ok(out_of_date) => {
+                                        if out_of_date {
+                                            fs::remove_file(file.path()).unwrap_or_else(|e| {
+                                                event!(trime_logger_err format!("remove file err: {}", e))
+                                            });
+                                        }
+                                    }
+                                    Err(e) => {
+                                        event!(trime_logger_err format!("judge file is out of date error: {}", e))
+                                    }
+                                }
+                            };
+                        }
+                        Err(e) => event!(trime_logger_err format!("traversal file error: {}", e)),
+                    }
+                }
+            }
+            Err(e) => event!(trime_logger_err format!("read dir error: {}", e)),
+        }
     }
 }
 

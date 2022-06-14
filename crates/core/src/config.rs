@@ -7,12 +7,15 @@ use std::{
 };
 
 use memmap2::{MmapMut, MmapOptions};
-use time::{format_description, Duration, OffsetDateTime};
+use time::{format_description, Date, Duration, OffsetDateTime};
 
 use crate::{
-    errors::ParseError, CipherKind, CompressKind, CompressLevel, Level, Version,
-    DEFAULT_LOG_FILE_SUFFIX, DEFAULT_LOG_NAME, DEFAULT_MAX_LOG_SIZE,
+    errors::{IllegalArgumentError, LogError, ParseError},
+    CipherKind, CompressKind, CompressLevel, Level, Version, DEFAULT_LOG_FILE_SUFFIX,
+    DEFAULT_LOG_NAME, DEFAULT_MAX_LOG_SIZE,
 };
+
+const TIME_FORMAT: &str = "[year]_[month]_[day]";
 
 #[derive(Debug, Clone)]
 pub struct EZLogConfig {
@@ -43,16 +46,16 @@ pub struct EZLogConfig {
 }
 
 impl EZLogConfig {
-    pub fn now_file_name(&self, now: OffsetDateTime) -> crate::Result<String> {
-        let format = format_description::parse("[year]_[month]_[day]").map_err(|_e| {
+    pub(crate) fn now_file_name(&self, now: OffsetDateTime) -> crate::Result<String> {
+        let format = format_description::parse(TIME_FORMAT).map_err(|_e| {
             crate::errors::LogError::Parse(ParseError::new(format!(
-                "Unable to create a formatter; this is a bug in tracing-appender: {}",
+                "Unable to create a formatter; this is a bug in EZLogConfig#now_file_name: {}",
                 _e
             )))
         })?;
         let date = now.format(&format).map_err(|_| {
             crate::errors::LogError::Parse(ParseError::new(
-                "Unable to format date; this is a bug in tracing-appender".to_string(),
+                "Unable to format date; this is a bug in EZLogConfig#now_file_name".to_string(),
             ))
         })?;
         let str = format!("{}_{}.{}", self.name, date, self.file_suffix);
@@ -71,10 +74,57 @@ impl EZLogConfig {
         Ok((path, mmap))
     }
 
-    pub fn log_id(&self) -> u64 {
+    pub(crate) fn log_id(&self) -> u64 {
         let mut hasher = DefaultHasher::new();
         self.name.hash(&mut hasher);
         hasher.finish()
+    }
+
+    pub(crate) fn is_file_out_of_date(&self, file_name: &str) -> crate::Result<bool> {
+        let log_date = self.read_file_name_as_date(file_name)?;
+        let now = OffsetDateTime::now_utc();
+        Ok(self.is_out_of_date(log_date, now))
+    }
+
+    pub(crate) fn read_file_name_as_date(&self, file_name: &str) -> crate::Result<OffsetDateTime> {
+        const SAMPLE: &str = "2022_02_22";
+        if !file_name.starts_with(format!("{}_", &self.name).as_str()) {
+            return Err(LogError::IllegalArgument(IllegalArgumentError::new(
+                format!("file name is not start with name {}", file_name),
+            )));
+        }
+        if !file_name.len() < self.name.len() + SAMPLE.len() + 1 {
+            return Err(LogError::IllegalArgument(IllegalArgumentError::new(
+                format!("file name length is not right {}", file_name),
+            )));
+        }
+        let date_str = &file_name[self.name.len() + 1..self.name.len() + 1 + SAMPLE.len()];
+        let format = format_description::parse(
+            TIME_FORMAT,).map_err(|_e| {
+            crate::errors::LogError::Parse(ParseError::new(format!(
+                "Unable to create a formatter; this is a bug in EZLogConfig#if_file_out_of_date: {} {}",
+                file_name, _e
+            )))
+        })?;
+        let log_date = Date::parse(date_str, &format).map_err(|_e| {
+            crate::errors::LogError::Parse(ParseError::new(format!(
+                "Unable to parse date; this is a bug in EZLogConfig#if_file_out_of_date: {} {}",
+                file_name, _e
+            )))
+        })?;
+        Ok(log_date.midnight().assume_utc())
+    }
+
+    fn is_out_of_date(&self, target: OffsetDateTime, now: OffsetDateTime) -> bool {
+        if target.year() < now.year() {
+            return true;
+        }
+
+        if target.year() == now.year() && target + self.duration < now {
+            return true;
+        }
+
+        false
     }
 }
 
@@ -217,4 +267,48 @@ pub(crate) fn internal_create_log_file(path: &PathBuf, max_size: u64) -> crate::
         file.set_len(len)?;
     }
     Ok(file)
+}
+
+#[cfg(test)]
+mod tests {
+
+    use time::{macros::datetime, Duration, OffsetDateTime};
+    use crate::EZLogConfigBuilder;
+
+    #[test]
+    fn test_is_out_of_date() {
+        let config = EZLogConfigBuilder::default()
+            .duration(Duration::days(1))
+            .build();
+
+        assert!(!config.is_out_of_date(OffsetDateTime::now_utc(), OffsetDateTime::now_utc()));
+        assert!(config.is_out_of_date(
+            datetime!(2022-06-13 0:00 UTC),
+            datetime!(2022-06-14 0:01 UTC)
+        ));
+        assert!(!config.is_out_of_date(
+            datetime!(2022-06-13 0:00 UTC),
+            datetime!(2022-06-14 0:00 UTC)
+        ))
+    }
+
+    #[test]
+    fn test_read_file_name_as_date() {
+        let config = EZLogConfigBuilder::default()
+            .name("test".to_string())
+            .build();
+
+        assert!(config.read_file_name_as_date("test2019_06_13.log").is_err());
+        assert!(config.read_file_name_as_date("test_201_06_13.log").is_err());
+        assert!(config
+            .read_file_name_as_date("test_2019_06_1X.log")
+            .is_err());
+        assert!(config.read_file_name_as_date("test_2019_06_13.log").is_ok());
+        assert!(config
+            .read_file_name_as_date("test_2019_06_13.1.log")
+            .is_ok());
+        assert!(config
+            .read_file_name_as_date("test_2019_06_13.123.mmap")
+            .is_ok());
+    }
 }

@@ -71,6 +71,9 @@ macro_rules! event {
     (channel_recv_err $e:tt) => {
         println!("channel err {}", $e)
     };
+    (trime_logger_err $e:expr) => {
+        println!("channel err {}", $e)
+    };
 }
 
 #[cfg(test)]
