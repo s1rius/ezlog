@@ -126,6 +126,15 @@ impl EZLogConfig {
 
         false
     }
+
+    pub(crate) fn is_file_same_date(&self, file_name: &str, date: Date) -> bool {
+        if let Ok(log_date) = self.read_file_name_as_date(file_name) {
+            if log_date.date() == date {
+                return true;
+            }
+        }
+        false
+    }
 }
 
 impl Default for EZLogConfig {

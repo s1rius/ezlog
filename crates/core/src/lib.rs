@@ -27,6 +27,7 @@ use errors::IllegalArgumentError;
 use errors::{CryptoError, LogError, ParseError};
 use log::Record;
 use memmap2::MmapMut;
+use std::ffi::OsString;
 use std::{
     cmp,
     collections::{hash_map::DefaultHasher, HashMap},
@@ -42,6 +43,7 @@ use std::{
     thread,
 };
 use time::format_description::well_known::Rfc3339;
+use time::Date;
 use time::{Duration, OffsetDateTime};
 
 pub const DEFAULT_LOG_NAME: &str = "default";
@@ -469,6 +471,28 @@ impl EZLogger {
             }
             Err(e) => event!(trime_logger_err format!("read dir error: {}", e)),
         }
+    }
+
+    pub fn get_log_files_for_date(&self, date: Date) -> Vec<OsString> {
+        let mut logs = Vec::new();
+        match fs::read_dir(&self.config.dir_path) {
+            Ok(dir) => {
+                for file in dir {
+                    match file {
+                        Ok(file) => {
+                            if let Some(name) = file.file_name().to_str() {
+                                if self.config.is_file_same_date(name, date) {
+                                    logs.push(file.path().into_os_string());
+                                }
+                            };
+                        }
+                        Err(e) => event!(get_log_files_err format!("traversal file error: {}", e)),
+                    }
+                }
+            }
+            Err(e) => event!(get_log_files_err format!("read dir error: {}", e)),
+        }
+        logs
     }
 }
 
