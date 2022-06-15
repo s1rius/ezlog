@@ -21,8 +21,9 @@ pub use self::config::EZLogConfigBuilder;
 use appender::EZMmapAppender;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use compress::ZlibCodec;
-use crossbeam_channel::{Receiver, Sender, TrySendError};
+use crossbeam_channel::{Sender, TrySendError};
 use crypto::{Aes128Gcm, Aes256Gcm};
+use errors::IllegalArgumentError;
 use errors::{CryptoError, LogError, ParseError};
 use log::Record;
 use memmap2::MmapMut;
@@ -56,8 +57,8 @@ pub(crate) const RECORD_SIGNATURE_END: u8 = 0x21;
 pub(crate) const DEFAULT_MAX_LOG_SIZE: u64 = 150 * 1024;
 pub const V1_LOG_HEADER_SIZE: usize = 10;
 
-static mut CHANNEL: MaybeUninit<(Sender<EZMsg>, Receiver<EZMsg>)> = MaybeUninit::uninit();
-static CHANNEL_INIT: Once = Once::new();
+static mut SENDER: MaybeUninit<Sender<EZMsg>> = MaybeUninit::uninit();
+static SENDER_INIT: Once = Once::new();
 
 static mut LOG_MAP: MaybeUninit<HashMap<u64, EZLogger>> = MaybeUninit::uninit();
 static LOG_MAP_INIT: Once = Once::new();
@@ -65,16 +66,6 @@ static LOG_MAP_INIT: Once = Once::new();
 static ONE_RECEIVER: Once = Once::new();
 
 type Result<T> = std::result::Result<T, LogError>;
-
-#[inline]
-fn get_channel() -> &'static (Sender<EZMsg>, Receiver<EZMsg>) {
-    CHANNEL_INIT.call_once(|| unsafe {
-        ptr::write(CHANNEL.as_mut_ptr(), crossbeam_channel::unbounded());
-        event!(init);
-    });
-
-    unsafe { &*CHANNEL.as_ptr() }
-}
 
 #[inline]
 fn get_map() -> &'static mut HashMap<u64, EZLogger> {
@@ -86,8 +77,11 @@ fn get_map() -> &'static mut HashMap<u64, EZLogger> {
 }
 
 #[inline]
-fn get_sender() -> Sender<EZMsg> {
-    get_channel().0.clone()
+fn get_sender() -> Result<&'static Sender<EZMsg>> {
+    if SENDER_INIT.is_completed() {
+        return Ok(unsafe { &*SENDER.as_ptr() });
+    }
+    Err(LogError::IllegalArgument(IllegalArgumentError::new("sender not init".to_string())))
 }
 
 /// 初始化
@@ -97,8 +91,14 @@ pub fn init() {
 
 pub(crate) fn init_receiver() {
     ONE_RECEIVER.call_once(|| {
-        thread::spawn(|| loop {
-            match get_channel().1.recv() {
+        let (sender, receiver) = crossbeam_channel::unbounded::<EZMsg>();
+        SENDER_INIT.call_once(|| unsafe {
+            ptr::write(SENDER.as_mut_ptr(), sender);
+            event!(init "sender assigned");
+        });
+
+        match thread::Builder::new().name("ezlog_task".to_string()).spawn(move || loop {
+            match receiver.recv() {
                 Ok(msg) => match msg {
                     EZMsg::CreateLogger(config) => {
                         let name = config.name.clone();
@@ -173,14 +173,21 @@ pub(crate) fn init_receiver() {
                     event!(channel_recv_err err);
                 }
             }
-        });
+        }) {
+            Ok(_) => {
+                event!(init "receiver started");
+            },
+            Err(e) => {
+                event!(init format!("init error {}", e));
+            },
+        }
     });
 }
 
 pub fn create_log(config: EZLogConfig) {
     let name = config.name.clone();
     let msg = EZMsg::CreateLogger(config);
-    if post_msg(msg).is_some() {
+    if post_msg(msg) {
         event!(channel_send_log_create name);
     }
 }
@@ -188,29 +195,34 @@ pub fn create_log(config: EZLogConfig) {
 pub fn log(record: EZRecord) {
     let id = &record.id();
     let msg = EZMsg::Record(record);
-    if post_msg(msg).is_some() {
+    if post_msg(msg) {
         event!(channel_send_record id)
     }
 }
 
 pub fn flush(log_name: &str) {
     let msg = EZMsg::ForceFlush(log_name.to_string());
-    if post_msg(msg).is_some() {
+    if post_msg(msg) {
         event!(channel_send_flush log_name)
     }
 }
 
 pub fn flush_all() {
     let msg = EZMsg::FlushAll();
-    if post_msg(msg).is_some() {
+    if post_msg(msg) {
         event!(channel_send_flush_all)
     }
 }
 
-pub fn post_msg(msg: EZMsg) -> Option<()> {
-    match get_sender().try_send(msg).map_err(on_channel_send_err) {
-        Ok(_) => Some(()),
-        Err(_) => None,
+pub fn post_msg(msg: EZMsg) -> bool {
+    match get_sender()  {
+        Ok(sender) => {
+            sender.try_send(msg).map_err(on_channel_send_err).is_ok()
+        },
+        Err(err) => {
+            event!(channel_send_err err);
+            false
+        },
     }
 }
 

@@ -2,8 +2,8 @@
 ///
 #[macro_export]
 macro_rules! event {
-    (init) => {
-        println!("init")
+    (init $init_option:expr) => {
+        println!("init {}", $init_option)
     };
     (map_create) => {
         println!("log map create")
@@ -65,14 +65,17 @@ macro_rules! event {
     (channel_send_flush_all) => {
         println!("send flush all msg")
     };
-    (channel_send_err $e:tt) => {
+    (channel_send_err $e:expr) => {
         println!("channel err {}", $e)
     };
-    (channel_recv_err $e:tt) => {
+    (channel_recv_err $e:expr) => {
         println!("channel err {}", $e)
     };
     (trime_logger_err $e:expr) => {
         println!("channel err {}", $e)
+    };
+    (get_log_files_err $e:expr) => {
+        println!("get log files err {}", $e)
     };
 }
 

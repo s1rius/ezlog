@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
-members = ["crates/*"]
+members = ["crates/cli", "crates/core"]
 
 # https://github.com/johnthagen/min-sized-rust
 [profile.release]
@@ -16,7 +16,6 @@ codegen-units = 1   # Reduce number of codegen units to increase optimizations.
 
 [dependencies]
 ezlog = {path = "crates/core"}
-memmap2 = "0.5.3"
 log = "0.4.17"
 time = { version = "0.3", default-features = false, features = ["formatting"] }
 

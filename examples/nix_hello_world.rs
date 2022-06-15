@@ -17,6 +17,7 @@ static LOGGER: SimpleLogger = SimpleLogger;
 pub fn main() {
     println!("start");
     ezlog::init();
+    thread::sleep(Duration::from_secs(5));
     log::set_logger(&LOGGER)
         .map(|()| log::set_max_level(LevelFilter::Trace))
         .expect("log set error");
@@ -35,7 +36,7 @@ pub fn main() {
     ezlog::flush(ezlog::DEFAULT_LOG_NAME);
     println!("end");
 
-    thread::sleep(Duration::from_secs(3));
+    thread::sleep(Duration::from_secs(1));
 
     read_log_file_rewrite();
 }
@@ -103,7 +104,6 @@ fn read_log_file_rewrite() {
             Ok(buf) => {
                 println!("{:?}", &buf);
                 w.write(&buf).unwrap();
-                w.write(b"\n").unwrap();
             }
             Err(_) => {
                 end = true;

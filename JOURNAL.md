@@ -20,6 +20,7 @@ lean how to write ffi code
 - [rust ffi doc](https://doc.rust-lang.org/nomicon/ffi.html)
 - [how to call rust functions from c on linux h37](https://dev.to/dandyvica/how-to-call-rust-functions-from-c-on-linux-h37)
 - [how does rust ffi pass parameters of type vec u8](https://users.rust-lang.org/t/how-does-rust-ffi-pass-parameters-of-type-vec-u8/55118)
+- [How to return byte array from rust to c](https://users.rust-lang.org/t/how-to-return-byte-array-from-rust-function-to-ffi-c/18136)
 
 ### for java
 
@@ -44,11 +45,6 @@ no easy way to get rust ffi binding code from java file, I need implement them b
 - [Building and Deploying a Rust library on iOS via Mozilla](https://mozilla.github.io/firefox-browser-architecture/experiments/2017-09-06-rust-on-ios.html)
 - [Rust on iOS and Mac Catalyst](https://nadim.computer/posts/2022-02-11-maccatalyst.html)
 - [Cargo Xcode](https://crates.io/crates/cargo-xcode)
-
-
-
-[How to return byte array from rust to c](https://users.rust-lang.org/t/how-to-return-byte-array-from-rust-function-to-ffi-c/18136)
-
 
 
 ### build issue

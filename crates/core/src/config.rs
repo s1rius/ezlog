@@ -272,8 +272,8 @@ pub(crate) fn internal_create_log_file(path: &PathBuf, max_size: u64) -> crate::
 #[cfg(test)]
 mod tests {
 
-    use time::{macros::datetime, Duration, OffsetDateTime};
     use crate::EZLogConfigBuilder;
+    use time::{macros::datetime, Duration, OffsetDateTime};
 
     #[test]
     fn test_is_out_of_date() {
