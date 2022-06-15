@@ -60,12 +60,11 @@ pub(crate) const DEFAULT_MAX_LOG_SIZE: u64 = 150 * 1024;
 pub const V1_LOG_HEADER_SIZE: usize = 10;
 
 static mut SENDER: MaybeUninit<Sender<EZMsg>> = MaybeUninit::uninit();
-static SENDER_INIT: Once = Once::new();
 
 static mut LOG_MAP: MaybeUninit<HashMap<u64, EZLogger>> = MaybeUninit::uninit();
 static LOG_MAP_INIT: Once = Once::new();
 
-static ONE_RECEIVER: Once = Once::new();
+static ONCE_INIT: Once = Once::new();
 
 type Result<T> = std::result::Result<T, LogError>;
 
@@ -80,10 +79,12 @@ fn get_map() -> &'static mut HashMap<u64, EZLogger> {
 
 #[inline]
 fn get_sender() -> Result<&'static Sender<EZMsg>> {
-    if SENDER_INIT.is_completed() {
+    if ONCE_INIT.is_completed() {
         return Ok(unsafe { &*SENDER.as_ptr() });
     }
-    Err(LogError::IllegalArgument(IllegalArgumentError::new("sender not init".to_string())))
+    Err(LogError::IllegalArgument(IllegalArgumentError::new(
+        "sender not init".to_string(),
+    )))
 }
 
 /// 初始化
@@ -92,96 +93,98 @@ pub fn init() {
 }
 
 pub(crate) fn init_receiver() {
-    ONE_RECEIVER.call_once(|| {
+    ONCE_INIT.call_once(|| {
         let (sender, receiver) = crossbeam_channel::unbounded::<EZMsg>();
-        SENDER_INIT.call_once(|| unsafe {
+        unsafe {
             ptr::write(SENDER.as_mut_ptr(), sender);
-            event!(init "sender assigned");
-        });
+        };
+        event!(init "sender assigned");
 
-        match thread::Builder::new().name("ezlog_task".to_string()).spawn(move || loop {
-            match receiver.recv() {
-                Ok(msg) => match msg {
-                    EZMsg::CreateLogger(config) => {
-                        let name = config.name.clone();
-                        match EZLogger::new(config) {
-                            Ok(log) => {
-                                let log_id = log.config.log_id();
-                                let map = get_map();
-                                map.insert(log_id, log);
-                                event!(log_create name);
-                            }
-                            Err(e) => {
-                                event!(log_create_fail name, e);
-                            }
-                        };
-                    }
-                    EZMsg::Record(record) => {
-                        let log = match get_map().get_mut(&record.log_id()) {
-                            Some(l) => l,
-                            None => {
-                                event!(logger_not_match record.log_id());
+        match thread::Builder::new()
+            .name("ezlog_task".to_string())
+            .spawn(move || loop {
+                match receiver.recv() {
+                    Ok(msg) => match msg {
+                        EZMsg::CreateLogger(config) => {
+                            let name = config.name.clone();
+                            match EZLogger::new(config) {
+                                Ok(log) => {
+                                    let log_id = log.config.log_id();
+                                    let map = get_map();
+                                    map.insert(log_id, log);
+                                    event!(log_create name);
+                                }
+                                Err(e) => {
+                                    event!(log_create_fail name, e);
+                                }
+                            };
+                        }
+                        EZMsg::Record(record) => {
+                            let log = match get_map().get_mut(&record.log_id()) {
+                                Some(l) => l,
+                                None => {
+                                    event!(logger_not_match record.log_id());
+                                    continue;
+                                }
+                            };
+                            if log.config.level < record.level {
+                                event!(
+                                    record_filter_out & record.id(),
+                                    &record.level,
+                                    &log.config.level
+                                );
                                 continue;
                             }
-                        };
-                        if log.config.level < record.level {
-                            event!(
-                                record_filter_out & record.id(),
-                                &record.level,
-                                &log.config.level
-                            );
-                            continue;
-                        }
-                        match log.append(&record) {
-                            Ok(_) => {
-                                event!(record_complete record.id());
+                            match log.append(&record) {
+                                Ok(_) => {
+                                    event!(record_complete record.id());
+                                }
+                                Err(err) => match err {
+                                    LogError::IoError(err) => {
+                                        event!(io_error record.id(), err)
+                                    }
+                                    LogError::Compress(err) => {
+                                        event!(compress_fail record.id(), err)
+                                    }
+                                    LogError::Crypto(c) => {
+                                        event!(encrypt_fail record.id(), c)
+                                    }
+                                    _ => {
+                                        event!(unexpect_fail record.id(), err)
+                                    }
+                                },
                             }
-                            Err(err) => match err {
-                                LogError::IoError(err) => {
-                                    event!(io_error record.id(), err)
-                                }
-                                LogError::Compress(err) => {
-                                    event!(compress_fail record.id(), err)
-                                }
-                                LogError::Crypto(c) => {
-                                    event!(encrypt_fail record.id(), c)
-                                }
-                                _ => {
-                                    event!(unexpect_fail record.id(), err)
-                                }
-                            },
                         }
+                        EZMsg::ForceFlush(name) => {
+                            let id = log_id(&name);
+                            let log = match get_map().get_mut(&id) {
+                                Some(l) => l,
+                                None => {
+                                    event!(logger_not_match name);
+                                    continue;
+                                }
+                            };
+                            log.appender.flush().ok();
+                            event!(logger_force_flush name);
+                        }
+                        EZMsg::FlushAll() => get_map().values_mut().for_each(|item| {
+                            item.flush().ok();
+                        }),
+                        EZMsg::Trim() => {
+                            get_map().values().for_each(|logger| logger.trim());
+                        }
+                    },
+                    Err(err) => {
+                        event!(channel_recv_err err);
                     }
-                    EZMsg::ForceFlush(name) => {
-                        let id = log_id(&name);
-                        let log = match get_map().get_mut(&id) {
-                            Some(l) => l,
-                            None => {
-                                event!(logger_not_match name);
-                                continue;
-                            }
-                        };
-                        log.appender.flush().ok();
-                        event!(logger_force_flush name);
-                    }
-                    EZMsg::FlushAll() => get_map().values_mut().for_each(|item| {
-                        item.flush().ok();
-                    }),
-                    EZMsg::Trim() => {
-                        get_map().values().for_each(|logger| logger.trim());
-                    }
-                },
-                Err(err) => {
-                    event!(channel_recv_err err);
                 }
-            }
-        }) {
+            }) {
             Ok(_) => {
                 event!(init "receiver started");
-            },
+            }
             Err(e) => {
                 event!(init format!("init error {}", e));
-            },
+            }
         }
     });
 }
@@ -217,14 +220,12 @@ pub fn flush_all() {
 }
 
 pub fn post_msg(msg: EZMsg) -> bool {
-    match get_sender()  {
-        Ok(sender) => {
-            sender.try_send(msg).map_err(on_channel_send_err).is_ok()
-        },
+    match get_sender() {
+        Ok(sender) => sender.try_send(msg).map_err(on_channel_send_err).is_ok(),
         Err(err) => {
             event!(channel_send_err err);
             false
-        },
+        }
     }
 }
 
