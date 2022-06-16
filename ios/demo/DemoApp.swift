@@ -23,9 +23,9 @@ struct DemoApp: App {
                                          maxSize: 150*1024,
                                          compress: CompressKind.NONE,
                                          compressLevel: CompressLevel.DEFAULT,
-                                         encrypt: EncryptKind.NONE,
-                                         encryptKey: [UInt8]("a secret key!!!!".utf8),
-                                         encryptNonce: [UInt8]("unique nonce".utf8))
+                                         cipher: Cipher.NONE,
+                                         cipherKey: [UInt8]("a secret key!!!!".utf8),
+                                         cipherNonce: [UInt8]("unique nonce".utf8))
                 let logger = EZLogger(config: config)
                 
                 logger.debug("first blood")

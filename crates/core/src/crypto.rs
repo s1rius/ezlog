@@ -15,7 +15,7 @@ impl Aes256Gcm {
     pub fn new(key: &[u8], nonce: &[u8]) -> crate::Result<Self> {
         if key.len() != 32 {
             return Err(IllegalArgumentError::new(format!(
-                "key must be 32 bytes long {}",
+                "key must be 32 bytes long, but current len = {}",
                 key.len()
             ))
             .into());
@@ -23,7 +23,7 @@ impl Aes256Gcm {
 
         if nonce.len() != 12 {
             return Err(IllegalArgumentError::new(format!(
-                "nonce must be 12 bytes long {}",
+                "nonce must be 12 bytes long, but current len = {}",
                 nonce.len()
             ))
             .into());

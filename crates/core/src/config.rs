@@ -11,7 +11,7 @@ use time::{format_description, Date, Duration, OffsetDateTime};
 
 use crate::{
     errors::{IllegalArgumentError, LogError, ParseError},
-    CipherKind, CompressKind, CompressLevel, Level, Version, DEFAULT_LOG_FILE_SUFFIX,
+    CipherKind, CompressKind, CompressLevel, Header, Level, Version, DEFAULT_LOG_FILE_SUFFIX,
     DEFAULT_LOG_NAME, DEFAULT_MAX_LOG_SIZE,
 };
 
@@ -242,6 +242,13 @@ impl EZLogConfigBuilder {
 
     pub fn cipher_nonce(mut self, cipher_nonce: Vec<u8>) -> Self {
         self.config.cipher_nonce = Some(cipher_nonce);
+        self
+    }
+
+    pub fn from_header(mut self, header: &Header) -> Self {
+        self.config.version = header.version;
+        self.config.compress = header.compress;
+        self.config.cipher = header.cipher;
         self
     }
 

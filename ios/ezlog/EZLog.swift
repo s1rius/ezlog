@@ -54,11 +54,11 @@ private func create(config: EZLogConfig) {
                      UInt32(config.keepDays),
                      UInt8(config.compress?.rawValue ?? 0),
                      UInt8(config.compressLevel?.rawValue ?? 0),
-                     UInt8(config.encrypt?.rawValue ?? 0),
-                     config.encryptKey ?? [],
-                     UInt(config.encryptKey?.count ?? 0),
-                     config.encryptNonce ?? [],
-                     UInt(config.encryptNonce?.count ?? 0))
+                     UInt8(config.cipher?.rawValue ?? 0),
+                     config.cipherKey ?? [],
+                     UInt(config.cipherKey?.count ?? 0),
+                     config.cipherNonce ?? [],
+                     UInt(config.cipherNonce?.count ?? 0))
 }
 
 public func ezlogInit() {
@@ -98,7 +98,7 @@ public enum CompressKind: Int, Codable {
     case ZLIB = 1
 }
 
-public enum EncryptKind: Int {
+public enum Cipher: Int {
     case NONE = 0
     case AES128GCM
     case AES256GCM
@@ -118,9 +118,9 @@ public struct EZLogConfig {
     var maxSize: Int
     var compress: CompressKind? = CompressKind.NONE
     var compressLevel: CompressLevel? = CompressLevel.DEFAULT
-    var encrypt: EncryptKind? = EncryptKind.NONE
-    var encryptKey: [UInt8]? = []
-    var encryptNonce: [UInt8]? = []
+    var cipher: Cipher? = Cipher.NONE
+    var cipherKey: [UInt8]? = []
+    var cipherNonce: [UInt8]? = []
     
     public init(
         level: Level,
@@ -130,9 +130,9 @@ public struct EZLogConfig {
         maxSize: Int,
         compress: CompressKind?,
         compressLevel: CompressLevel?,
-        encrypt: EncryptKind?,
-        encryptKey: [UInt8]?,
-        encryptNonce: [UInt8]?
+        cipher: Cipher?,
+        cipherKey: [UInt8]?,
+        cipherNonce: [UInt8]?
     ) {
         self.level = level
         self.dirPath = dirPath
@@ -141,9 +141,9 @@ public struct EZLogConfig {
         self.maxSize = maxSize
         self.compress = compress ?? CompressKind.NONE
         self.compressLevel = compressLevel ?? CompressLevel.DEFAULT
-        self.encrypt = encrypt ?? EncryptKind.NONE
-        self.encryptKey = encryptKey ?? []
-        self.encryptNonce = encryptNonce ?? []
+        self.cipher = cipher ?? Cipher.NONE
+        self.cipherKey = cipherKey ?? []
+        self.cipherNonce = cipherNonce ?? []
     }
     
     
@@ -185,18 +185,18 @@ public struct EZLogConfig {
         name: String,
         keepDays: Int,
         maxSize: Int,
-        encrypt: EncryptKind?,
-        encryptKey: [UInt8]?,
-        encryptNonce: [UInt8]?
+        cipher: Cipher?,
+        cipherKey: [UInt8]?,
+        cipherNonce: [UInt8]?
     ) {
         self.level = level
         self.dirPath = dirPath
         self.name = name
         self.keepDays = keepDays
         self.maxSize = maxSize
-        self.encrypt = encrypt ?? EncryptKind.NONE
-        self.encryptKey = encryptKey ?? []
-        self.encryptNonce = encryptNonce ?? []
+        self.cipher = cipher ?? Cipher.NONE
+        self.cipherKey = cipherKey ?? []
+        self.cipherNonce = cipherNonce ?? []
     }
     
     

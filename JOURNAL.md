@@ -1,4 +1,5 @@
 
+
 ## log file format design
 
 没有设计好压缩加密每一个log的数据格式，导致解析出错。
@@ -49,4 +50,13 @@ no easy way to get rust ffi binding code from java file, I need implement them b
 
 ### build issue
 
+- build release fail
+
 release flag make build fail, build debug first, then enable release flag.
+
+- build std fail
+
+no function or associated item named `set_name` found for struct `sys::unix::thread::Thread` in the current scope
+could not compile `std`
+
+

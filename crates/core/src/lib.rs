@@ -259,7 +259,7 @@ impl EZLogger {
     pub fn new(config: EZLogConfig) -> Result<Self> {
         let rc_conf = Rc::new(config);
         let appender = EZMmapAppender::new(Rc::clone(&rc_conf))?;
-        let compression = EZLogger::create_compress(&rc_conf)?;
+        let compression = EZLogger::create_compress(&rc_conf);
         let cryptor = EZLogger::create_cryptor(&rc_conf)?;
 
         Ok(Self {
@@ -293,46 +293,11 @@ impl EZLogger {
         }
     }
 
-    pub fn create_decryptor(config: &EZLogConfig) -> Result<Option<Box<dyn Decryptor>>> {
-        if let Some(key) = &config.cipher_key {
-            if let Some(nonce) = &config.cipher_nonce {
-                match config.cipher {
-                    CipherKind::AES128GCM => {
-                        let encryptor = Aes128Gcm::new(key, nonce)?;
-                        Ok(Some(Box::new(encryptor)))
-                    }
-                    CipherKind::AES256GCM => {
-                        let encryptor = Aes256Gcm::new(key, nonce)?;
-                        Ok(Some(Box::new(encryptor)))
-                    }
-                    CipherKind::NONE => Ok(None),
-                    CipherKind::UNKNOWN => Ok(None),
-                }
-            } else {
-                Ok(None)
-            }
-        } else {
-            Ok(None)
-        }
-    }
-
-    pub fn create_compress(
-        config: &EZLogConfig,
-    ) -> std::result::Result<Option<Box<dyn Compress>>, LogError> {
+    pub fn create_compress(config: &EZLogConfig) -> Option<Box<dyn Compress>> {
         match config.compress {
-            CompressKind::ZLIB => Ok(Some(Box::new(ZlibCodec::new(&config.compress_level)))),
-            CompressKind::NONE => Ok(None),
-            CompressKind::UNKNOWN => Ok(None),
-        }
-    }
-
-    pub fn create_decompression(
-        config: &EZLogConfig,
-    ) -> std::result::Result<Option<Box<dyn Decompression>>, LogError> {
-        match config.compress {
-            CompressKind::ZLIB => Ok(Some(Box::new(ZlibCodec::new(&config.compress_level)))),
-            CompressKind::NONE => Ok(None),
-            CompressKind::UNKNOWN => Ok(None),
+            CompressKind::ZLIB => Some(Box::new(ZlibCodec::new(&config.compress_level))),
+            CompressKind::NONE => None,
+            CompressKind::UNKNOWN => None,
         }
     }
 
@@ -387,7 +352,15 @@ impl EZLogger {
         Ok(chunk)
     }
 
-    pub fn decode_from_read(&mut self, reader: &mut dyn Read) -> Result<Vec<u8>> {
+    pub fn decode(&mut self, reader: &mut dyn Read) -> Result<Vec<u8>> {
+        EZLogger::decode_from_read(reader, &self.compression, &self.cryptor)
+    }
+
+    pub fn decode_from_read(
+        reader: &mut dyn Read,
+        compression: &Option<Box<dyn Compress>>,
+        cryptor: &Option<Box<dyn Cryptor>>,
+    ) -> Result<Vec<u8>> {
         let start_sign = reader.read_u8()?;
         if RECORD_SIGNATURE_START != start_sign {
             return Err(LogError::Parse(ParseError::new(
@@ -408,17 +381,21 @@ impl EZLogger {
                 "record end sign error".to_string(),
             )));
         }
-        self.decode(&chunk)
+        EZLogger::decode_msg_content(&chunk, compression, cryptor)
     }
 
-    pub fn decode(&mut self, chunk: &[u8]) -> Result<Vec<u8>> {
+    pub fn decode_msg_content(
+        chunk: &[u8],
+        compression: &Option<Box<dyn Compress>>,
+        cryptor: &Option<Box<dyn Cryptor>>,
+    ) -> Result<Vec<u8>> {
         let mut buf = chunk.to_vec();
 
-        if let Some(decompression) = &self.compression {
+        if let Some(decompression) = compression {
             buf = decompression.decompress(&buf)?;
         }
 
-        if let Some(decryptor) = &self.cryptor {
+        if let Some(decryptor) = cryptor {
             buf = decryptor.decrypt(&buf)?;
         }
         Ok(buf)
@@ -1218,7 +1195,7 @@ mod tests {
             .seek(SeekFrom::Start(V1_LOG_HEADER_SIZE as u64))
             .unwrap();
 
-        let decode = logger.decode_from_read(&mut reader).unwrap();
+        let decode = logger.decode(&mut reader).unwrap();
         println!("{}", String::from_utf8(decode).unwrap())
     }
 

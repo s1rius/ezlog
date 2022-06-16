@@ -100,7 +100,7 @@ fn read_log_file_rewrite() {
             break;
         }
 
-        match logger.decode_from_read(&mut cursor) {
+        match logger.decode(&mut cursor) {
             Ok(buf) => {
                 println!("{:?}", &buf);
                 w.write(&buf).unwrap();
