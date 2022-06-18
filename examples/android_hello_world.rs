@@ -3,7 +3,7 @@ use ezlog::{
     DEFAULT_LOG_NAME,
 };
 
-#[cfg_attr(target_os = "android", ndk_glue::main(backtrace = "on"))]
+// #[cfg_attr(target_os = "android", ndk_glue::main(backtrace = "on"))]
 fn main() {
     init();
     let log_config = get_config();

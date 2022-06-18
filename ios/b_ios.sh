@@ -7,4 +7,4 @@ cargo +nightly build -Z build-std -p ezlog --release --lib --target aarch64-appl
 
 echo "\n"
 echo "cbindgen"
-cbindgen ../crates/core/src/ios.rs -l c > ezlog/ezlog.h
+# cbindgen --config cbindgen.toml ../crates/core/src/ios.rs > ezlog/ezlog.h

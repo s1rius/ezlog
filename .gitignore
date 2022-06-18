@@ -1,4 +1,5 @@
 /.build
+/.cargo
 /target
 /Cargo.lock
 .DS_Store

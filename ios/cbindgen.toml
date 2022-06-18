@@ -1,0 +1,22 @@
+# The language to output bindings in
+#
+# possible values: "C", "C++", "Cython"
+#
+# default: "C++"
+language = "C"
+
+
+# A list of feature names that should be used when running `cargo expand`. This
+# combines with `default_features` like in your `Cargo.toml`. Note that the features
+# listed here are features for the current crate being built, *not* the crates
+# being expanded. The crate's `Cargo.toml` must take care of enabling the
+# appropriate features in its dependencies
+#
+# default: []
+# features = ["cbindgen"]
+
+[ptr]
+# An optional string to decorate all pointers that are
+# required to be non null. Nullability is inferred from the Rust type: `&T`,
+# `&mut T` and `NonNull<T>` all require a valid pointer value.
+non_null_attribute = "_Nonnull"

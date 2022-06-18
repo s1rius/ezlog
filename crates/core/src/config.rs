@@ -1,5 +1,4 @@
 use std::{
-    collections::hash_map::DefaultHasher,
     env,
     fs::{self, File, OpenOptions},
     hash::{Hash, Hasher},
@@ -15,7 +14,7 @@ use crate::{
     DEFAULT_LOG_NAME, DEFAULT_MAX_LOG_SIZE,
 };
 
-const TIME_FORMAT: &str = "[year]_[month]_[day]";
+pub const DATE_FORMAT: &str = "[year]_[month]_[day]";
 
 #[derive(Debug, Clone)]
 pub struct EZLogConfig {
@@ -47,7 +46,7 @@ pub struct EZLogConfig {
 
 impl EZLogConfig {
     pub(crate) fn now_file_name(&self, now: OffsetDateTime) -> crate::Result<String> {
-        let format = format_description::parse(TIME_FORMAT).map_err(|_e| {
+        let format = format_description::parse(DATE_FORMAT).map_err(|_e| {
             crate::errors::LogError::Parse(ParseError::new(format!(
                 "Unable to create a formatter; this is a bug in EZLogConfig#now_file_name: {}",
                 _e
@@ -74,12 +73,6 @@ impl EZLogConfig {
         Ok((path, mmap))
     }
 
-    pub(crate) fn log_id(&self) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        self.name.hash(&mut hasher);
-        hasher.finish()
-    }
-
     pub(crate) fn is_file_out_of_date(&self, file_name: &str) -> crate::Result<bool> {
         let log_date = self.read_file_name_as_date(file_name)?;
         let now = OffsetDateTime::now_utc();
@@ -99,19 +92,10 @@ impl EZLogConfig {
             )));
         }
         let date_str = &file_name[self.name.len() + 1..self.name.len() + 1 + SAMPLE.len()];
-        let format = format_description::parse(
-            TIME_FORMAT,).map_err(|_e| {
-            crate::errors::LogError::Parse(ParseError::new(format!(
-                "Unable to create a formatter; this is a bug in EZLogConfig#if_file_out_of_date: {} {}",
-                file_name, _e
-            )))
-        })?;
-        let log_date = Date::parse(date_str, &format).map_err(|_e| {
-            crate::errors::LogError::Parse(ParseError::new(format!(
-                "Unable to parse date; this is a bug in EZLogConfig#if_file_out_of_date: {} {}",
-                file_name, _e
-            )))
-        })?;
+        let log_date = parse_date_from_str(
+            date_str,
+            "this is a bug in EZLogConfig#read_file_name_as_date:",
+        )?;
         Ok(log_date.midnight().assume_utc())
     }
 
@@ -283,6 +267,16 @@ pub(crate) fn internal_create_log_file(path: &PathBuf, max_size: u64) -> crate::
         file.set_len(len)?;
     }
     Ok(file)
+}
+
+pub(crate) fn parse_date_from_str(date_str: &str, case: &str) -> crate::Result<Date> {
+    let format = format_description::parse(DATE_FORMAT).map_err(|_e| {
+        crate::errors::LogError::Parse(ParseError::new(format!("{} {} {}", case, date_str, _e)))
+    })?;
+    let date = Date::parse(date_str, &format).map_err(|_e| {
+        crate::errors::LogError::Parse(ParseError::new(format!("{} {} {}", case, date_str, _e)))
+    })?;
+    Ok(date)
 }
 
 #[cfg(test)]

@@ -12,7 +12,7 @@ public struct EZLogger {
     
     public init(config: EZLogConfig) {
         self.config = config
-        create(config: config)
+        ezlogCreate(config: config)
     }
     
     func log(level: Level, message: String, target: String? = "") {
@@ -47,7 +47,7 @@ extension EZLogger {
     }
 }
 
-private func create(config: EZLogConfig) {
+private func ezlogCreate(config: EZLogConfig) {
     ezlog_create_log(config.name,
                      UInt8(config.level.rawValue),
                      config.dirPath,
@@ -65,8 +65,65 @@ public func ezlogInit() {
     ezlog_init()
 }
 
-public func flushAll() {
+public func ezlogFlushAll() {
     ezlog_flush_all()
+}
+
+public func ezlogRequestLogs(logName: String, date: String) {
+    ezlog_request_log_files_for_date(logName, date)
+}
+
+private class WrapClosure<T> {
+    fileprivate let closure: T
+    init(closure: T) {
+        self.closure = closure
+    }
+}
+
+public func ezlogRegisterCallback(success: @escaping (String, String, [String]) -> Void,
+                                  fail: @escaping (String, String, String) -> Void) {
+    
+    let successWrapper = WrapClosure(closure: success)
+    let successPoint =  Unmanaged.passRetained(successWrapper).toOpaque()
+    let success: @convention(c)(UnsafeMutableRawPointer,
+                                UnsafePointer<CChar>,
+                                UnsafePointer<CChar>,
+                                UnsafePointer<UnsafePointer<Int8>>,
+                                Int32) -> Void = {
+        (s: UnsafeMutableRawPointer,
+         logName: UnsafePointer<CChar>,
+         date: UnsafePointer<CChar>,
+         logs: UnsafePointer<UnsafePointer<Int8>>,
+         size: Int32) in
+        
+        let successWrapper:WrapClosure<(String,String,[String]) -> Void> = Unmanaged.fromOpaque(s).takeRetainedValue()
+        
+        var strings: [String] = []
+        let bufPoint = Array(UnsafeBufferPointer(start: logs, count: Int(size)))
+        for perStrPoint in bufPoint {
+            strings.append(String(cString: perStrPoint))
+        }
+        
+        successWrapper.closure(String(cString: logName), String(cString: date), strings)
+    }
+    
+    let failWrapper =  WrapClosure(closure: fail)
+    let failPoint = Unmanaged.passRetained(failWrapper).toOpaque()
+    let fail: @convention(c)(UnsafeMutableRawPointer,
+                             UnsafePointer<CChar>,
+                             UnsafePointer<CChar>,
+                             UnsafePointer<CChar>) -> Void = {
+        (f: UnsafeMutableRawPointer,
+         logName: UnsafePointer<CChar>,
+         date: UnsafePointer<CChar>,
+         err: UnsafePointer<CChar>) in
+        
+        let failWrapper: WrapClosure<(String, String, String) -> Void> = Unmanaged.fromOpaque(f).takeRetainedValue()
+        failWrapper.closure(String(cString: logName), String(cString: date), String(cString: err))
+    }
+    
+    let callback = Callback(successPoint: successPoint, onLogsFetchSuccess: success, failPoint: failPoint, onLogsFetchFail: fail)
+    ezlog_register_callback(callback)
 }
 
 /// The log level.
@@ -112,7 +169,7 @@ public enum CompressLevel: Int, Codable {
 
 public struct EZLogConfig {
     var level: Level
-    var dirPath: String
+var dirPath: String
     var name: String
     var keepDays: Int
     var maxSize: Int

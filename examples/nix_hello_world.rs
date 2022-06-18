@@ -38,6 +38,10 @@ pub fn main() {
 
     thread::sleep(Duration::from_secs(1));
 
+    ezlog::request_log_files_for_date(ezlog::DEFAULT_LOG_NAME, "2022_06_17").unwrap();
+
+    thread::sleep(Duration::from_secs(3));
+
     read_log_file_rewrite();
 }
 

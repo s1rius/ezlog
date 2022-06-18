@@ -19,8 +19,12 @@ ezlog = {path = "crates/core"}
 log = "0.4.17"
 time = { version = "0.3", default-features = false, features = ["formatting"] }
 
+[target.'cfg(target_os = "android")'.dependencies]
+# ndk-glue = "0.6.2"
+
 [dev-dependencies]
 dirs = "4.0"
+
 
 [[example]]
 name = "android_hello_world"

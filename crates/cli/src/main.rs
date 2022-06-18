@@ -36,7 +36,6 @@ macro_rules! some_or_return {
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Cli {
-
     /// Origin ezlog file path
     #[clap(short, long, value_parser, value_name = "FILE")]
     input: Option<PathBuf>,
@@ -46,10 +45,10 @@ struct Cli {
     output: Option<PathBuf>,
 
     /// Sets a JSON config file contains the configuration of the logger.
-    /// 
+    ///
     /// {
-	///     "crypto_key": "an example very very secret key.",
-	///     "crypto_nonce": "unique nonce"
+    ///     "crypto_key": "an example very very secret key.",
+    ///     "crypto_nonce": "unique nonce"
     /// }
     #[clap(short, long, value_parser, value_name = "FILE")]
     config: Option<PathBuf>,

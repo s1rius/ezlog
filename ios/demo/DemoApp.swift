@@ -15,6 +15,13 @@ struct DemoApp: App {
             ContentView().onAppear {
                 pthread_setname_np("main")
                 ezlogInit()
+                ezlogRegisterCallback(success: {name, date, logs in
+                    let c = logs[0]
+                    print("name:" + name + " date:" + date + " log:" + c);
+                }, fail: {name, date, err in
+                    print("name:" + name + " date:" + date + " err:" + err);
+                })
+                
                 let dirPath = URL.documents.appendingPathComponent("ezlog").relativePath
                 let config = EZLogConfig(level: Level.trace,
                                          dirPath: dirPath,
@@ -32,6 +39,9 @@ struct DemoApp: App {
                 DispatchQueue(label: "ezlog queue").async {
                     pthread_setname_np("ezlog-1")
                     logger.debug(String(format: "background log %@", Thread.current.name!))
+                    sleep(3)
+                    ezlogRequestLogs(logName: "demo", date: "2022_06_18")
+                    logger.debug("log fetched")
                 }
             }
         }

@@ -13,6 +13,7 @@ mod thread_name;
 #[allow(non_snake_case)]
 mod android;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
+#[allow(non_snake_case)]
 mod ios;
 
 pub use self::config::EZLogConfig;
@@ -27,7 +28,8 @@ use errors::IllegalArgumentError;
 use errors::{CryptoError, LogError, ParseError};
 use log::Record;
 use memmap2::MmapMut;
-use std::ffi::OsString;
+
+use std::path::PathBuf;
 use std::{
     cmp,
     collections::{hash_map::DefaultHasher, HashMap},
@@ -60,6 +62,7 @@ pub(crate) const DEFAULT_MAX_LOG_SIZE: u64 = 150 * 1024;
 pub const V1_LOG_HEADER_SIZE: usize = 10;
 
 static mut SENDER: MaybeUninit<Sender<EZMsg>> = MaybeUninit::uninit();
+static mut FETCH_SENDER: MaybeUninit<Sender<FetchResult>> = MaybeUninit::uninit();
 
 static mut LOG_MAP: MaybeUninit<HashMap<u64, EZLogger>> = MaybeUninit::uninit();
 static LOG_MAP_INIT: Once = Once::new();
@@ -81,6 +84,16 @@ fn get_map() -> &'static mut HashMap<u64, EZLogger> {
 fn get_sender() -> Result<&'static Sender<EZMsg>> {
     if ONCE_INIT.is_completed() {
         return Ok(unsafe { &*SENDER.as_ptr() });
+    }
+    Err(LogError::IllegalArgument(IllegalArgumentError::new(
+        "sender not init".to_string(),
+    )))
+}
+
+#[inline]
+fn get_fetch_sender() -> Result<&'static Sender<FetchResult>> {
+    if ONCE_INIT.is_completed() {
+        return Ok(unsafe { &*FETCH_SENDER.as_ptr() });
     }
     Err(LogError::IllegalArgument(IllegalArgumentError::new(
         "sender not init".to_string(),
@@ -109,7 +122,7 @@ pub(crate) fn init_receiver() {
                             let name = config.name.clone();
                             match EZLogger::new(config) {
                                 Ok(log) => {
-                                    let log_id = log.config.log_id();
+                                    let log_id = crate::log_id(&log.config.name);
                                     let map = get_map();
                                     map.insert(log_id, log);
                                     event!(log_create name);
@@ -173,6 +186,41 @@ pub(crate) fn init_receiver() {
                         EZMsg::Trim() => {
                             get_map().values().for_each(|logger| logger.trim());
                         }
+                        EZMsg::FetchLog(task) => {
+                            let logger = match get_map().get_mut(&log_id(&task.name)) {
+                                Some(l) => l,
+                                None => {
+                                    event!(logger_not_match & task.name);
+                                    continue;
+                                }
+                            };
+                            match config::parse_date_from_str(
+                                &task.date,
+                                "date format error in get_log_files_for_date",
+                            ) {
+                                Ok(date) => {
+                                    let logs = logger.get_log_files_for_date(date);
+                                    task.task_sender
+                                        .try_send(FetchResult {
+                                            name: task.name,
+                                            date: task.date,
+                                            logs: Some(logs),
+                                            error: None,
+                                        })
+                                        .unwrap_or_else(|e| on_channel_send_err(e));
+                                }
+                                Err(e) => {
+                                    task.task_sender
+                                        .try_send(FetchResult {
+                                            name: task.name,
+                                            date: task.date,
+                                            logs: None,
+                                            error: Some(format!("{}", e)),
+                                        })
+                                        .unwrap_or_else(|e| on_channel_send_err(e));
+                                }
+                            }
+                        }
                     },
                     Err(err) => {
                         event!(channel_recv_err err);
@@ -186,7 +234,55 @@ pub(crate) fn init_receiver() {
                 event!(init format!("init error {}", e));
             }
         }
+
+        let (fetch_sender, fetch_receiver) = crossbeam_channel::unbounded::<FetchResult>();
+        unsafe {
+            ptr::write(FETCH_SENDER.as_mut_ptr(), fetch_sender);
+        };
+
+        thread::spawn(move || match fetch_receiver.recv() {
+            Ok(result) => {
+                invoke_fetch_callback(result);
+            }
+            Err(e) => println!("{:?}", e),
+        });
     });
+}
+
+fn invoke_fetch_callback(result: FetchResult) {
+    match result.logs {
+        Some(logs) => {
+            #[cfg(target_os = "android")]
+            android::call_on_fetch_success(
+                &result.name,
+                &result.date,
+                logs.iter()
+                    .map(|l| l.to_str().unwrap_or_else(|| ""))
+                    .collect(),
+            )
+            .unwrap_or_else(|e| {});
+
+            #[cfg(any(target_os = "macos", target_os = "ios"))]
+            ios::call_on_fetch_success(
+                &result.name,
+                &result.date,
+                &logs
+                    .iter()
+                    .map(|l| l.to_str().unwrap_or_else(|| ""))
+                    .collect(),
+            );
+        }
+        None => {
+            if let Some(err) = result.error {
+                #[cfg(target_os = "android")]
+                android::call_on_fetch_fail(&result.name, &result.date, &err)
+                    .unwrap_or_else(|e| {});
+
+                #[cfg(any(target_os = "macos", target_os = "ios"))]
+                ios::call_on_fetch_fail(&result.name, &result.date, &err);
+            }
+        }
+    }
 }
 
 pub fn create_log(config: EZLogConfig) {
@@ -219,7 +315,20 @@ pub fn flush_all() {
     }
 }
 
-pub fn post_msg(msg: EZMsg) -> bool {
+pub fn request_log_files_for_date(log_name: &str, date_str: &str) -> Result<()> {
+    let msg = FetchReq {
+        name: log_name.to_string(),
+        date: date_str.to_string(),
+        task_sender: get_fetch_sender()?.clone(),
+    };
+
+    get_sender()?
+        .try_send(EZMsg::FetchLog(msg))
+        .map_err(errors::channel_send_err)?;
+    Ok(())
+}
+
+fn post_msg(msg: EZMsg) -> bool {
     match get_sender() {
         Ok(sender) => sender.try_send(msg).map_err(on_channel_send_err).is_ok(),
         Err(err) => {
@@ -233,7 +342,7 @@ fn on_channel_send_err<T>(err: TrySendError<T>) {
     event!(channel_send_err err);
 }
 
-pub fn log_id(name: &str) -> u64 {
+pub(crate) fn log_id(name: &str) -> u64 {
     let mut hasher = DefaultHasher::new();
     name.hash(&mut hasher);
     hasher.finish()
@@ -246,6 +355,22 @@ pub enum EZMsg {
     ForceFlush(String),
     FlushAll(),
     Trim(),
+    FetchLog(FetchReq),
+}
+
+#[derive(Debug, Clone)]
+pub struct FetchReq {
+    name: String,
+    date: String,
+    task_sender: Sender<FetchResult>,
+}
+
+#[derive(Debug)]
+pub struct FetchResult {
+    name: String,
+    date: String,
+    logs: Option<Vec<PathBuf>>,
+    error: Option<String>,
 }
 
 pub struct EZLogger {
@@ -451,7 +576,7 @@ impl EZLogger {
         }
     }
 
-    pub fn get_log_files_for_date(&self, date: Date) -> Vec<OsString> {
+    pub fn get_log_files_for_date(&self, date: Date) -> Vec<PathBuf> {
         let mut logs = Vec::new();
         match fs::read_dir(&self.config.dir_path) {
             Ok(dir) => {
@@ -460,7 +585,7 @@ impl EZLogger {
                         Ok(file) => {
                             if let Some(name) = file.file_name().to_str() {
                                 if self.config.is_file_same_date(name, date) {
-                                    logs.push(file.path().into_os_string());
+                                    logs.push(file.path());
                                 }
                             };
                         }
@@ -1065,6 +1190,7 @@ pub fn init_mmap_temp_file(path: &Path) -> io::Result<File> {
 mod tests {
     use std::fs::OpenOptions;
     use std::io::{BufReader, Read, Seek, SeekFrom, Write};
+    use std::panic;
 
     use aes_gcm::aead::{Aead, NewAead};
     use aes_gcm::{Aes256Gcm, Key, Nonce}; // Or `Aes128Gcm`
@@ -1201,6 +1327,7 @@ mod tests {
 
     #[test]
     fn macro_test() {
+        panic::set_hook(Box::new(|_| {}));
         event!(log_create "default");
 
         event!(log_create "logger fail");

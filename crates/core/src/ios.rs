@@ -1,9 +1,15 @@
+use libc::c_void;
+
 use crate::*;
 use core::ffi::c_char;
 use core::ffi::c_uchar;
 use core::ffi::c_uint;
 use core::ffi::CStr;
 use core::slice;
+use std::ffi::CString;
+use std::ffi::NulError;
+
+static mut CALL_BACK: Option<Callback> = None;
 
 /// init
 #[no_mangle]
@@ -91,4 +97,105 @@ pub unsafe extern "C" fn ezlog_log(
         .thread_name(thread_name::get())
         .build();
     log(record)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ezlog_register_callback(callback: Callback) {
+    CALL_BACK = Some(callback)
+}
+
+#[repr(C)]
+pub struct Callback {
+    successPoint: *mut c_void,
+    onLogsFetchSuccess:
+        extern "C" fn(*mut c_void, *const c_char, *const c_char, *const *const c_char, i32),
+    failPoint: *mut c_void,
+    onLogsFetchFail: extern "C" fn(*mut c_void, *const c_char, *const c_char, *const c_char),
+}
+
+unsafe impl Send for Callback {}
+
+impl Callback {
+    pub fn success(
+        &self,
+        log_name: &str,
+        date: &str,
+        logs: &[&str],
+    ) -> std::result::Result<(), NulError> {
+        let c_log_name = CString::new(log_name)?.into_raw();
+        let c_target = CString::new(date)?.into_raw();
+        // todo need into_raw and release
+        let c_args = logs
+            .iter()
+            .map(|s| CString::new(*s).unwrap_or_default().into_raw())
+            .collect::<Vec<_>>();
+        let c_args_ptr = c_args.as_ptr();
+        let c_args_len = c_args.len();
+        (self.onLogsFetchSuccess)(
+            self.successPoint as *mut _,
+            c_log_name,
+            c_target,
+            c_args_ptr as *const *const i8,
+            c_args_len as i32,
+        );
+
+        unsafe {
+            let _ = CString::from_raw(c_log_name);
+            let _ = CString::from_raw(c_target);
+
+            for c_arg in c_args {
+                let _ = CString::from_raw(c_arg);
+            }
+        }
+
+        std::mem::forget(self);
+        Ok(())
+    }
+
+    pub fn fail(&self, log_name: &str, date: &str, err: &str) -> std::result::Result<(), NulError> {
+        let c_log_name = CString::new(log_name)?.into_raw();
+        let c_date = CString::new(date)?.into_raw();
+        let c_err = CString::new(err)?.into_raw();
+        (self.onLogsFetchFail)(self.failPoint as *mut _, c_log_name, c_date, c_err);
+
+        unsafe {
+            let _ = CString::from_raw(c_log_name);
+            let _ = CString::from_raw(c_date);
+            let _ = CString::from_raw(c_err);
+        }
+        std::mem::forget(self);
+        Ok(())
+    }
+}
+
+impl Drop for Callback {
+    fn drop(&mut self) {
+        panic!("CompletedCallback must have explicit succeeded or failed call")
+    }
+}
+
+pub(crate) fn call_on_fetch_success(name: &str, date: &str, logs: &Vec<&str>) {
+    unsafe {
+        if let Some(callback) = &CALL_BACK {
+            callback.success(name, date, logs).unwrap();
+        }
+    }
+}
+
+pub(crate) fn call_on_fetch_fail(name: &str, date: &str, err_msg: &str) {
+    unsafe {
+        if let Some(callback) = &CALL_BACK {
+            callback.fail(name, date, err_msg).unwrap();
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ezlog_request_log_files_for_date(
+    c_log_name: *const c_char,
+    c_date: *const c_char,
+) {
+    let log_name = CStr::from_ptr(c_log_name).to_string_lossy().into_owned();
+    let date = CStr::from_ptr(c_date).to_string_lossy().into_owned();
+    crate::request_log_files_for_date(&log_name, &date).unwrap_or_else(|_| {});
 }

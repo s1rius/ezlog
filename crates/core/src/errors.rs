@@ -4,6 +4,8 @@ use std::{
     io,
 };
 
+use crossbeam_channel::TrySendError;
+
 #[derive(Debug)]
 pub enum LogError {
     IoError(io::Error),
@@ -11,6 +13,7 @@ pub enum LogError {
     Crypto(CryptoError),
     Compress(CompressError),
     IllegalArgument(IllegalArgumentError),
+    State(StateError),
 }
 
 #[derive(Debug)]
@@ -53,6 +56,7 @@ impl Error for LogError {
             LogError::Parse(err) => err.source(),
             LogError::Crypto(err) => err.source(),
             LogError::IllegalArgument(err) => err.source(),
+            LogError::State(err) => err.source(),
         }
     }
 }
@@ -129,6 +133,25 @@ impl Display for IllegalArgumentError {
 
 impl Error for IllegalArgumentError {}
 
+#[derive(Debug)]
+pub struct StateError {
+    pub err_msg: String,
+}
+
+impl StateError {
+    fn new(err_msg: String) -> StateError {
+        StateError { err_msg }
+    }
+}
+
+impl Display for StateError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.err_msg)
+    }
+}
+
+impl Error for StateError {}
+
 impl Display for LogError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
@@ -137,6 +160,7 @@ impl Display for LogError {
             LogError::Parse(err) => err.fmt(fmt),
             LogError::Crypto(err) => err.fmt(fmt),
             LogError::IllegalArgument(err) => err.fmt(fmt),
+            LogError::State(err) => err.fmt(fmt),
         }
     }
 }
@@ -156,5 +180,14 @@ impl From<CryptoError> for LogError {
 impl From<IllegalArgumentError> for LogError {
     fn from(err: IllegalArgumentError) -> Self {
         LogError::IllegalArgument(err)
+    }
+}
+
+pub fn channel_send_err<T>(err: TrySendError<T>) -> LogError {
+    match err {
+        TrySendError::Full(_) => LogError::State(StateError::new("channel is full".to_string())),
+        TrySendError::Disconnected(_) => {
+            LogError::State(StateError::new("channel is disconnected".to_string()))
+        }
     }
 }
