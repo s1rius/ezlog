@@ -1,4 +1,6 @@
+# ezlog
 
+ezlog is 
 
 ### build from source code
 
@@ -21,7 +23,7 @@ if you already install `rust`, keep update
 rustup update
 ```
 
-add nightly src component
+we use [build-std](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#build-std) feature, so add nightly src component
 
 ```
 rustup component add rust-src --toolchain nightly-x86_64-apple-darwin
@@ -70,10 +72,10 @@ install `cbindgen`
 cargo install --force cbindgen
 ```
 
-cd `ios` dir
+cd ios dir
 
 ```
 sh b_ios.sh
 ```
 
-open the `ios` dir in Xcode
+open the ios dir in Xcode

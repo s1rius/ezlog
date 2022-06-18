@@ -1,12 +1,9 @@
-
-
 ## log file format design
 
-没有设计好压缩加密每一个log的数据格式，导致解析出错。
+没有设计好压缩加密每一个 log 的数据格式，导致解析出错。
 重新参考[GIF](https://en.wikipedia.org/wiki/GIF)格式和[PNG](https://en.wikipedia.org/wiki/Portable_Network_Graphics)的设计，分隔符 + 数据长度 + 处理后的二进制数据
 
-实现变长log的输出
-
+实现变长 log 的输出
 
 ## project file structure
 
@@ -27,26 +24,24 @@ lean how to write ffi code
 
 - [Rust bindings to the JNI](https://docs.rs/jni/latest/jni/)
 - [JNI crate exapmles](https://github.com/jni-rs/jni-rs/blob/master/example/mylib/src/lib.rs)
-- [Rust and the JVM](https://blog.frankel.ch/start-rust/7/)
+- [Implementing JNI_OnLoad](https://github.com/jni-rs/jni-rs/issues/257)
 
 no easy way to get rust ffi binding code from java file, I need implement them by myself.
 
 ### for android
+
 - [Rust on Android](https://mozilla.github.io/firefox-browser-architecture/experiments/2017-09-21-rust-on-android.html)
 - [cargo ndk](https://github.com/bbqsrc/cargo-ndk)
 - [Minimizing Rust Binary Size](https://github.com/johnthagen/min-sized-rust)
 
-
 - [Rust 中的 bin, lib, rlib, a, so 概念介绍](https://rustcc.cn/article?id=98b96e69-7a5f-4bba-a38e-35bdd7a0a7dd)
-
 
 ### for ios
 
 - [Create your own CocoaPods library](https://medium.com/@jeantimex/create-your-own-cocoapods-library-da589d5cd270)
 - [Building and Deploying a Rust library on iOS via Mozilla](https://mozilla.github.io/firefox-browser-architecture/experiments/2017-09-06-rust-on-ios.html)
 - [Rust on iOS and Mac Catalyst](https://nadim.computer/posts/2022-02-11-maccatalyst.html)
-- [Cargo Xcode](https://crates.io/crates/cargo-xcode)
-
+- [recipe swift rust callback](https://www.nickwilcox.com/blog/recipe_swift_rust_callback/)
 
 ### build issue
 
@@ -58,5 +53,3 @@ release flag make build fail, build debug first, then enable release flag.
 
 no function or associated item named `set_name` found for struct `sys::unix::thread::Thread` in the current scope
 could not compile `std`
-
-
