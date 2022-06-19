@@ -24,10 +24,10 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use compress::ZlibCodec;
 use crossbeam_channel::{Sender, TrySendError};
 use crypto::{Aes128Gcm, Aes256Gcm};
-use errors::StateError;
 use errors::{CryptoError, LogError, ParseError};
 use log::Record;
 use memmap2::MmapMut;
+use once_cell::sync::OnceCell;
 
 use std::path::PathBuf;
 use std::{
@@ -61,13 +61,9 @@ pub(crate) const RECORD_SIGNATURE_END: u8 = 0x21;
 pub(crate) const DEFAULT_MAX_LOG_SIZE: u64 = 150 * 1024;
 pub const V1_LOG_HEADER_SIZE: usize = 10;
 
-static mut SENDER: MaybeUninit<Sender<EZMsg>> = MaybeUninit::uninit();
-static mut FETCH_SENDER: MaybeUninit<Sender<FetchResult>> = MaybeUninit::uninit();
-
+// maybe set as threadlocal variable
 static mut LOG_MAP: MaybeUninit<HashMap<u64, EZLogger>> = MaybeUninit::uninit();
 static LOG_MAP_INIT: Once = Once::new();
-
-static ONCE_INIT: Once = Once::new();
 
 static mut GLOABLE_CALLBACK: &dyn EZLogCallback = &NopCallback;
 
@@ -83,172 +79,164 @@ fn get_map() -> &'static mut HashMap<u64, EZLogger> {
 }
 
 #[inline]
-fn get_sender() -> Result<&'static Sender<EZMsg>> {
-    if ONCE_INIT.is_completed() {
-        return Ok(unsafe { &*SENDER.as_ptr() });
-    }
-    Err(LogError::State(StateError::new(
-        "sender not init".to_string(),
-    )))
+fn get_sender() -> &'static Sender<EZMsg> {
+    static SENDER: OnceCell<Sender<EZMsg>> = OnceCell::new();
+    SENDER.get_or_init(init_log_channel)
 }
 
 #[inline]
-fn get_fetch_sender() -> Result<&'static Sender<FetchResult>> {
-    if ONCE_INIT.is_completed() {
-        return Ok(unsafe { &*FETCH_SENDER.as_ptr() });
-    }
-    Err(LogError::State(StateError::new(
-        "sender not init".to_string(),
-    )))
+fn get_fetch_sender() -> &'static Sender<FetchResult> {
+    static FETCH_SENDER: OnceCell<Sender<FetchResult>> = OnceCell::new();
+    FETCH_SENDER.get_or_init(init_callback_channel)
 }
 
 /// 初始化
-pub fn init() {
-    init_receiver();
-}
+pub fn init() {}
 
-pub(crate) fn init_receiver() {
-    ONCE_INIT.call_once(|| {
-        let (sender, receiver) = crossbeam_channel::unbounded::<EZMsg>();
-        unsafe {
-            ptr::write(SENDER.as_mut_ptr(), sender);
-        };
-        event!(init "sender assigned");
-
-        match thread::Builder::new()
-            .name("ezlog_task".to_string())
-            .spawn(move || loop {
-                match receiver.recv() {
-                    Ok(msg) => match msg {
-                        EZMsg::CreateLogger(config) => {
-                            let name = config.name.clone();
-                            match EZLogger::new(config) {
-                                Ok(log) => {
-                                    let log_id = crate::log_id(&log.config.name);
-                                    let map = get_map();
-                                    map.insert(log_id, log);
-                                    event!(log_create name);
-                                }
-                                Err(e) => {
-                                    event!(log_create_fail name, e);
-                                }
-                            };
-                        }
-                        EZMsg::Record(record) => {
-                            let log = match get_map().get_mut(&record.log_id()) {
-                                Some(l) => l,
-                                None => {
-                                    event!(logger_not_match record.log_id());
-                                    continue;
-                                }
-                            };
-                            if log.config.level < record.level {
-                                event!(
-                                    record_filter_out & record.id(),
-                                    &record.level,
-                                    &log.config.level
-                                );
+fn init_log_channel() -> Sender<EZMsg> {
+    let (sender, receiver) = crossbeam_channel::unbounded::<EZMsg>();
+    match thread::Builder::new()
+        .name("ezlog_task".to_string())
+        .spawn(move || loop {
+            match receiver.recv() {
+                Ok(msg) => match msg {
+                    EZMsg::CreateLogger(config) => {
+                        let name = config.name.clone();
+                        match EZLogger::new(config) {
+                            Ok(log) => {
+                                let log_id = crate::log_id(&log.config.name);
+                                let map = get_map();
+                                map.insert(log_id, log);
+                                event!(log_create name);
+                            }
+                            Err(e) => {
+                                event!(log_create_fail name, e);
+                            }
+                        };
+                    }
+                    EZMsg::Record(record) => {
+                        let log = match get_map().get_mut(&record.log_id()) {
+                            Some(l) => l,
+                            None => {
+                                event!(logger_not_match record.log_id());
                                 continue;
                             }
-                            match log.append(&record) {
-                                Ok(_) => {
-                                    event!(record_complete record.id());
-                                }
-                                Err(err) => match err {
-                                    LogError::IoError(err) => {
-                                        event!(io_error record.id(), err)
-                                    }
-                                    LogError::Compress(err) => {
-                                        event!(compress_fail record.id(), err)
-                                    }
-                                    LogError::Crypto(c) => {
-                                        event!(encrypt_fail record.id(), c)
-                                    }
-                                    _ => {
-                                        event!(unexpect_fail record.id(), err)
-                                    }
-                                },
+                        };
+                        if log.config.level < record.level {
+                            event!(
+                                record_filter_out & record.id(),
+                                &record.level,
+                                &log.config.level
+                            );
+                            continue;
+                        }
+                        match log.append(&record) {
+                            Ok(_) => {
+                                event!(record_complete record.id());
                             }
-                        }
-                        EZMsg::ForceFlush(name) => {
-                            let id = log_id(&name);
-                            let log = match get_map().get_mut(&id) {
-                                Some(l) => l,
-                                None => {
-                                    event!(logger_not_match name);
-                                    continue;
+                            Err(err) => match err {
+                                LogError::IoError(err) => {
+                                    event!(io_error record.id(), err)
                                 }
-                            };
-                            log.appender.flush().ok();
-                            event!(logger_force_flush name);
-                        }
-                        EZMsg::FlushAll() => get_map().values_mut().for_each(|item| {
-                            item.flush().ok();
-                        }),
-                        EZMsg::Trim() => {
-                            get_map().values().for_each(|logger| logger.trim());
-                        }
-                        EZMsg::FetchLog(task) => {
-                            let logger = match get_map().get_mut(&log_id(&task.name)) {
-                                Some(l) => l,
-                                None => {
-                                    event!(logger_not_match & task.name);
-                                    continue;
+                                LogError::Compress(err) => {
+                                    event!(compress_fail record.id(), err)
                                 }
-                            };
-                            match config::parse_date_from_str(
-                                &task.date,
-                                "date format error in get_log_files_for_date",
-                            ) {
-                                Ok(date) => {
-                                    let logs = logger.get_log_files_for_date(date);
-                                    task.task_sender
-                                        .try_send(FetchResult {
-                                            name: task.name,
-                                            date: task.date,
-                                            logs: Some(logs),
-                                            error: None,
-                                        })
-                                        .unwrap_or_else(report_channel_send_err);
+                                LogError::Crypto(c) => {
+                                    event!(encrypt_fail record.id(), c)
                                 }
-                                Err(e) => {
-                                    task.task_sender
-                                        .try_send(FetchResult {
-                                            name: task.name,
-                                            date: task.date,
-                                            logs: None,
-                                            error: Some(format!("{}", e)),
-                                        })
-                                        .unwrap_or_else(report_channel_send_err);
+                                _ => {
+                                    event!(unexpect_fail record.id(), err)
                                 }
-                            }
+                            },
                         }
-                    },
-                    Err(err) => {
-                        event!(channel_recv_err err);
                     }
+                    EZMsg::ForceFlush(name) => {
+                        let id = log_id(&name);
+                        let log = match get_map().get_mut(&id) {
+                            Some(l) => l,
+                            None => {
+                                event!(logger_not_match name);
+                                continue;
+                            }
+                        };
+                        log.appender.flush().ok();
+                        event!(logger_force_flush name);
+                    }
+                    EZMsg::FlushAll() => get_map().values_mut().for_each(|item| {
+                        item.flush().ok();
+                    }),
+                    EZMsg::Trim() => {
+                        get_map().values().for_each(|logger| logger.trim());
+                    }
+                    EZMsg::FetchLog(task) => {
+                        let logger = match get_map().get_mut(&log_id(&task.name)) {
+                            Some(l) => l,
+                            None => {
+                                event!(logger_not_match & task.name);
+                                continue;
+                            }
+                        };
+                        match config::parse_date_from_str(
+                            &task.date,
+                            "date format error in get_log_files_for_date",
+                        ) {
+                            Ok(date) => {
+                                let logs = logger.get_log_files_for_date(date);
+                                task.task_sender
+                                    .try_send(FetchResult {
+                                        name: task.name,
+                                        date: task.date,
+                                        logs: Some(logs),
+                                        error: None,
+                                    })
+                                    .unwrap_or_else(report_channel_send_err);
+                            }
+                            Err(e) => {
+                                task.task_sender
+                                    .try_send(FetchResult {
+                                        name: task.name,
+                                        date: task.date,
+                                        logs: None,
+                                        error: Some(format!("{}", e)),
+                                    })
+                                    .unwrap_or_else(report_channel_send_err);
+                            }
+                        }
+                    }
+                },
+                Err(err) => {
+                    event!(channel_recv_err err);
                 }
-            }) {
-            Ok(_) => {
-                event!(init "receiver started");
             }
-            Err(e) => {
-                event!(init format!("init error {}", e));
-            }
+        }) {
+        Ok(_) => {
+            event!(init "init ezlog success");
         }
+        Err(e) => {
+            event!(init format!("init ezlog error {}", e));
+        }
+    }
+    sender
+}
 
-        let (fetch_sender, fetch_receiver) = crossbeam_channel::unbounded::<FetchResult>();
-        unsafe {
-            ptr::write(FETCH_SENDER.as_mut_ptr(), fetch_sender);
-        };
-
-        thread::spawn(move || match fetch_receiver.recv() {
+fn init_callback_channel() -> Sender<FetchResult> {
+    let (fetch_sender, fetch_receiver) = crossbeam_channel::unbounded::<FetchResult>();
+    match thread::Builder::new()
+        .name("ezlog_callback".to_string())
+        .spawn(move || match fetch_receiver.recv() {
             Ok(result) => {
                 invoke_fetch_callback(result);
             }
-            Err(e) => println!("{:?}", e),
-        });
-    });
+            Err(e) => event!(channel_recv_err e),
+        }) {
+        Ok(_) => {
+            event!(init "init callback success");
+        },
+        Err(e) => {
+            event!(init format!("init callback err {}", e));
+        },
+    }
+    fetch_sender
 }
 
 pub fn create_log(config: EZLogConfig) {
@@ -282,50 +270,26 @@ pub fn flush_all() {
 }
 
 pub fn request_log_files_for_date(log_name: &str, date_str: &str) {
-    let task_sender = match get_fetch_sender() {
-        Ok(s) => s,
-        Err(err) => {
-            report_init_err(err);
-            return;
-        }
-    };
     let msg = FetchReq {
         name: log_name.to_string(),
         date: date_str.to_string(),
-        task_sender: task_sender.clone(),
+        task_sender: get_fetch_sender().clone(),
     };
 
-    let sender = match get_sender() {
-        Ok(s) => s,
-        Err(err) => {
-            report_init_err(err);
-            return;
-        }
-    };
-    sender
+    get_sender()
         .try_send(EZMsg::FetchLog(msg))
         .unwrap_or_else(report_channel_send_err);
 }
 
 fn post_msg(msg: EZMsg) -> bool {
-    match get_sender() {
-        Ok(sender) => sender
-            .try_send(msg)
-            .map_err(report_channel_send_err)
-            .is_ok(),
-        Err(err) => {
-            event!(channel_send_err err);
-            false
-        }
-    }
+    get_sender()
+        .try_send(msg)
+        .map_err(report_channel_send_err)
+        .is_ok()
 }
 
 fn report_channel_send_err<T>(err: TrySendError<T>) {
     event!(channel_send_err err);
-}
-
-fn report_init_err(err: LogError) {
-    event!(init_err err);
 }
 
 pub(crate) fn log_id(name: &str) -> u64 {
