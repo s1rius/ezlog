@@ -11,29 +11,28 @@ use std::ffi::NulError;
 
 static mut CALL_BACK: Option<Callback> = None;
 
-/// init
+/// Init ezlog, must call before any other function
 #[no_mangle]
 pub extern "C" fn ezlog_init() {
     crate::init();
 }
 
-/// # Safety
-///
+/// Flush target log which name is `c_log_name`
 #[no_mangle]
-pub unsafe extern "C" fn ezlog_flush(c_log_name: *const c_char) {
-    let name: String = CStr::from_ptr(c_log_name).to_string_lossy().into_owned();
-    crate::flush(&name);
+pub extern "C" fn ezlog_flush(c_log_name: *const c_char) {
+    unsafe {
+        let name: String = CStr::from_ptr(c_log_name).to_string_lossy().into_owned();
+        crate::flush(&name);
+    }
 }
 
-/// # Safety
-///
+/// Flush all logger
 #[no_mangle]
 pub extern "C" fn ezlog_flush_all() {
     crate::flush_all();
 }
 
-/// # Safety
-///
+/// Create a new log wtih config options
 #[no_mangle]
 pub unsafe extern "C" fn ezlog_create_log(
     c_log_name: *const c_char,
@@ -75,8 +74,7 @@ pub unsafe extern "C" fn ezlog_create_log(
     create_log(config);
 }
 
-/// # Safety
-///
+/// Write log to file
 #[no_mangle]
 pub unsafe extern "C" fn ezlog_log(
     c_log_name: *const c_char,
@@ -99,11 +97,15 @@ pub unsafe extern "C" fn ezlog_log(
     log(record)
 }
 
+/// Register callback function for get logger's file path asynchronously
+/// todo thread safe
 #[no_mangle]
 pub unsafe extern "C" fn ezlog_register_callback(callback: Callback) {
-    CALL_BACK = Some(callback)
+    CALL_BACK = Some(callback);
+    set_boxed_callback(Box::new(AppleCallback));
 }
 
+/// map to c Callback stuct
 #[repr(C)]
 pub struct Callback {
     successPoint: *mut c_void,
@@ -124,13 +126,13 @@ impl Callback {
     ) -> std::result::Result<(), NulError> {
         let c_log_name = CString::new(log_name)?.into_raw();
         let c_target = CString::new(date)?.into_raw();
-        // todo need into_raw and release
         let c_args = logs
             .iter()
             .map(|s| CString::new(*s).unwrap_or_default().into_raw())
             .collect::<Vec<_>>();
         let c_args_ptr = c_args.as_ptr();
         let c_args_len = c_args.len();
+        
         (self.onLogsFetchSuccess)(
             self.successPoint as *mut _,
             c_log_name,
@@ -139,6 +141,7 @@ impl Callback {
             c_args_len as i32,
         );
 
+        // release c string
         unsafe {
             let _ = CString::from_raw(c_log_name);
             let _ = CString::from_raw(c_target);
@@ -148,7 +151,7 @@ impl Callback {
             }
         }
 
-        std::mem::forget(self);
+        // todo std::mem::forget_ref(self);
         Ok(())
     }
 
@@ -163,7 +166,7 @@ impl Callback {
             let _ = CString::from_raw(c_date);
             let _ = CString::from_raw(c_err);
         }
-        std::mem::forget(self);
+        // todo std::mem::forget(self);
         Ok(())
     }
 }
@@ -174,7 +177,7 @@ impl Drop for Callback {
     }
 }
 
-pub(crate) fn call_on_fetch_success(name: &str, date: &str, logs: &Vec<&str>) {
+fn call_on_fetch_success(name: &str, date: &str, logs: &[&str]) {
     unsafe {
         if let Some(callback) = &CALL_BACK {
             callback.success(name, date, logs).unwrap();
@@ -182,7 +185,7 @@ pub(crate) fn call_on_fetch_success(name: &str, date: &str, logs: &Vec<&str>) {
     }
 }
 
-pub(crate) fn call_on_fetch_fail(name: &str, date: &str, err_msg: &str) {
+fn call_on_fetch_fail(name: &str, date: &str, err_msg: &str) {
     unsafe {
         if let Some(callback) = &CALL_BACK {
             callback.fail(name, date, err_msg).unwrap();
@@ -190,6 +193,12 @@ pub(crate) fn call_on_fetch_fail(name: &str, date: &str, err_msg: &str) {
     }
 }
 
+/// Request logger's files path array by specified date
+/// before call this function, you should register a callback
+/// call 
+/// ```
+/// ezlog_register_callback(callback);
+/// ```
 #[no_mangle]
 pub unsafe extern "C" fn ezlog_request_log_files_for_date(
     c_log_name: *const c_char,
@@ -197,5 +206,18 @@ pub unsafe extern "C" fn ezlog_request_log_files_for_date(
 ) {
     let log_name = CStr::from_ptr(c_log_name).to_string_lossy().into_owned();
     let date = CStr::from_ptr(c_date).to_string_lossy().into_owned();
-    crate::request_log_files_for_date(&log_name, &date).unwrap_or_else(|_| {});
+    crate::request_log_files_for_date(&log_name, &date);
+}
+
+/// Callback impl EZLogCallback
+struct AppleCallback;
+
+impl EZLogCallback for AppleCallback {
+    fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
+        call_on_fetch_success(name, date, logs);
+    }
+
+    fn on_fetch_fail(&self, name: &str, date: &str, err_msg: &str) {
+        call_on_fetch_fail(name, date, err_msg)
+    }
 }

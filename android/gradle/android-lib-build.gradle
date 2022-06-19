@@ -12,7 +12,7 @@ android {
         targetSdkVersion Versions.targetSdkVersion
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles "consumer-rules.pro"
+        consumerProguardFiles "lib-proguard-rules.txt"
     }
 
     buildTypes {
@@ -31,7 +31,7 @@ android {
 }
 
 
-version = Versions.imLibVersion
+version = Versions.libVersion
 group = GROUP
 
 apply from: rootProject.file('release.gradle')

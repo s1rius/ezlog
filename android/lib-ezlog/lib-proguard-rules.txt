@@ -1,0 +1,2 @@
+-keep class wtf.s1.ezlog.** { *; }
+-keep interface wtf.s1.ezlog.** { *; }

@@ -9,7 +9,7 @@ object Versions {
     const val minSdkVersion = 21
     const val targetSdkVersion = 31
     const val versionCode = 1
-    const val imLibVersion = "0.2.0"
+    const val libVersion = "0.1.0"
 }
 
 object Plugins {
@@ -41,8 +41,6 @@ object Deps {
             const val utils = "androidx.legacy:legacy-support-core-utils:1.0.0"
         }
     }
-
-    val mqtt = "org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5"
 }
 
 object ClassPaths {

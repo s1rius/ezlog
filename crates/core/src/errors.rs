@@ -4,8 +4,6 @@ use std::{
     io,
 };
 
-use crossbeam_channel::TrySendError;
-
 #[derive(Debug)]
 pub enum LogError {
     IoError(io::Error),
@@ -139,7 +137,7 @@ pub struct StateError {
 }
 
 impl StateError {
-    fn new(err_msg: String) -> StateError {
+    pub fn new(err_msg: String) -> StateError {
         StateError { err_msg }
     }
 }
@@ -180,14 +178,5 @@ impl From<CryptoError> for LogError {
 impl From<IllegalArgumentError> for LogError {
     fn from(err: IllegalArgumentError) -> Self {
         LogError::IllegalArgument(err)
-    }
-}
-
-pub fn channel_send_err<T>(err: TrySendError<T>) -> LogError {
-    match err {
-        TrySendError::Full(_) => LogError::State(StateError::new("channel is full".to_string())),
-        TrySendError::Disconnected(_) => {
-            LogError::State(StateError::new("channel is disconnected".to_string()))
-        }
     }
 }

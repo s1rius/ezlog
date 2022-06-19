@@ -3,6 +3,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+/**
+ * map to c Callback stuct
+ */
 typedef struct Callback {
     const void *successPoint;
     const void (*onLogsFetchSuccess)(void* _Nonnull,
@@ -18,25 +21,22 @@ typedef struct Callback {
 } Callback;
 
 /**
- * init
+ * Init ezlog, must call before any other function
  */
 void ezlog_init(void);
 
 /**
- * # Safety
- *
+ * Flush target log which name is `c_log_name`
  */
 void ezlog_flush(const char *c_log_name);
 
 /**
- * # Safety
- *
+ * Flush all logger
  */
 void ezlog_flush_all(void);
 
 /**
- * # Safety
- *
+ * Create a new log wtih config options
  */
 void ezlog_create_log(const char *c_log_name,
                       unsigned char c_level,
@@ -51,14 +51,24 @@ void ezlog_create_log(const char *c_log_name,
                       uintptr_t c_nonce_len);
 
 /**
- * # Safety
- *
+ * Write log to file
  */
 void ezlog_log(const char *c_log_name,
                unsigned char c_level,
                const char *c_target,
                const char *c_content);
 
+/**
+ * Register callback function for get logger's file path asynchronously
+ */
 void ezlog_register_callback(struct Callback callback);
 
+/**
+ * Request logger's files path array by specified date
+ * before call this function, you should register a callback
+ * call
+ * ```
+ * ezlog_register_callback(callback);
+ * ```
+ */
 void ezlog_request_log_files_for_date(const char *c_log_name, const char *c_date);

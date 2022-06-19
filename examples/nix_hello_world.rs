@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use ezlog::{
     create_log, CipherKind, CompressKind, EZLogConfig, EZLogConfigBuilder, EZLogger, EZRecord,
-    V1_LOG_HEADER_SIZE,
+    V1_LOG_HEADER_SIZE, EZLogCallback,
 };
 use log::{debug, error, info, trace, warn, LevelFilter};
 use log::{Metadata, Record};
@@ -17,7 +17,7 @@ static LOGGER: SimpleLogger = SimpleLogger;
 pub fn main() {
     println!("start");
     ezlog::init();
-    thread::sleep(Duration::from_secs(5));
+    ezlog::set_boxed_callback(Box::new(SimpleCallback));
     log::set_logger(&LOGGER)
         .map(|()| log::set_max_level(LevelFilter::Trace))
         .expect("log set error");
@@ -26,23 +26,18 @@ pub fn main() {
 
     create_log(log_config);
 
-    // thread::sleep(Duration::from_secs(1));
-
     trace!("1. create default log");
     debug!("2. debug ez log");
     info!("3. now have a log");
     warn!("4. test log to file");
     error!("5. log complete");
+    
     ezlog::flush(ezlog::DEFAULT_LOG_NAME);
+    ezlog::request_log_files_for_date(ezlog::DEFAULT_LOG_NAME, "2022_06_19");
     println!("end");
-
+    
     thread::sleep(Duration::from_secs(1));
-
-    ezlog::request_log_files_for_date(ezlog::DEFAULT_LOG_NAME, "2022_06_17").unwrap();
-
-    thread::sleep(Duration::from_secs(3));
-
-    read_log_file_rewrite();
+    //read_log_file_rewrite();
 }
 
 fn get_config() -> EZLogConfig {
@@ -66,6 +61,7 @@ fn get_config() -> EZLogConfig {
         .build()
 }
 
+#[allow(dead_code)]
 fn read_log_file_rewrite() {
     let log_config = get_config();
     let (path, _mmap) = log_config
@@ -131,4 +127,16 @@ impl log::Log for SimpleLogger {
     }
 
     fn flush(&self) {}
+}
+
+struct SimpleCallback;
+
+impl EZLogCallback for SimpleCallback {
+    fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
+        print!("{} {} {}", name, date, logs.join(" "));
+    }
+
+    fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
+        print!("{} {} {}", name, date, err);
+    }
 }

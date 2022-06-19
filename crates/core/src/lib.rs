@@ -24,7 +24,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use compress::ZlibCodec;
 use crossbeam_channel::{Sender, TrySendError};
 use crypto::{Aes128Gcm, Aes256Gcm};
-use errors::IllegalArgumentError;
+use errors::StateError;
 use errors::{CryptoError, LogError, ParseError};
 use log::Record;
 use memmap2::MmapMut;
@@ -69,6 +69,8 @@ static LOG_MAP_INIT: Once = Once::new();
 
 static ONCE_INIT: Once = Once::new();
 
+static mut GLOABLE_CALLBACK: &dyn EZLogCallback = &NopCallback;
+
 type Result<T> = std::result::Result<T, LogError>;
 
 #[inline]
@@ -85,7 +87,7 @@ fn get_sender() -> Result<&'static Sender<EZMsg>> {
     if ONCE_INIT.is_completed() {
         return Ok(unsafe { &*SENDER.as_ptr() });
     }
-    Err(LogError::IllegalArgument(IllegalArgumentError::new(
+    Err(LogError::State(StateError::new(
         "sender not init".to_string(),
     )))
 }
@@ -95,7 +97,7 @@ fn get_fetch_sender() -> Result<&'static Sender<FetchResult>> {
     if ONCE_INIT.is_completed() {
         return Ok(unsafe { &*FETCH_SENDER.as_ptr() });
     }
-    Err(LogError::IllegalArgument(IllegalArgumentError::new(
+    Err(LogError::State(StateError::new(
         "sender not init".to_string(),
     )))
 }
@@ -207,7 +209,7 @@ pub(crate) fn init_receiver() {
                                             logs: Some(logs),
                                             error: None,
                                         })
-                                        .unwrap_or_else(|e| on_channel_send_err(e));
+                                        .unwrap_or_else(report_channel_send_err);
                                 }
                                 Err(e) => {
                                     task.task_sender
@@ -217,7 +219,7 @@ pub(crate) fn init_receiver() {
                                             logs: None,
                                             error: Some(format!("{}", e)),
                                         })
-                                        .unwrap_or_else(|e| on_channel_send_err(e));
+                                        .unwrap_or_else(report_channel_send_err);
                                 }
                             }
                         }
@@ -247,42 +249,6 @@ pub(crate) fn init_receiver() {
             Err(e) => println!("{:?}", e),
         });
     });
-}
-
-fn invoke_fetch_callback(result: FetchResult) {
-    match result.logs {
-        Some(logs) => {
-            #[cfg(target_os = "android")]
-            android::call_on_fetch_success(
-                &result.name,
-                &result.date,
-                logs.iter()
-                    .map(|l| l.to_str().unwrap_or_else(|| ""))
-                    .collect(),
-            )
-            .unwrap_or_else(|e| {});
-
-            #[cfg(any(target_os = "macos", target_os = "ios"))]
-            ios::call_on_fetch_success(
-                &result.name,
-                &result.date,
-                &logs
-                    .iter()
-                    .map(|l| l.to_str().unwrap_or_else(|| ""))
-                    .collect(),
-            );
-        }
-        None => {
-            if let Some(err) = result.error {
-                #[cfg(target_os = "android")]
-                android::call_on_fetch_fail(&result.name, &result.date, &err)
-                    .unwrap_or_else(|e| {});
-
-                #[cfg(any(target_os = "macos", target_os = "ios"))]
-                ios::call_on_fetch_fail(&result.name, &result.date, &err);
-            }
-        }
-    }
 }
 
 pub fn create_log(config: EZLogConfig) {
@@ -315,22 +281,38 @@ pub fn flush_all() {
     }
 }
 
-pub fn request_log_files_for_date(log_name: &str, date_str: &str) -> Result<()> {
+pub fn request_log_files_for_date(log_name: &str, date_str: &str) {
+    let task_sender = match get_fetch_sender() {
+        Ok(s) => s,
+        Err(err) => {
+            report_init_err(err);
+            return;
+        }
+    };
     let msg = FetchReq {
         name: log_name.to_string(),
         date: date_str.to_string(),
-        task_sender: get_fetch_sender()?.clone(),
+        task_sender: task_sender.clone(),
     };
 
-    get_sender()?
+    let sender = match get_sender() {
+        Ok(s) => s,
+        Err(err) => {
+            report_init_err(err);
+            return;
+        }
+    };
+    sender
         .try_send(EZMsg::FetchLog(msg))
-        .map_err(errors::channel_send_err)?;
-    Ok(())
+        .unwrap_or_else(report_channel_send_err);
 }
 
 fn post_msg(msg: EZMsg) -> bool {
     match get_sender() {
-        Ok(sender) => sender.try_send(msg).map_err(on_channel_send_err).is_ok(),
+        Ok(sender) => sender
+            .try_send(msg)
+            .map_err(report_channel_send_err)
+            .is_ok(),
         Err(err) => {
             event!(channel_send_err err);
             false
@@ -338,14 +320,68 @@ fn post_msg(msg: EZMsg) -> bool {
     }
 }
 
-fn on_channel_send_err<T>(err: TrySendError<T>) {
+fn report_channel_send_err<T>(err: TrySendError<T>) {
     event!(channel_send_err err);
+}
+
+fn report_init_err(err: LogError) {
+    event!(init_err err);
 }
 
 pub(crate) fn log_id(name: &str) -> u64 {
     let mut hasher = DefaultHasher::new();
     name.hash(&mut hasher);
     hasher.finish()
+}
+
+fn invoke_fetch_callback(result: FetchResult) {
+    match result.logs {
+        Some(logs) => {
+            callback().on_fetch_success(
+                &result.name,
+                &result.date,
+                &logs
+                    .iter()
+                    .map(|l| l.to_str().unwrap_or(""))
+                    .collect::<Vec<&str>>(),
+            );
+        }
+        None => {
+            if let Some(err) = result.error {
+                callback().on_fetch_fail(&result.name, &result.date, &err);
+            }
+        }
+    }
+}
+
+// todo make thread safety
+pub fn callback() -> &'static dyn EZLogCallback {
+    unsafe { GLOABLE_CALLBACK }
+}
+
+pub trait EZLogCallback {
+    fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]);
+    fn on_fetch_fail(&self, name: &str, date: &str, err: &str);
+}
+
+pub fn set_boxed_callback(callback: Box<dyn EZLogCallback>) {
+    set_callback_inner(|| Box::leak(callback))
+}
+
+fn set_callback_inner<F>(make_callback: F)
+where
+    F: FnOnce() -> &'static dyn EZLogCallback,
+{
+    // todo make thread safety
+    unsafe {
+        GLOABLE_CALLBACK = make_callback();
+    }
+}
+
+struct NopCallback;
+impl EZLogCallback for NopCallback {
+    fn on_fetch_success(&self, _name: &str, _date: &str, _logs: &[&str]) {}
+    fn on_fetch_fail(&self, _name: &str, _date: &str, _err: &str) {}
 }
 
 #[derive(Debug, Clone)]

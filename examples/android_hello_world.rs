@@ -4,6 +4,7 @@ use ezlog::{
 };
 
 // #[cfg_attr(target_os = "android", ndk_glue::main(backtrace = "on"))]
+#[allow(dead_code)]
 fn main() {
     init();
     let log_config = get_config();

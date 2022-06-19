@@ -1,9 +1,8 @@
 use std::{mem::MaybeUninit, sync::Once};
 
-#[allow(non_snake_case)]
 use crate::{
-    thread_name, CipherKind, CompressKind, CompressLevel, EZLogConfigBuilder, EZRecordBuilder,
-    Level,
+    event, set_boxed_callback, thread_name, CipherKind, CompressKind, CompressLevel,
+    EZLogConfigBuilder, EZRecordBuilder, Level,
 };
 use android_logger::Config;
 use jni::{
@@ -22,23 +21,30 @@ static ONLOAD: Once = Once::new();
 static mut JVM: MaybeUninit<JavaVM> = MaybeUninit::uninit();
 static mut ON_FETCH_SUCCESS_METHOD: Option<JMethodID> = None;
 static mut ON_FETCH_FAIL_METHOD: Option<JMethodID> = None;
-static mut CALL_BACK: Option<JObject> = None;
+static mut CALL_BACK: Option<GlobalRef> = None;
 
 #[no_mangle]
 pub extern "system" fn JNI_OnLoad(vm: JavaVM, _: *mut c_void) -> jint {
     ONLOAD.call_once(|| {
-        let env = &vm.get_env().expect("Cannot get reference to the JNIEnv");
+        let env = vm.get_env().expect("Cannot get reference to the JNIEnv");
         unsafe {
             ON_FETCH_SUCCESS_METHOD = get_method_id(
                 &env,
                 "wtf/s1/ezlog/Callback",
-                "onLogFetch",
-                "(Ljava/lang/String,[Ljava/lang/String)V",
+                "onLogsFetchSuccess",
+                "(Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;)V",
             );
+
+            ON_FETCH_FAIL_METHOD = get_method_id(
+                &env,
+                "wtf/s1/ezlog/Callback",
+                "onLogsFetchFail",
+                "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+            );
+
             JVM.as_mut_ptr().write(vm);
         }
     });
-
     JNI_VERSION_1_6
 }
 
@@ -151,8 +157,21 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_flush(
     crate::flush(&log_name);
 }
 
+// todo thread safe
 #[no_mangle]
-pub unsafe extern "C" fn Java_wft_s1_ezlog_EZLog_fetchLog(
+pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_registerCallback(
+    env: JNIEnv,
+    _jclass: JClass,
+    j_callback: JObject,
+) {
+    if let Ok(gloableObj) = env.new_global_ref(j_callback) {
+        CALL_BACK = Some(gloableObj);
+        set_boxed_callback(Box::new(AndroidCallback))
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_requestLogFilesForDate(
     env: JNIEnv,
     _: JClass,
     j_log_name: JString,
@@ -168,15 +187,7 @@ pub unsafe extern "C" fn Java_wft_s1_ezlog_EZLog_fetchLog(
         .map(|jstr| jstr.into())
         .unwrap_or_else(|_| "".to_string());
 
-    crate::request_log_files_for_date(&log_name, &date).unwrap_or_else(|e| {
-        let err = env
-            .new_string(&format!("{}", e))
-            .unwrap_or_else(|_| j_log_name);
-
-        internal_call_on_fetch_fail(&env, j_log_name, j_date, err).unwrap_or_else(|_| {
-            //todo
-        });
-    });
+    crate::request_log_files_for_date(&log_name, &date);
 }
 
 /// Produces `JMethodID` for a particular method dealing with its lifetime.
@@ -201,6 +212,7 @@ fn get_method_id(env: &JNIEnv, class: &str, name: &str, sig: &str) -> Option<JMe
 ///
 /// Always returns Some(class_ref), panics if class not found.
 #[inline]
+#[allow(dead_code)]
 fn get_class(env: &JNIEnv, class: &str) -> Option<GlobalRef> {
     let class = env
         .find_class(class)
@@ -208,10 +220,22 @@ fn get_class(env: &JNIEnv, class: &str) -> Option<GlobalRef> {
     Some(env.new_global_ref(class).unwrap())
 }
 
+struct AndroidCallback;
+
+impl crate::EZLogCallback for AndroidCallback {
+    fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
+        call_on_fetch_success(name, date, logs).unwrap_or_else(|e| event!(ffi_call_err e));
+    }
+
+    fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
+        call_on_fetch_fail(name, date, err).unwrap_or_else(|e| event!(ffi_call_err e));
+    }
+}
+
 pub(crate) fn call_on_fetch_success(
     name: &str,
     date: &str,
-    logs: Vec<&str>,
+    logs: &[&str],
 ) -> Result<(), jni::errors::Error> {
     unsafe {
         match get_env() {
@@ -221,19 +245,19 @@ pub(crate) fn call_on_fetch_success(
                 let j_logs = vec_to_jobjectArray(
                     &env,
                     logs,
-                    "Ljava/lang/String",
+                    "java/lang/String",
                     |x| env.new_string(x),
                     env.new_string("")?,
                 )?;
 
                 let args: &[JValue] = &[name.into(), date.into(), j_logs.into()];
                 if let Some(method) = ON_FETCH_SUCCESS_METHOD {
-                    if let Some(callback) = CALL_BACK {
+                    if let Some(callback) = &CALL_BACK {
                         env.call_method_unchecked(
                             callback,
                             method,
                             jni::signature::JavaType::Primitive(Primitive::Void),
-                            &args,
+                            args,
                         )?;
                     }
                 }
@@ -271,12 +295,12 @@ unsafe fn internal_call_on_fetch_fail<'a>(
 ) -> Result<(), jni::errors::Error> {
     let args: &[JValue] = &[name.into(), date.into(), err.into()];
     if let Some(method) = ON_FETCH_FAIL_METHOD {
-        if let Some(callback) = CALL_BACK {
+        if let Some(callback) = &CALL_BACK {
             env.call_method_unchecked(
                 callback,
                 method,
                 jni::signature::JavaType::Primitive(Primitive::Void),
-                &args,
+                args,
             )?;
         }
     }
@@ -288,14 +312,15 @@ unsafe fn get_env<'a>() -> Result<JNIEnv<'a>, jni::errors::Error> {
     if ONLOAD.is_completed() {
         let jvm = &*(JVM.as_ptr());
         match jvm.get_env() {
-            Ok(env) => {
-                return Ok(env);
+            Ok(_env) => {
+                if jvm.threads_attached() == 0 {
+                    return jvm.attach_current_thread_permanently();
+                }
             }
             Err(err) => match err {
                 jni::errors::Error::JniCall(e) => match e {
                     jni::errors::JniError::ThreadDetached => {
-                        let env = *jvm.attach_current_thread()?;
-                        return Ok(env);
+                        return jvm.attach_current_thread_permanently();
                     }
                     _e => return Err(jni::errors::Error::JniCall(_e)),
                 },
@@ -307,9 +332,9 @@ unsafe fn get_env<'a>() -> Result<JNIEnv<'a>, jni::errors::Error> {
 }
 
 #[inline]
-unsafe fn vec_to_jobjectArray<'a, T, U, F, C>(
+unsafe fn vec_to_jobjectArray<'a, T, C, F, U>(
     env: &JNIEnv<'a>,
-    vec: Vec<T>,
+    vec: &[T],
     element_class_name: C,
     op: F,
     initial_element: U,
@@ -327,13 +352,4 @@ where
     Ok(jobjArray)
 }
 
-mod tests {
-    use std::{ffi::CString, path::PathBuf};
-
-    use jni::JNIEnv;
-
-    fn test_jni_path<'a>(env: &JNIEnv<'a>, p: PathBuf) {
-        let a = p.to_str().unwrap();
-        env.new_string(a).unwrap();
-    }
-}
+mod tests {}

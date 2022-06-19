@@ -3,6 +3,8 @@ package wtf.s1.ezlog.demo
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
+import android.util.Log
+import wtf.s1.ezlog.Callback
 import wtf.s1.ezlog.EZLog
 import wtf.s1.ezlog.EZLogConfig
 import wtf.s1.ezlog.EZLogger
@@ -23,7 +25,30 @@ class DebugApp : Application() {
             .build()
         EZLog.initWith(config)
 
-        Thread({ EZLog.v("ChildThread", "run on background") }, "background_log").start()
+        EZLog._registerCallback(object : Callback {
+            override fun onLogsFetchSuccess(
+                logName: String?,
+                date: String?,
+                logs: Array<out String>?
+            ) {
+                Log.i("ezlog", "$logName $date ${logs.contentToString()}")
+                logs?.let {
+                    logs.getOrNull(0)?.let { log ->
+                        Log.i("ezlog", "check file exists ${File(log).exists()}")
+                    }
+                }
+            }
+
+            override fun onLogsFetchFail(logName: String?, date: String?, err: String?) {
+                Log.i("ezlog", "$logName $date $err")
+            }
+        })
+
+        Thread({
+            EZLog.v("ChildThread", "run on background")
+            Thread.sleep(1000)
+            EZLog._requestLogFilesForDate("demo", "2022_06_19")
+        }, "background_log").start()
 
         val uiLogConfig = EZLogConfig.Builder("ui", path)
             .cipherKey("a secret key!!!!".toByteArray())

@@ -4,6 +4,10 @@ import org.jetbrains.annotations.NotNull;
 
 public class EZLog {
 
+    static {
+        System.loadLibrary("ezlog");
+    }
+
     public static final int VERBOSE = 5;
     public static final int DEBUG = 4;
     public static final int INFO = 3;
@@ -62,6 +66,14 @@ public class EZLog {
 
     public static void _flush(String logName) {
         flush(logName);
+    }
+
+    public static void _registerCallback(Callback callback) {
+        registerCallback(callback);
+    }
+
+    public static void _requestLogFilesForDate(String logName, String date) {
+        requestLogFilesForDate(logName, date);
     }
 
     /**
@@ -136,7 +148,15 @@ public class EZLog {
      */
     private static native void flush(String logName);
 
-    static {
-        System.loadLibrary("ezlog");
-    }
+    /**
+     * @param callback log fetch callback
+     */
+    private static native void registerCallback(Callback callback);
+
+    /**
+     *
+     * @param logName target log name
+     * @param date target log date
+     */
+    private static native void requestLogFilesForDate(String logName, String date);
 }

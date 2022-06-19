@@ -5,6 +5,9 @@ macro_rules! event {
     (init $init_option:expr) => {
         println!("init {}", $init_option)
     };
+    (init_err $err:expr) => {
+        println!("init error {}", $err)
+    };
     (map_create) => {
         println!("log map create")
     };
@@ -76,6 +79,9 @@ macro_rules! event {
     };
     (get_log_files_err $e:expr) => {
         println!("get log files err {}", $e)
+    };
+    (ffi_call_err $e:expr) => {
+        println!("ffi call err {}", $e)
     };
 }
 
