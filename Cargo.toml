@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
-members = ["crates/cli", "crates/core"]
+members = ["ezlog-cli", "ezlog-core"]
 
 # https://github.com/johnthagen/min-sized-rust
 [profile.release]
@@ -15,7 +15,7 @@ codegen-units = 1   # Reduce number of codegen units to increase optimizations.
 # strip = true        # Strip symbols from binary*
 
 [dependencies]
-ezlog = {path = "crates/core"}
+ezlog = {path = "ezlog-core"}
 log = "0.4.17"
 time = { version = "0.3", default-features = false, features = ["formatting"] }
 
