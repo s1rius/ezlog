@@ -5,8 +5,8 @@ use std::thread;
 use std::time::Duration;
 
 use ezlog::{
-    create_log, CipherKind, CompressKind, EZLogConfig, EZLogConfigBuilder, EZLogger, EZRecord,
-    V1_LOG_HEADER_SIZE, EZLogCallback,
+    create_log, CipherKind, CompressKind, EZLogCallback, EZLogConfig, EZLogConfigBuilder, EZLogger,
+    EZRecord, V1_LOG_HEADER_SIZE,
 };
 use log::{debug, error, info, trace, warn, LevelFilter};
 use log::{Metadata, Record};
@@ -31,11 +31,11 @@ pub fn main() {
     info!("3. now have a log");
     warn!("4. test log to file");
     error!("5. log complete");
-    
+
     ezlog::flush(ezlog::DEFAULT_LOG_NAME);
     ezlog::request_log_files_for_date(ezlog::DEFAULT_LOG_NAME, "2022_06_19");
     println!("end");
-    
+
     thread::sleep(Duration::from_secs(1));
     //read_log_file_rewrite();
 }

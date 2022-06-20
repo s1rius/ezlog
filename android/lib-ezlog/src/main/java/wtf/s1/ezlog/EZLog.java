@@ -26,12 +26,12 @@ public class EZLog {
     private static volatile EZLogger defaultLogger;
 
     public static synchronized void initWith(@NotNull EZLogConfig config) {
-        init();
+        init(config.enableTrace);
         defaultLogger = new EZLogger(config);
     }
 
-    public static void initNoDefault() {
-        init();
+    public static void initNoDefault(boolean enableTrace) {
+        init(enableTrace);
     }
 
     public static void v (String tag, String msg) {
@@ -100,7 +100,7 @@ public class EZLog {
     /**
      * native init log library
      */
-    private static synchronized native void init();
+    private static synchronized native void init(boolean enableTrace);
 
     /**
      * native create a logger to print log

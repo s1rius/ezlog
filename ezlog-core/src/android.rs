@@ -1,18 +1,16 @@
 use crate::{
-    event, set_boxed_callback, thread_name, CipherKind, CompressKind, CompressLevel,
-    EZLogConfigBuilder, EZRecordBuilder, Level,
+    event, events::EventPrinter, set_boxed_callback, thread_name, CipherKind, CompressKind,
+    CompressLevel, EZLogConfigBuilder, EZRecordBuilder, Level,
 };
-use android_logger::Config;
 use jni::{
     errors::JniError,
     objects::{GlobalRef, JClass, JMethodID, JObject, JString, JValue},
     signature::Primitive,
     strings::JNIString,
-    sys::{jbyteArray, jint, jobjectArray, JNI_VERSION_1_6},
+    sys::{jbyteArray, jint, jobjectArray, JNI_VERSION_1_6, jboolean},
     JNIEnv, JavaVM,
 };
 use libc::c_void;
-use log::debug;
 use once_cell::sync::OnceCell;
 use time::Duration;
 
@@ -22,6 +20,8 @@ static CALL_BACK_REF: OnceCell<GlobalRef> = OnceCell::new();
 
 static mut ON_FETCH_SUCCESS_METHOD: Option<JMethodID> = None;
 static mut ON_FETCH_FAIL_METHOD: Option<JMethodID> = None;
+
+static EVENT_LISTENER: EventPrinter = EventPrinter {};
 
 #[no_mangle]
 pub extern "system" fn JNI_OnLoad(vm: JavaVM, _: *mut c_void) -> jint {
@@ -57,14 +57,12 @@ pub extern "system" fn JNI_OnLoad(vm: JavaVM, _: *mut c_void) -> jint {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_init(_: JNIEnv, _: JClass) {
-    android_logger::init_once(
-        Config::default()
-            .with_min_level(log::Level::Trace)
-            .with_tag("ezlog"), // logs will show under mytag tag
-    );
+pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_init(_: JNIEnv, _: JClass, j_enable_trace: jboolean) {
+    let enable_trace = j_enable_trace as u8;
+    if enable_trace > 0 {
+        crate::events::set_listener(&EVENT_LISTENER);    
+    }
     crate::init();
-    debug!("ezlog_init");
 }
 
 #[no_mangle]
@@ -180,7 +178,7 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_registerCallback(
                 .unwrap_or(());
             set_boxed_callback(Box::new(AndroidCallback))
         }
-        Err(e) => event!(ffi_call_err format!("register callback error: {}", e)),
+        Err(e) => event!(ffi_call_err & format!("register callback error: {}", e)),
     }
 }
 
@@ -237,11 +235,13 @@ struct AndroidCallback;
 
 impl crate::EZLogCallback for AndroidCallback {
     fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
-        call_on_fetch_success(name, date, logs).unwrap_or_else(|e| event!(ffi_call_err e));
+        call_on_fetch_success(name, date, logs)
+            .unwrap_or_else(|e| event!(ffi_call_err & format!("{}", e)));
     }
 
     fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
-        call_on_fetch_fail(name, date, err).unwrap_or_else(|e| event!(ffi_call_err e));
+        call_on_fetch_fail(name, date, err)
+            .unwrap_or_else(|e| event!(ffi_call_err & format!("{}", e)));
     }
 }
 

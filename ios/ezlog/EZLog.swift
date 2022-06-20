@@ -2,7 +2,7 @@
 //  EZLog.swift
 //  ezlog
 //
-//  Created by al dmgmgw on 2022/6/8.
+//  Created by s1rius on 2022/6/8.
 //
 
 import Foundation
@@ -62,7 +62,11 @@ private func ezlogCreate(config: EZLogConfig) {
 }
 
 public func ezlogInit() {
-    ezlog_init()
+    ezlog_init(false)
+}
+
+public func ezlogInitWithTrace() {
+    ezlog_init(true)
 }
 
 public func ezlogFlushAll() {

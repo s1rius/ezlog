@@ -1,6 +1,7 @@
 use libc::c_void;
 
 use crate::*;
+use crate::events::EventPrinter;
 use core::ffi::c_char;
 use core::ffi::c_uchar;
 use core::ffi::c_uint;
@@ -14,7 +15,11 @@ static mut ONCE_REGISTER: std::sync::Once = Once::new();
 
 /// Init ezlog, must call before any other function
 #[no_mangle]
-pub extern "C" fn ezlog_init() {
+pub extern "C" fn ezlog_init(enable_trace: c_uint) {
+    if enable_trace as i8 > 0 {
+        static EVENT: EventPrinter = EventPrinter{};
+        crate::events::set_listener(&EVENT)
+    }
     crate::init();
 }
 
@@ -186,9 +191,9 @@ fn call_on_fetch_success(name: &str, date: &str, logs: &[&str]) {
             let callback = &*CALL_BACK.as_ptr();
             callback
                 .success(name, date, logs)
-                .unwrap_or_else(|e| event!(ffi_call_err e));
+                .unwrap_or_else(|e| event!(ffi_call_err & format!("ffi: {}", e)));
         } else {
-            event!(ffi_call_err format!("callback not registered"));
+            event!(ffi_call_err "ffi: callback not registered");
         }
     }
 }
@@ -199,9 +204,9 @@ fn call_on_fetch_fail(name: &str, date: &str, err_msg: &str) {
             let callback = &*CALL_BACK.as_ptr();
             callback
                 .fail(name, date, err_msg)
-                .unwrap_or_else(|e| event!(ffi_call_err e));
+                .unwrap_or_else(|e| event!(ffi_call_err & format!("ffi: {}", e)));
         } else {
-            event!(ffi_call_err format!("callback not registered"));
+            event!(ffi_call_err "ffi: callback not registered");
         }
     }
 }

@@ -74,7 +74,6 @@ type Result<T> = std::result::Result<T, LogError>;
 fn get_map() -> &'static mut HashMap<u64, EZLogger> {
     LOG_MAP_INIT.call_once(|| unsafe {
         ptr::write(LOG_MAP.as_mut_ptr(), HashMap::new());
-        event!(map_create);
     });
     unsafe { &mut (*LOG_MAP.as_mut_ptr()) }
 }
@@ -108,10 +107,10 @@ fn init_log_channel() -> Sender<EZMsg> {
                                 let log_id = crate::log_id(&log.config.name);
                                 let map = get_map();
                                 map.insert(log_id, log);
-                                event!(log_create name);
+                                event!(create_logger_end & name);
                             }
                             Err(e) => {
-                                event!(log_create_fail name, e);
+                                event!(create_logger_fail & name, &format!("{}", e));
                             }
                         };
                     }
@@ -119,34 +118,35 @@ fn init_log_channel() -> Sender<EZMsg> {
                         let log = match get_map().get_mut(&record.log_id()) {
                             Some(l) => l,
                             None => {
-                                event!(logger_not_match record.log_id());
+                                event!(
+                                    internal_err & format!("logger not found {}", record.t_id())
+                                );
                                 continue;
                             }
                         };
                         if log.config.level < record.level {
                             event!(
-                                record_filter_out & record.id(),
-                                &record.level,
-                                &log.config.level
+                                record_filter_out & record.t_id(),
+                                &format!(
+                                    "current level{}, max level{}",
+                                    &record.level, &log.config.level
+                                )
                             );
                             continue;
                         }
                         match log.append(&record) {
                             Ok(_) => {
-                                event!(record_complete record.id());
+                                event!(record_end & record.t_id());
                             }
                             Err(err) => match err {
-                                LogError::IoError(err) => {
-                                    event!(io_error record.id(), err)
-                                }
                                 LogError::Compress(err) => {
-                                    event!(compress_fail record.id(), err)
+                                    event!(compress_fail & record.t_id(), &format!("{}", err));
                                 }
-                                LogError::Crypto(c) => {
-                                    event!(encrypt_fail record.id(), c)
+                                LogError::Crypto(err) => {
+                                    event!(encrypt_fail & record.t_id(), &format!("{}", err))
                                 }
                                 _ => {
-                                    event!(unexpect_fail record.id(), err)
+                                    event!(unknown_err & record.t_id(), &format!("{}", err))
                                 }
                             },
                         }
@@ -156,16 +156,19 @@ fn init_log_channel() -> Sender<EZMsg> {
                         let log = match get_map().get_mut(&id) {
                             Some(l) => l,
                             None => {
-                                event!(logger_not_match name);
+                                event!(internal_err & name);
                                 continue;
                             }
                         };
                         log.appender.flush().ok();
-                        event!(logger_force_flush name);
+                        event!(flush_end & name);
                     }
-                    EZMsg::FlushAll() => get_map().values_mut().for_each(|item| {
-                        item.flush().ok();
-                    }),
+                    EZMsg::FlushAll() => {
+                        get_map().values_mut().for_each(|item| {
+                            item.flush().ok();
+                        });
+                        event!(flush_all_end);
+                    }
                     EZMsg::Trim() => {
                         get_map().values().for_each(|logger| logger.trim());
                     }
@@ -173,7 +176,10 @@ fn init_log_channel() -> Sender<EZMsg> {
                         let logger = match get_map().get_mut(&log_id(&task.name)) {
                             Some(l) => l,
                             None => {
-                                event!(logger_not_match & task.name);
+                                event!(
+                                    internal_err
+                                        & format!("logger not found on fetch logs {}", task.name)
+                                );
                                 continue;
                             }
                         };
@@ -182,7 +188,7 @@ fn init_log_channel() -> Sender<EZMsg> {
                             "date format error in get_log_files_for_date",
                         ) {
                             Ok(date) => {
-                                let logs = logger.get_log_files_for_date(date);
+                                let logs = logger.query_log_files_for_date(date);
                                 task.task_sender
                                     .try_send(FetchResult {
                                         name: task.name,
@@ -206,7 +212,7 @@ fn init_log_channel() -> Sender<EZMsg> {
                     }
                 },
                 Err(err) => {
-                    event!(channel_recv_err err);
+                    event!(internal_err & format!("{}", err));
                 }
             }
         }) {
@@ -214,7 +220,7 @@ fn init_log_channel() -> Sender<EZMsg> {
             event!(init "init ezlog success");
         }
         Err(e) => {
-            event!(init format!("init ezlog error {}", e));
+            event!(init & format!("init ezlog error {}", e));
         }
     }
     sender
@@ -228,13 +234,13 @@ fn init_callback_channel() -> Sender<FetchResult> {
             Ok(result) => {
                 invoke_fetch_callback(result);
             }
-            Err(e) => event!(channel_recv_err e),
+            Err(e) => event!(internal_err & format!("{}", e)),
         }) {
         Ok(_) => {
             event!(init "init callback success");
         }
         Err(e) => {
-            event!(init format!("init callback err {}", e));
+            event!(init & format!("init callback err {}", e));
         }
     }
     fetch_sender
@@ -244,29 +250,29 @@ pub fn create_log(config: EZLogConfig) {
     let name = config.name.clone();
     let msg = EZMsg::CreateLogger(config);
     if post_msg(msg) {
-        event!(channel_send_log_create name);
+        event!(create_logger & name);
     }
 }
 
 pub fn log(record: EZRecord) {
-    let id = &record.id();
+    let tid = record.t_id();
     let msg = EZMsg::Record(record);
     if post_msg(msg) {
-        event!(channel_send_record id)
+        event!(record & tid);
     }
 }
 
 pub fn flush(log_name: &str) {
     let msg = EZMsg::ForceFlush(log_name.to_string());
     if post_msg(msg) {
-        event!(channel_send_flush log_name)
+        event!(flush log_name)
     }
 }
 
 pub fn flush_all() {
     let msg = EZMsg::FlushAll();
     if post_msg(msg) {
-        event!(channel_send_flush_all)
+        event!(flush_all)
     }
 }
 
@@ -290,7 +296,7 @@ fn post_msg(msg: EZMsg) -> bool {
 }
 
 fn report_channel_send_err<T>(err: TrySendError<T>) {
-    event!(channel_send_err err);
+    event!(internal_err & format!("{}", err));
 }
 
 pub(crate) fn log_id(name: &str) -> u64 {
@@ -439,10 +445,14 @@ impl EZLogger {
     fn encode(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
         let mut buf = self.format(record);
         if let Some(encryptor) = &self.cryptor {
+            event!(encrypt_start & record.t_id());
             buf = encryptor.encrypt(&buf)?;
+            event!(encrypt_end & record.t_id());
         }
         if let Some(compression) = &self.compression {
+            event!(compress_start & record.t_id());
             buf = compression.compress(&buf)?;
+            event!(compress_end & record.t_id());
         }
         Ok(buf)
     }
@@ -562,25 +572,36 @@ impl EZLogger {
                                     Ok(out_of_date) => {
                                         if out_of_date {
                                             fs::remove_file(file.path()).unwrap_or_else(|e| {
-                                                event!(trime_logger_err format!("remove file err: {}", e))
+                                                event!(
+                                                    trim_logger_err
+                                                        & format!("trim: remove file err: {}", e)
+                                                )
                                             });
                                         }
                                     }
                                     Err(e) => {
-                                        event!(trime_logger_err format!("judge file is out of date error: {}", e))
+                                        event!(
+                                            trim_logger_err
+                                                & format!(
+                                                    "trim: judge file out of date error: {}",
+                                                    e
+                                                )
+                                        )
                                     }
                                 }
                             };
                         }
-                        Err(e) => event!(trime_logger_err format!("traversal file error: {}", e)),
+                        Err(e) => {
+                            event!(trim_logger_err & format!("trim: traversal file error: {}", e))
+                        }
                     }
                 }
             }
-            Err(e) => event!(trime_logger_err format!("read dir error: {}", e)),
+            Err(e) => event!(trim_logger_err & format!("trim: read dir error: {}", e)),
         }
     }
 
-    pub fn get_log_files_for_date(&self, date: Date) -> Vec<PathBuf> {
+    pub fn query_log_files_for_date(&self, date: Date) -> Vec<PathBuf> {
         let mut logs = Vec::new();
         match fs::read_dir(&self.config.dir_path) {
             Ok(dir) => {
@@ -593,11 +614,15 @@ impl EZLogger {
                                 }
                             };
                         }
-                        Err(e) => event!(get_log_files_err format!("traversal file error: {}", e)),
+                        Err(e) => {
+                            event!(
+                                query_log_files_err & format!("query: traversal file error: {}", e)
+                            );
+                        }
                     }
                 }
             }
-            Err(e) => event!(get_log_files_err format!("read dir error: {}", e)),
+            Err(e) => event!(query_log_files_err & format!("query: dir error: {}", e)),
         }
         logs
     }
@@ -860,6 +885,7 @@ impl Header {
 /// 单条的日志记录
 #[derive(Debug, Clone)]
 pub struct EZRecord {
+    id: u64,
     log_name: String,
     level: Level,
     target: String,
@@ -914,6 +940,7 @@ impl EZRecord {
     pub fn to_builder(&self) -> EZRecordBuilder {
         EZRecordBuilder {
             record: EZRecord {
+                id: self.id,
                 log_name: self.log_name.clone(),
                 level: self.level,
                 target: self.target.clone(),
@@ -938,6 +965,10 @@ impl EZRecord {
             .thread_name(t_name.to_string())
             .content(format!("{}", r.args()))
             .build()
+    }
+
+    pub fn t_id(&self) -> String {
+        format!("{}_{}", self.log_name, &self.id)
     }
 
     /// get EZRecord unique id
@@ -1002,6 +1033,7 @@ impl EZRecordBuilder {
     }
 
     pub fn build(&mut self) -> EZRecord {
+        self.record.id = self.record.id();
         self.record.clone()
     }
 }
@@ -1010,6 +1042,7 @@ impl Default for EZRecordBuilder {
     fn default() -> Self {
         EZRecordBuilder {
             record: EZRecord {
+                id: 0,
                 log_name: DEFAULT_LOG_NAME.to_string(),
                 level: Level::Info,
                 target: "".to_string(),
@@ -1194,7 +1227,6 @@ pub fn init_mmap_temp_file(path: &Path) -> io::Result<File> {
 mod tests {
     use std::fs::OpenOptions;
     use std::io::{BufReader, Read, Seek, SeekFrom, Write};
-    use std::panic;
 
     use aes_gcm::aead::{Aead, NewAead};
     use aes_gcm::{Aes256Gcm, Key, Nonce}; // Or `Aes128Gcm`
@@ -1202,7 +1234,7 @@ mod tests {
     use time::OffsetDateTime;
 
     use crate::{
-        config::EZLogConfigBuilder, event, CipherKind, CompressKind, EZLogConfig, EZLogger,
+        config::EZLogConfigBuilder, CipherKind, CompressKind, EZLogConfig, EZLogger,
         EZRecordBuilder, Header, RECORD_SIGNATURE_END, RECORD_SIGNATURE_START, V1_LOG_HEADER_SIZE,
     };
 
@@ -1327,13 +1359,5 @@ mod tests {
 
         let decode = logger.decode(&mut reader).unwrap();
         println!("{}", String::from_utf8(decode).unwrap())
-    }
-
-    #[test]
-    fn macro_test() {
-        panic::set_hook(Box::new(|_| {}));
-        event!(log_create "default");
-
-        event!(log_create "logger fail");
     }
 }

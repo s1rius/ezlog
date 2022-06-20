@@ -14,6 +14,7 @@ public class EZLogConfig {
     int cipher;
     byte[] cipherKey;
     byte[] cipherNonce;
+    boolean enableTrace;
 
     public EZLogConfig(@NotNull String logName, @NotNull String dirPath) {
         this.logName = logName;
@@ -34,6 +35,7 @@ public class EZLogConfig {
         int cipher;
         byte[] cipherKey;
         byte[] cipherNonce;
+        boolean enableTrace;
 
         public Builder(@NotNull String logName, @NotNull String dirPath) {
             this.logName = logName;
@@ -75,6 +77,11 @@ public class EZLogConfig {
             return this;
         }
 
+        public Builder enableTrace(boolean isEnable) {
+            this.enableTrace = isEnable;
+            return this;
+        }
+
         public EZLogConfig build() {
             EZLogConfig config = new EZLogConfig(this.logName, this.dirPath);
             config.maxLevel = this.maxLevel;
@@ -84,6 +91,7 @@ public class EZLogConfig {
             config.cipher = this.cipher;
             config.cipherKey = this.cipherKey;
             config.cipherNonce = this.cipherNonce;
+            config.enableTrace = this.enableTrace;
             return config;
         }
     }
