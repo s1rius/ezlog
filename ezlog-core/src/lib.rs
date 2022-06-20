@@ -66,6 +66,7 @@ static mut LOG_MAP: MaybeUninit<HashMap<u64, EZLogger>> = MaybeUninit::uninit();
 static LOG_MAP_INIT: Once = Once::new();
 
 static mut GLOABLE_CALLBACK: &dyn EZLogCallback = &NopCallback;
+static CALLBACK_INIT: Once = Once::new();
 
 type Result<T> = std::result::Result<T, LogError>;
 
@@ -231,10 +232,10 @@ fn init_callback_channel() -> Sender<FetchResult> {
         }) {
         Ok(_) => {
             event!(init "init callback success");
-        },
+        }
         Err(e) => {
             event!(init format!("init callback err {}", e));
-        },
+        }
     }
     fetch_sender
 }
@@ -318,9 +319,13 @@ fn invoke_fetch_callback(result: FetchResult) {
     }
 }
 
-// todo make thread safety
 pub fn callback() -> &'static dyn EZLogCallback {
-    unsafe { GLOABLE_CALLBACK }
+    if CALLBACK_INIT.is_completed() {
+        unsafe { GLOABLE_CALLBACK }
+    } else {
+        static NOP: NopCallback = NopCallback;
+        &NOP
+    }
 }
 
 pub trait EZLogCallback {
@@ -336,10 +341,9 @@ fn set_callback_inner<F>(make_callback: F)
 where
     F: FnOnce() -> &'static dyn EZLogCallback,
 {
-    // todo make thread safety
-    unsafe {
+    CALLBACK_INIT.call_once(|| unsafe {
         GLOABLE_CALLBACK = make_callback();
-    }
+    });
 }
 
 struct NopCallback;

@@ -9,7 +9,8 @@ use core::slice;
 use std::ffi::CString;
 use std::ffi::NulError;
 
-static mut CALL_BACK: Option<Callback> = None;
+static mut CALL_BACK: MaybeUninit<Callback> = MaybeUninit::uninit();
+static mut ONCE_REGISTER: std::sync::Once = Once::new();
 
 /// Init ezlog, must call before any other function
 #[no_mangle]
@@ -101,7 +102,9 @@ pub unsafe extern "C" fn ezlog_log(
 /// todo thread safe
 #[no_mangle]
 pub unsafe extern "C" fn ezlog_register_callback(callback: Callback) {
-    CALL_BACK = Some(callback);
+    ONCE_REGISTER.call_once(|| {
+        CALL_BACK.as_mut_ptr().write(callback);
+    });
     set_boxed_callback(Box::new(AppleCallback));
 }
 
@@ -132,7 +135,7 @@ impl Callback {
             .collect::<Vec<_>>();
         let c_args_ptr = c_args.as_ptr();
         let c_args_len = c_args.len();
-        
+
         (self.onLogsFetchSuccess)(
             self.successPoint as *mut _,
             c_log_name,
@@ -179,23 +182,33 @@ impl Drop for Callback {
 
 fn call_on_fetch_success(name: &str, date: &str, logs: &[&str]) {
     unsafe {
-        if let Some(callback) = &CALL_BACK {
-            callback.success(name, date, logs).unwrap();
+        if ONCE_REGISTER.is_completed() {
+            let callback = &*CALL_BACK.as_ptr();
+            callback
+                .success(name, date, logs)
+                .unwrap_or_else(|e| event!(ffi_call_err e));
+        } else {
+            event!(ffi_call_err format!("callback not registered"));
         }
     }
 }
 
 fn call_on_fetch_fail(name: &str, date: &str, err_msg: &str) {
     unsafe {
-        if let Some(callback) = &CALL_BACK {
-            callback.fail(name, date, err_msg).unwrap();
+        if ONCE_REGISTER.is_completed() {
+            let callback = &*CALL_BACK.as_ptr();
+            callback
+                .fail(name, date, err_msg)
+                .unwrap_or_else(|e| event!(ffi_call_err e));
+        } else {
+            event!(ffi_call_err format!("callback not registered"));
         }
     }
 }
 
 /// Request logger's files path array by specified date
 /// before call this function, you should register a callback
-/// call 
+/// call
 /// ```
 /// ezlog_register_callback(callback);
 /// ```
