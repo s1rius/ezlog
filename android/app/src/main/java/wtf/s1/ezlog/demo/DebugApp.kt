@@ -22,6 +22,7 @@ class DebugApp : Application() {
             .cipher(EZLog.Aes128Gcm)
             .cipherKey("a secret key!!!!".toByteArray())
             .cipherNonce("unique nonce".toByteArray())
+            .enableTrace(BuildConfig.DEBUG)
             .build()
         EZLog.initWith(config)
 

@@ -23,7 +23,7 @@ typedef struct Callback {
 /**
  * Init ezlog, must call before any other function
  */
-void ezlog_init(void);
+void ezlog_init(bool enable_trace);
 
 /**
  * Flush target log which name is `c_log_name`

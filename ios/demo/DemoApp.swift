@@ -14,7 +14,12 @@ struct DemoApp: App {
         WindowGroup {
             ContentView().onAppear {
                 pthread_setname_np("main")
+                #if DEBUG
+                ezlogInitWithTrace()
+                #else
                 ezlogInit()
+                #endif
+                
                 ezlogRegisterCallback(success: {name, date, logs in
                     let c = logs[0]
                     print("name:" + name + " date:" + date + " log:" + c);
@@ -28,9 +33,9 @@ struct DemoApp: App {
                                          name: "demo",
                                          keepDays: 7,
                                          maxSize: 150*1024,
-                                         compress: CompressKind.NONE,
+                                         compress: CompressKind.ZLIB,
                                          compressLevel: CompressLevel.DEFAULT,
-                                         cipher: Cipher.NONE,
+                                         cipher: Cipher.AES128GCM,
                                          cipherKey: [UInt8]("a secret key!!!!".utf8),
                                          cipherNonce: [UInt8]("unique nonce".utf8))
                 let logger = EZLogger(config: config)
