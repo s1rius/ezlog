@@ -1,5 +1,6 @@
 #![feature(core_ffi_c)]
 #![feature(core_c_str)]
+#![doc = include_str!("../../README.md")]
 
 mod appender;
 mod compress;
@@ -18,6 +19,8 @@ mod ios;
 
 pub use self::config::EZLogConfig;
 pub use self::config::EZLogConfigBuilder;
+pub use self::events::Event;
+pub use self::events::EventPrinter;
 
 use appender::EZMmapAppender;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -33,12 +36,10 @@ use std::path::PathBuf;
 use std::{
     cmp,
     collections::{hash_map::DefaultHasher, HashMap},
-    fmt,
-    fs::{self, File, OpenOptions},
+    fmt, fs,
     hash::{Hash, Hasher},
     io::{self, Cursor, Read, Write},
     mem::MaybeUninit,
-    path::Path,
     ptr,
     rc::Rc,
     sync::Once,
@@ -48,6 +49,7 @@ use time::format_description::well_known::Rfc3339;
 use time::Date;
 use time::{Duration, OffsetDateTime};
 
+/// A [EZLogger] default name. current is "default".
 pub const DEFAULT_LOG_NAME: &str = "default";
 pub(crate) const FILE_SIGNATURE: &[u8; 2] = b"ez";
 
@@ -59,6 +61,8 @@ pub(crate) const RECORD_SIGNATURE_START: u8 = 0x3b;
 pub(crate) const RECORD_SIGNATURE_END: u8 = 0x21;
 
 pub(crate) const DEFAULT_MAX_LOG_SIZE: u64 = 150 * 1024;
+
+/// Log file fixed header length.
 pub const V1_LOG_HEADER_SIZE: usize = 10;
 
 // maybe set as threadlocal variable
@@ -90,8 +94,22 @@ fn get_fetch_sender() -> &'static Sender<FetchResult> {
     FETCH_SENDER.get_or_init(init_callback_channel)
 }
 
-/// 初始化
+/// Init ezlog
+///
+/// current implementation is empty.
 pub fn init() {}
+
+/// Trim all [EZLogger]s outdated files
+///
+/// manual trim the log files in disk. delete logs which are out of date.
+pub fn trim() {
+    post_msg(EZMsg::Trim());
+}
+
+/// Set global [Event] listener
+pub fn set_event_listener(event: &'static dyn Event) {
+    events::set_event_listener(event);
+}
 
 fn init_log_channel() -> Sender<EZMsg> {
     let (sender, receiver) = crossbeam_channel::unbounded::<EZMsg>();
@@ -246,6 +264,7 @@ fn init_callback_channel() -> Sender<FetchResult> {
     fetch_sender
 }
 
+/// Create a new [EZLogger] from an [EZLogConfig]
 pub fn create_log(config: EZLogConfig) {
     let name = config.name.clone();
     let msg = EZMsg::CreateLogger(config);
@@ -254,6 +273,7 @@ pub fn create_log(config: EZLogConfig) {
     }
 }
 
+/// Write a [EZRecord] to the log file
 pub fn log(record: EZRecord) {
     let tid = record.t_id();
     let msg = EZMsg::Record(record);
@@ -262,6 +282,7 @@ pub fn log(record: EZRecord) {
     }
 }
 
+/// Force flush the log file
 pub fn flush(log_name: &str) {
     let msg = EZMsg::ForceFlush(log_name.to_string());
     if post_msg(msg) {
@@ -269,6 +290,7 @@ pub fn flush(log_name: &str) {
     }
 }
 
+/// Flush all log files
 pub fn flush_all() {
     let msg = EZMsg::FlushAll();
     if post_msg(msg) {
@@ -276,6 +298,7 @@ pub fn flush_all() {
     }
 }
 
+/// Request logs file path array at the date which [EZLogger]'s name is define in the parameter
 pub fn request_log_files_for_date(log_name: &str, date_str: &str) {
     let msg = FetchReq {
         name: log_name.to_string(),
@@ -325,7 +348,7 @@ fn invoke_fetch_callback(result: FetchResult) {
     }
 }
 
-pub fn callback() -> &'static dyn EZLogCallback {
+pub(crate) fn callback() -> &'static dyn EZLogCallback {
     if CALLBACK_INIT.is_completed() {
         unsafe { GLOABLE_CALLBACK }
     } else {
@@ -334,11 +357,34 @@ pub fn callback() -> &'static dyn EZLogCallback {
     }
 }
 
+/// Async callback for fetch log files
+///
+/// [`set_boxed_callback`] sets the boxed callback.
+///
+/// # Examples
+/// ```no_run
+/// # use ezlog::{EZLogCallback};
+///
+/// struct SimpleCallback;
+///
+/// impl EZLogCallback for SimpleCallback {
+///    fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
+///        print!("{} {} {}", name, date, logs.join(" "));
+///    }
+///    fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
+///        print!("{} {} {}", name, date, err);
+///    }
+///}
+/// fn main() {
+///     ezlog::set_boxed_callback(Box::new(SimpleCallback));
+/// }
+/// ```
 pub trait EZLogCallback {
     fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]);
     fn on_fetch_fail(&self, name: &str, date: &str, err: &str);
 }
 
+/// Set the boxed [EZLogCallback]
 pub fn set_boxed_callback(callback: Box<dyn EZLogCallback>) {
     set_callback_inner(|| Box::leak(callback))
 }
@@ -359,7 +405,7 @@ impl EZLogCallback for NopCallback {
 }
 
 #[derive(Debug, Clone)]
-pub enum EZMsg {
+pub(crate) enum EZMsg {
     CreateLogger(EZLogConfig),
     Record(EZRecord),
     ForceFlush(String),
@@ -368,6 +414,11 @@ pub enum EZMsg {
     FetchLog(FetchReq),
 }
 
+/// Fetch Logs file‘s path reqeust
+///
+/// name: log name
+/// date: log date
+/// task_sender: channel sender for fetch result
 #[derive(Debug, Clone)]
 pub struct FetchReq {
     name: String,
@@ -375,14 +426,23 @@ pub struct FetchReq {
     task_sender: Sender<FetchResult>,
 }
 
+/// # Fetch Logs file‘s path result.
+///
+/// if error is None, mean fetch process is ok.
+/// logs maybe None if no logs write at the date.
 #[derive(Debug)]
 pub struct FetchResult {
+    /// logger's name
     name: String,
+    /// request date in string, like "2020_01_01"
     date: String,
+    /// logs file's path
     logs: Option<Vec<PathBuf>>,
+    /// error message
     error: Option<String>,
 }
 
+/// The Logger struct to implement the Log encode.
 pub struct EZLogger {
     config: Rc<EZLogConfig>,
     appender: EZMmapAppender,
@@ -628,40 +688,39 @@ impl EZLogger {
     }
 }
 
-/// 日志文件编码器
-///
-/// ## 根据不同的安全要求实现
-/// - 明文实现
-/// - 对称加密实现
-///
-pub struct Encoder {}
-
-/// 压缩
+/// Compress function abstract
 pub trait Compression {
     fn compress(&self, data: &[u8]) -> std::io::Result<Vec<u8>>;
 }
 
+/// Decompress function abstract
 pub trait Decompression {
     fn decompress(&self, data: &[u8]) -> std::io::Result<Vec<u8>>;
 }
 
+/// The Compression trait + Decompression trait
 pub trait Compress: Compression + Decompression {}
 
 impl<T: Compression + Decompression> Compress for T {}
 
-/// 加密
+/// Encrypt function abstract
 pub trait Encryptor {
     fn encrypt(&self, data: &[u8]) -> std::result::Result<Vec<u8>, CryptoError>;
 }
 
+/// decrypt function abstract
 pub trait Decryptor {
     fn decrypt(&self, data: &[u8]) -> std::result::Result<Vec<u8>, CryptoError>;
 }
 
 impl<T: Encryptor + Decryptor> Cryptor for T {}
 
+/// The Encryptor trait + Decryptor trait
 pub trait Cryptor: Encryptor + Decryptor {}
 
+/// Log version enum
+///
+/// current version: v1
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
 pub enum Version {
     V1,
@@ -686,6 +745,7 @@ impl From<Version> for u8 {
     }
 }
 
+/// Cipher kind current support
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
 pub enum CipherKind {
     AES128GCM,
@@ -742,10 +802,15 @@ impl std::str::FromStr for CipherKind {
     }
 }
 
+/// Compress type can be used to compress the log file.
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
 pub enum CompressKind {
+    /// ZLIB compression
+    /// we use [flate2](https://github.com/rust-lang/flate2-rs) to implement this
     ZLIB,
+    /// No compression
     NONE,
+    /// Unknown compression
     UNKNOWN,
 }
 
@@ -769,6 +834,9 @@ impl From<CompressKind> for u8 {
     }
 }
 
+/// Compress level
+///
+/// can be define as one of the following: FAST, DEFAULT, BEST
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum CompressLevel {
     Fast,
@@ -797,19 +865,21 @@ impl From<CompressLevel> for u8 {
     }
 }
 
-/// 日志头
-/// 日志的版本，写入大小等
+/// EZLog file Header
+///
+/// every log file starts with a header,
+/// which is used to describe the version, log length, compress type, cipher kind and so on.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Header {
-    // 版本号，方便之后的升级
+    /// version code
     version: Version,
-    // 标记文件是否可用
+    /// unused flag
     flag: u8,
-    // 当前写入的下标
+    /// current log file write position
     recorder_position: u32,
-    // 压缩方式
+    /// compress type
     compress: CompressKind,
-    // 加密方式
+    /// cipher kind
     cipher: CipherKind,
 }
 
@@ -882,7 +952,7 @@ impl Header {
     }
 }
 
-/// 单条的日志记录
+/// Single Log record
 #[derive(Debug, Clone)]
 pub struct EZRecord {
     id: u64,
@@ -980,6 +1050,7 @@ impl EZRecord {
     }
 }
 
+/// [EZRecord]'s builder
 #[derive(Debug)]
 pub struct EZRecordBuilder {
     record: EZRecord,
@@ -1055,6 +1126,7 @@ impl Default for EZRecordBuilder {
     }
 }
 
+/// Log level, used to filter log records
 #[repr(usize)]
 #[derive(Copy, Eq, Debug)]
 pub enum Level {
@@ -1193,34 +1265,8 @@ impl fmt::Display for Level {
     }
 }
 
-/// 内存缓存实现的[EZLog]
-pub struct EZLogMemoryImpl {}
-
-pub fn next_date(time: OffsetDateTime) -> OffsetDateTime {
+pub(crate) fn next_date(time: OffsetDateTime) -> OffsetDateTime {
     time.date().midnight().assume_utc() + Duration::days(1)
-}
-
-pub fn init_mmap_temp_file(path: &Path) -> io::Result<File> {
-    // check dir exists, else create
-    if let Some(p) = path.parent() {
-        if !p.exists() {
-            fs::create_dir_all(p)?;
-        }
-    }
-
-    // create file
-    let file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open(path)?;
-
-    // check file lenth ok or set len
-    let len = file.metadata()?.len();
-    if len == 0 {
-        file.set_len(DEFAULT_MAX_LOG_SIZE)?;
-    }
-    Ok(file)
 }
 
 #[cfg(test)]

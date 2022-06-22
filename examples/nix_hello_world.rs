@@ -6,17 +6,19 @@ use std::time::Duration;
 
 use ezlog::{
     create_log, CipherKind, CompressKind, EZLogCallback, EZLogConfig, EZLogConfigBuilder, EZLogger,
-    EZRecord, V1_LOG_HEADER_SIZE,
+    EZRecord, EventPrinter, V1_LOG_HEADER_SIZE,
 };
 use log::{debug, error, info, trace, warn, LevelFilter};
 use log::{Metadata, Record};
 use time::OffsetDateTime;
 
 static LOGGER: SimpleLogger = SimpleLogger;
+static EVENT_LISTENER: EventPrinter = EventPrinter;
 
 pub fn main() {
     println!("start");
     ezlog::init();
+    ezlog::set_event_listener(&EVENT_LISTENER);
     ezlog::set_boxed_callback(Box::new(SimpleCallback));
     log::set_logger(&LOGGER)
         .map(|()| log::set_max_level(LevelFilter::Trace))

@@ -7,6 +7,7 @@ homepage = "https://github.com/s1rius/ezlog"
 repository = "https://github.com/s1rius/ezlog"
 license = "MIT OR Apache-2.0"
 keywords = ["ezlog"]
+readme = "../README.md"
 
 [lib]
 crate-type = ["lib", "cdylib", "staticlib"]
@@ -27,7 +28,6 @@ once_cell = "1.12"
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.19.0"
 android_logger = "0.11"
-
 
 [dev-dependencies]
 dirs = "4.0"

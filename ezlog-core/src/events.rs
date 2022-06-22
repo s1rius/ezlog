@@ -1,11 +1,11 @@
-use std::sync::Once;
-
-#[cfg(target_os = "android")]
-use android_logger::AndroidLogger;
-
-/// # [eventlisteners are good](https://publicobject.com/2022/05/01/eventlisteners-are-good/)
+/// # EZLog Event Listener
 ///
-
+/// [eventlisteners are good](https://publicobject.com/2022/05/01/eventlisteners-are-good/)
+///
+/// Jesse said
+/// > defining an event listener to make your systems observable. It’s a lot of power in a simple pattern.
+///
+///
 #[allow(unused_variables)]
 pub trait Event {
     fn init(&self, info: &str) {}
@@ -30,6 +30,8 @@ pub trait Event {
     fn record_filter_out(&self, id: &str, info: &str) {}
 }
 
+use std::sync::Once;
+
 pub static mut EVENT_LISTENER: &dyn Event = &NopEvent;
 static EVENT_INIT: Once = Once::new();
 
@@ -42,12 +44,14 @@ pub fn listener() -> &'static dyn Event {
     }
 }
 
-pub fn set_listener(event: &'static dyn Event) {
+pub fn set_event_listener(event: &'static dyn Event) {
     EVENT_INIT.call_once(|| unsafe {
         EVENT_LISTENER = event;
     })
 }
 
+/// Every important log case make an event. 
+/// if you care about what's things going on, just register an event listener.
 #[macro_export]
 macro_rules! event {
     (init $e:expr) => {
@@ -131,7 +135,11 @@ macro_rules! println_with_time {
 }
 
 #[cfg(target_os = "android")]
-/// android log already has time prefix
+use android_logger::AndroidLogger;
+
+#[cfg(target_os = "android")]
+/// android logcat already has time prefix
+/// just print current log
 macro_rules! println_with_time {
     ($($arg:tt)*) => {{
         crate::events::android_print(format_args!($($arg)*));
@@ -161,6 +169,10 @@ fn android_print(record: std::fmt::Arguments) {
 
 struct NopEvent;
 impl Event for NopEvent {}
+
+/// Default [Event] implementation, print every event in console
+pub struct EventPrinter;
+impl EventPrinter {}
 
 impl Event for EventPrinter {
     fn init(&self, info: &str) {
@@ -224,10 +236,6 @@ impl Event for EventPrinter {
         println_with_time!("{} log filter , {}", id, info)
     }
 }
-
-pub struct EventPrinter {}
-
-impl EventPrinter {}
 
 #[cfg(test)]
 mod tests {

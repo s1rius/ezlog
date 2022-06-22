@@ -1,5 +1,4 @@
 use std::{
-    env,
     fs::{self, File, OpenOptions},
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
@@ -13,33 +12,60 @@ use crate::{
     CipherKind, CompressKind, CompressLevel, Header, Level, Version, DEFAULT_LOG_FILE_SUFFIX,
     DEFAULT_LOG_NAME, DEFAULT_MAX_LOG_SIZE,
 };
+#[allow(unused_imports)]
+use crate::EZLogger;
 
 pub const DATE_FORMAT: &str = "[year]_[month]_[day]";
 
+/// A config to set up [EZLogger]
 #[derive(Debug, Clone)]
 pub struct EZLogConfig {
+    /// max log level
+    ///
     /// log等级
     pub level: Level,
+    /// EZLog version
+    ///
     /// 版本号
     pub version: Version,
+    /// Log file dir path
+    ///
     /// 文件夹目录
     pub dir_path: String,
-    /// 文件的前缀名
+    /// Log name to identify the [EZLogger]
+    ///
+    /// logger的名字
     pub name: String,
+    /// Log file suffix
+    ///
     /// 文件的后缀名
     pub file_suffix: String,
+    /// Log file expired after duration
+    ///
     /// 文件缓存的时间
     pub duration: Duration,
+    /// The maxium size of log file
+    ///
     /// 日志文件的最大大小
     pub max_size: u64,
+    /// Log content compress kind.
+    ///
     // 压缩方式
     pub compress: CompressKind,
+    /// Log content compress level.
+    ///
     /// 压缩等级
     pub compress_level: CompressLevel,
+    /// Log content cipher kind.
+    ///
     /// 加密方式
     pub cipher: CipherKind,
+    /// Log content cipher key.
+    ///
     /// 加密的密钥
     pub cipher_key: Option<Vec<u8>>,
+    /// Log content cipher nonce.
+    ///
     /// 加密的nonce
     pub cipher_nonce: Option<Vec<u8>>,
 }
@@ -123,18 +149,7 @@ impl EZLogConfig {
 
 impl Default for EZLogConfig {
     fn default() -> Self {
-        EZLogConfigBuilder::new()
-            .dir_path(
-                env::current_dir()
-                    .unwrap()
-                    .into_os_string()
-                    .into_string()
-                    .unwrap(),
-            )
-            .name(DEFAULT_LOG_NAME.to_string())
-            .file_suffix(String::from("mmap"))
-            .max_size(1024)
-            .build()
+        EZLogConfigBuilder::new().build()
     }
 }
 
@@ -150,6 +165,7 @@ impl Hash for EZLogConfig {
     }
 }
 
+/// The builder of [EZLogConfig]
 pub struct EZLogConfigBuilder {
     config: EZLogConfig,
 }
@@ -174,61 +190,73 @@ impl EZLogConfigBuilder {
         }
     }
 
+    #[inline]
     pub fn level(mut self, level: Level) -> Self {
         self.config.level = level;
         self
     }
 
+    #[inline]
     pub fn dir_path(mut self, dir_path: String) -> Self {
         self.config.dir_path = dir_path;
         self
     }
 
+    #[inline]
     pub fn name(mut self, name: String) -> Self {
         self.config.name = name;
         self
     }
 
+    #[inline]
     pub fn file_suffix(mut self, file_suffix: String) -> Self {
         self.config.file_suffix = file_suffix;
         self
     }
 
+    #[inline]
     pub fn duration(mut self, duration: Duration) -> Self {
         self.config.duration = duration;
         self
     }
 
+    #[inline]
     pub fn max_size(mut self, max_size: u64) -> Self {
         self.config.max_size = max_size;
         self
     }
 
+    #[inline]
     pub fn compress(mut self, compress: CompressKind) -> Self {
         self.config.compress = compress;
         self
     }
 
+    #[inline]
     pub fn compress_level(mut self, compress_level: CompressLevel) -> Self {
         self.config.compress_level = compress_level;
         self
     }
 
+    #[inline]
     pub fn cipher(mut self, cipher: CipherKind) -> Self {
         self.config.cipher = cipher;
         self
     }
 
+    #[inline]
     pub fn cipher_key(mut self, cipher_key: Vec<u8>) -> Self {
         self.config.cipher_key = Some(cipher_key);
         self
     }
 
+    #[inline]
     pub fn cipher_nonce(mut self, cipher_nonce: Vec<u8>) -> Self {
         self.config.cipher_nonce = Some(cipher_nonce);
         self
     }
 
+    #[inline]
     pub fn from_header(mut self, header: &Header) -> Self {
         self.config.version = header.version;
         self.config.compress = header.compress;
@@ -236,6 +264,7 @@ impl EZLogConfigBuilder {
         self
     }
 
+    #[inline]
     pub fn build(self) -> EZLogConfig {
         self.config
     }

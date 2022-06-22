@@ -1,7 +1,7 @@
 use libc::c_void;
 
-use crate::*;
 use crate::events::EventPrinter;
+use crate::*;
 use core::ffi::c_char;
 use core::ffi::c_uchar;
 use core::ffi::c_uint;
@@ -17,8 +17,8 @@ static mut ONCE_REGISTER: std::sync::Once = Once::new();
 #[no_mangle]
 pub extern "C" fn ezlog_init(enable_trace: c_uint) {
     if enable_trace as i8 > 0 {
-        static EVENT: EventPrinter = EventPrinter{};
-        crate::events::set_listener(&EVENT)
+        static EVENT: EventPrinter = EventPrinter {};
+        set_event_listener(&EVENT)
     }
     crate::init();
 }

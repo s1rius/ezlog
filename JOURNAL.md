@@ -42,6 +42,9 @@ no easy way to get rust ffi binding code from java file, I need implement them b
 - [Building and Deploying a Rust library on iOS via Mozilla](https://mozilla.github.io/firefox-browser-architecture/experiments/2017-09-06-rust-on-ios.html)
 - [Rust on iOS and Mac Catalyst](https://nadim.computer/posts/2022-02-11-maccatalyst.html)
 - [recipe swift rust callback](https://www.nickwilcox.com/blog/recipe_swift_rust_callback/)
+- [OpenSSl on iOS and MacOs](https://github.com/krzyzanowskim/OpenSSL)
+- [From Rust To Swift](https://betterprogramming.pub/from-rust-to-swift-df9bde59b7cd)[github demo](https://github.com/tmarkovski/rust-to-swift)
+- [distributing universal ios frameworks as xcframeworks using cocoapods](https://anuragajwani.medium.com/distributing-universal-ios-frameworks-as-xcframeworks-using-cocoapods-699c70a5c961)
 
 ### build issue
 
@@ -53,3 +56,9 @@ release flag make build fail, build debug first, then enable release flag.
 
 no function or associated item named `set_name` found for struct `sys::unix::thread::Thread` in the current scope
 could not compile `std`
+
+
+### vscode
+
+Press SHIFT + ALT + I to insert multiple cursors at the end of each line
+Press Home twice to jump to the start of every line

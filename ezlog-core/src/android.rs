@@ -7,7 +7,7 @@ use jni::{
     objects::{GlobalRef, JClass, JMethodID, JObject, JString, JValue},
     signature::Primitive,
     strings::JNIString,
-    sys::{jbyteArray, jint, jobjectArray, JNI_VERSION_1_6, jboolean},
+    sys::{jboolean, jbyteArray, jint, jobjectArray, JNI_VERSION_1_6},
     JNIEnv, JavaVM,
 };
 use libc::c_void;
@@ -57,10 +57,14 @@ pub extern "system" fn JNI_OnLoad(vm: JavaVM, _: *mut c_void) -> jint {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_init(_: JNIEnv, _: JClass, j_enable_trace: jboolean) {
+pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_init(
+    _: JNIEnv,
+    _: JClass,
+    j_enable_trace: jboolean,
+) {
     let enable_trace = j_enable_trace as u8;
     if enable_trace > 0 {
-        crate::events::set_listener(&EVENT_LISTENER);    
+        set_event_listener(&EVENT_LISTENER);
     }
     crate::init();
 }

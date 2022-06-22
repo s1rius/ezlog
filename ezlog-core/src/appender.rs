@@ -1,5 +1,6 @@
 use std::{path::PathBuf, rc::Rc};
 
+use std::fs::{File, OpenOptions};
 use time::OffsetDateTime;
 
 use crate::*;
@@ -93,7 +94,7 @@ impl EZMmapAppendInner {
         time.unix_timestamp() > self.next_date
     }
 
-    #[cfg(test)]
+    #[allow(dead_code)]
     fn current_file(&self) -> std::result::Result<File, errors::LogError> {
         let file = OpenOptions::new()
             .read(true)
