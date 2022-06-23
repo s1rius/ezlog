@@ -7,15 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		22400FD22851DBA7000DE162 /* libezlog.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 22400FD02851DA82000DE162 /* libezlog.a */; settings = {ATTRIBUTES = (Required, ); }; };
 		22400FD32851DDCA000DE162 /* ezlog.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 225800BE2850CF9A00D0F075 /* ezlog.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		225800C22850CF9A00D0F075 /* ezlog.docc in Sources */ = {isa = PBXBuildFile; fileRef = 225800C12850CF9A00D0F075 /* ezlog.docc */; };
-		225800C32850CF9A00D0F075 /* ezlog.h in Headers */ = {isa = PBXBuildFile; fileRef = 225800C02850CF9A00D0F075 /* ezlog.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		227673BE2850D0740088CDC1 /* EZLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 227673BD2850D0740088CDC1 /* EZLog.swift */; };
 		2285B3FA28507B27000D641C /* DemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2285B3F928507B27000D641C /* DemoApp.swift */; };
 		2285B3FC28507B27000D641C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2285B3FB28507B27000D641C /* ContentView.swift */; };
 		2285B3FE28507B29000D641C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2285B3FD28507B29000D641C /* Assets.xcassets */; };
 		2285B40128507B29000D641C /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2285B40028507B29000D641C /* Preview Assets.xcassets */; };
+		22D5D20E28640D0600124342 /* ezlog.h in Headers */ = {isa = PBXBuildFile; fileRef = 225800C02850CF9A00D0F075 /* ezlog.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		22DECD8928644EDE00C7B820 /* ezlog.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 22DECD8728644EC400C7B820 /* ezlog.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		22DECD8A28644EE400C7B820 /* ezlog.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 22DECD8728644EC400C7B820 /* ezlog.xcframework */; };
+		3D05AE550E141BEE88ECC3A2 /* Pods_demo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D45CB834CB4DD84112515502 /* Pods_demo.framework */; };
+		D174AEC2FC7D3597F7E54FC6 /* Pods_ezlog.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EE3388DB27A73EF21E5F3B68 /* Pods_ezlog.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -47,10 +50,20 @@
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		22D5D20A28640B7500124342 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				22DECD8928644EDE00C7B820 /* ezlog.xcframework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		22400FD02851DA82000DE162 /* libezlog.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libezlog.a; path = "../target/aarch64-apple-ios/release/libezlog.a"; sourceTree = "<group>"; };
 		225800BE2850CF9A00D0F075 /* ezlog.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ezlog.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		225800C02850CF9A00D0F075 /* ezlog.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ezlog.h; sourceTree = "<group>"; };
 		225800C12850CF9A00D0F075 /* ezlog.docc */ = {isa = PBXFileReference; lastKnownFileType = folder.documentationcatalog; path = ezlog.docc; sourceTree = "<group>"; };
@@ -60,6 +73,13 @@
 		2285B3FB28507B27000D641C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		2285B3FD28507B29000D641C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2285B40028507B29000D641C /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		22DECD8728644EC400C7B820 /* ezlog.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = ezlog.xcframework; path = framework/ezlog.xcframework; sourceTree = "<group>"; };
+		5214A0FD75E552EDAB83696D /* Pods-demo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-demo.release.xcconfig"; path = "Target Support Files/Pods-demo/Pods-demo.release.xcconfig"; sourceTree = "<group>"; };
+		8DCABA24E88FEF292654C996 /* Pods-demo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-demo.debug.xcconfig"; path = "Target Support Files/Pods-demo/Pods-demo.debug.xcconfig"; sourceTree = "<group>"; };
+		A6D153260A8950B7170801C1 /* Pods-ezlog.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ezlog.debug.xcconfig"; path = "Target Support Files/Pods-ezlog/Pods-ezlog.debug.xcconfig"; sourceTree = "<group>"; };
+		D45CB834CB4DD84112515502 /* Pods_demo.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_demo.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		E56DFE9B4D0974A1A9FEB79B /* Pods-ezlog.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ezlog.release.xcconfig"; path = "Target Support Files/Pods-ezlog/Pods-ezlog.release.xcconfig"; sourceTree = "<group>"; };
+		EE3388DB27A73EF21E5F3B68 /* Pods_ezlog.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_ezlog.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -67,7 +87,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				22400FD22851DBA7000DE162 /* libezlog.a in Frameworks */,
+				22DECD8A28644EE400C7B820 /* ezlog.xcframework in Frameworks */,
+				D174AEC2FC7D3597F7E54FC6 /* Pods_ezlog.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -75,6 +96,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3D05AE550E141BEE88ECC3A2 /* Pods_demo.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -84,7 +106,9 @@
 		2219CEB32850852C005AC1A6 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				22400FD02851DA82000DE162 /* libezlog.a */,
+				22DECD8728644EC400C7B820 /* ezlog.xcframework */,
+				D45CB834CB4DD84112515502 /* Pods_demo.framework */,
+				EE3388DB27A73EF21E5F3B68 /* Pods_ezlog.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -92,9 +116,8 @@
 		225800BF2850CF9A00D0F075 /* ezlog */ = {
 			isa = PBXGroup;
 			children = (
-				225800C02850CF9A00D0F075 /* ezlog.h */,
+				22D5D20F286416C700124342 /* Source */,
 				225800C12850CF9A00D0F075 /* ezlog.docc */,
-				227673BD2850D0740088CDC1 /* EZLog.swift */,
 			);
 			path = ezlog;
 			sourceTree = "<group>";
@@ -106,6 +129,7 @@
 				225800BF2850CF9A00D0F075 /* ezlog */,
 				2285B3DA28507AC7000D641C /* Products */,
 				2219CEB32850852C005AC1A6 /* Frameworks */,
+				AAF21E9D6F4508703B274B78 /* Pods */,
 			);
 			sourceTree = "<group>";
 			usesTabs = 0;
@@ -138,6 +162,26 @@
 			path = "Preview Content";
 			sourceTree = "<group>";
 		};
+		22D5D20F286416C700124342 /* Source */ = {
+			isa = PBXGroup;
+			children = (
+				227673BD2850D0740088CDC1 /* EZLog.swift */,
+				225800C02850CF9A00D0F075 /* ezlog.h */,
+			);
+			path = Source;
+			sourceTree = "<group>";
+		};
+		AAF21E9D6F4508703B274B78 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				8DCABA24E88FEF292654C996 /* Pods-demo.debug.xcconfig */,
+				5214A0FD75E552EDAB83696D /* Pods-demo.release.xcconfig */,
+				A6D153260A8950B7170801C1 /* Pods-ezlog.debug.xcconfig */,
+				E56DFE9B4D0974A1A9FEB79B /* Pods-ezlog.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -145,7 +189,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				225800C32850CF9A00D0F075 /* ezlog.h in Headers */,
+				22D5D20E28640D0600124342 /* ezlog.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -173,10 +217,12 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 225800C42850CF9A00D0F075 /* Build configuration list for PBXNativeTarget "ezlog" */;
 			buildPhases = (
+				2FE90A42BFA2C36D2248D247 /* [CP] Check Pods Manifest.lock */,
 				225800B92850CF9A00D0F075 /* Headers */,
+				225800BC2850CF9A00D0F075 /* Resources */,
 				225800BA2850CF9A00D0F075 /* Sources */,
 				225800BB2850CF9A00D0F075 /* Frameworks */,
-				225800BC2850CF9A00D0F075 /* Resources */,
+				22D5D20A28640B7500124342 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -192,6 +238,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 2285B40228507B29000D641C /* Build configuration list for PBXNativeTarget "demo" */;
 			buildPhases = (
+				FD78BBF636C6313D255C1709 /* [CP] Check Pods Manifest.lock */,
 				2285B3F328507B27000D641C /* Sources */,
 				2285B3F428507B27000D641C /* Frameworks */,
 				2285B3F528507B27000D641C /* Resources */,
@@ -267,6 +314,53 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		2FE90A42BFA2C36D2248D247 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-ezlog-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		FD78BBF636C6313D255C1709 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-demo-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		225800BA2850CF9A00D0F075 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -304,6 +398,7 @@
 /* Begin XCBuildConfiguration section */
 		225800C52850CF9A00D0F075 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A6D153260A8950B7170801C1 /* Pods-ezlog.debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -315,7 +410,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 12.3;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -336,6 +431,7 @@
 		};
 		225800C62850CF9A00D0F075 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = E56DFE9B4D0974A1A9FEB79B /* Pods-ezlog.release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -347,7 +443,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 12.3;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -519,6 +615,7 @@
 		};
 		2285B40328507B29000D641C /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8DCABA24E88FEF292654C996 /* Pods-demo.debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -551,6 +648,7 @@
 		};
 		2285B40428507B29000D641C /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5214A0FD75E552EDAB83696D /* Pods-demo.release.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;

@@ -42,7 +42,7 @@ struct DemoApp: App {
                 
                 logger.debug("first blood")
                 DispatchQueue(label: "ezlog queue").async {
-                    pthread_setname_np("ezlog-1")
+                    pthread_setname_np("ezlog-callback")
                     logger.debug(String(format: "background log %@", Thread.current.name!))
                     sleep(3)
                     ezlogRequestLogs(logName: "demo", date: "2022_06_18")
