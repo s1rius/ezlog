@@ -1,6 +1,24 @@
+# EZLog是一个高效的跨平台的日志库
+EZLog灵感来自([Xlog](https://github.com/Tencent/mars)和[Loagan](https://github.com/Meituan-Dianping/Logan)，用[Rust](https://www.rust-lang.org/)重写。
+
+## 特性
+- iOS, Android, MacOS 支持
+- 使用[mmap](https://man7.org/linux/man-pages/man2/mmap.2.html)做日志映射
+- 认证加密[Authenticated encryption - Wikipedia](https://en.wikipedia.org/wiki/Authenticated_encryption)
+- ZLIB压缩[zlib](https://en.wikipedia.org/wiki/Zlib)
+- 日志回捞
+- 日志清理
+- 命令行解析工具
+
+## 快速开始
+### iOS
+
+### Android
 
 
-### 源码构建
+
+<details>
+<summary><b>从源码构建</b></summary>
 
 安装配置`rust`
 
@@ -30,7 +48,7 @@ rustup component add rust-src --toolchain nightly-x86_64-apple-darwin
 添加构建目标: iOS, android
 
 ```
-rustup target add aarch64-linux-android armv7-linux-androideabi aarch64-apple-ios
+rustup target add aarch64-linux-android armv7-linux-androideabi aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
 ```
 
 克隆仓库到本地后，在命令行中执行
@@ -77,3 +95,5 @@ sh b_ios.sh
 ```
 
 在Xcode里打开ios项目
+
+</details>

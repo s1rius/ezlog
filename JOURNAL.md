@@ -45,6 +45,7 @@ no easy way to get rust ffi binding code from java file, I need implement them b
 - [OpenSSl on iOS and MacOs](https://github.com/krzyzanowskim/OpenSSL)
 - [From Rust To Swift](https://betterprogramming.pub/from-rust-to-swift-df9bde59b7cd)[github demo](https://github.com/tmarkovski/rust-to-swift)
 - [distributing universal ios frameworks as xcframeworks using cocoapods](https://anuragajwani.medium.com/distributing-universal-ios-frameworks-as-xcframeworks-using-cocoapods-699c70a5c961)
+[Static libraries into XCFramework](https://developer.apple.com/forums/thread/678075?answerId=671170022#671170022)
 
 ### build issue
 
@@ -62,3 +63,8 @@ could not compile `std`
 
 Press SHIFT + ALT + I to insert multiple cursors at the end of each line
 Press Home twice to jump to the start of every line
+
+
+### cocopods  
+
+保证`ios.deployment_target`和xcode项目中的target保持一致

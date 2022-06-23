@@ -9,21 +9,15 @@
 Pod::Spec.new do |s|
   s.name             = 'EZLog'
   s.version          = '0.1.0'
-  s.summary          = 'A short description of EZLog.'
+  s.summary          = 'A high efficiency Cross-platform Logging Library.'
   s.swift_version = '5.6'
 
-# This description is used to generate tags and improve search results.
-#   * Think: What does it do? Why did you write it? What is the focus?
-#   * Try to keep it short, snappy and to the point.
-#   * Write the description between the DESC delimiters below.
-#   * Finally, don't worry about the indent, CocoaPods strips it!
-
   s.description      = <<-DESC
-TODO: Add long description of the pod here.
+  A high efficiency Cross-platform Logging Library.
+  Supports:AEAD
                        DESC
 
   s.homepage         = 'https://github.com/s1rius/ezlog'
-  # s.screenshots     = 'www.example.com/screenshots_1', 'www.example.com/screenshots_2'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
   s.author           = { 's1rius' => 's1rius.noone@gmail.com' }
   s.source           = { :git => 'https://github.com/s1rius/ezlog.git', :tag => s.version.to_s }
@@ -32,12 +26,4 @@ TODO: Add long description of the pod here.
 
   s.source_files = 'ios/ezlog/Source/**/*'
   s.ios.vendored_frameworks = 'ios/framework/ezlog.xcframework'
-  
-  # s.resource_bundles = {
-  #   'EZLog' => ['EZLog/Assets/*.png']
-  # }
-
-  # s.public_header_files = 'Pod/Classes/**/*.h'
-  # s.frameworks = 'UIKit', 'MapKit'
-  # s.dependency 'AFNetworking', '~> 2.3'
 end

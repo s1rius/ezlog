@@ -1,12 +1,17 @@
 # ezlog
 
-`ezlog` is a mobile cross-platform file logging library write in rust.
+`ezlog` is a high efficiency Cross-platform logging library.
+
+it is inspired by ([Xlog](https://github.com/Tencent/mars) and [Loagan](https://github.com/Meituan-Dianping/Logan), rewrite in [Rust](https://www.rust-lang.org/).
 
 ## Feature
-- iOS, Android logging support
-- Logging compress
-- Logging encrypt
-- CLI paser support
+- iOS, Android, MacOS support.
+- map file into memory by [mmap](https://man7.org/linux/man-pages/man2/mmap.2.html).
+- [zlib](https://en.wikipedia.org/wiki/Zlib) compression.
+- [AEAD encryption](https://en.wikipedia.org/wiki/Authenticated_encryption).
+- fetch log by callback.
+- trim out of date files.
+- CLI paser support.
 
 ## Quick Start
 
@@ -45,7 +50,7 @@ rustup component add rust-src --toolchain nightly-x86_64-apple-darwin
 add target: iOS, android, etc...
 
 ```shell
-rustup target add aarch64-linux-android armv7-linux-androideabi aarch64-apple-ios
+rustup target add aarch64-linux-android armv7-linux-androideabi aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
 ```
 
 clone repository and open in command line tool. then run

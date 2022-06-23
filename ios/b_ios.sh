@@ -2,13 +2,13 @@
 
 PATH=$PATH:$HOME/.cargo/bin
 
-echo "cargo build for ios"
+echo "cargo build for iOS"
 cargo +nightly build -Z build-std -p ezlog --release --lib --target aarch64-apple-ios --verbose
 cargo +nightly build -Z build-std -p ezlog --release --lib --target aarch64-apple-ios-sim --verbose
 cargo +nightly build -Z build-std -p ezlog --release --lib --target x86_64-apple-ios --verbose
 
 echo "\n"
-echo "cbindgen"
+# echo "cbindgen"
 # cbindgen --config cbindgen.toml ../ezlog-core/src/ios.rs > ezlog/ezlog.h
 
 mkdir -p ../target/fat-ios-sim/release
