@@ -11,6 +11,6 @@
 #endif
 
 
-FOUNDATION_EXPORT double Pods_ezlogVersionNumber;
-FOUNDATION_EXPORT const unsigned char Pods_ezlogVersionString[];
+FOUNDATION_EXPORT double Pods_EZLogVersionNumber;
+FOUNDATION_EXPORT const unsigned char Pods_EZLogVersionString[];
 

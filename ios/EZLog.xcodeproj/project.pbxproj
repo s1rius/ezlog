@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		22400FD32851DDCA000DE162 /* ezlog.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 225800BE2850CF9A00D0F075 /* ezlog.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		22400FD32851DDCA000DE162 /* EZLog.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 225800BE2850CF9A00D0F075 /* EZLog.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		225800C22850CF9A00D0F075 /* ezlog.docc in Sources */ = {isa = PBXBuildFile; fileRef = 225800C12850CF9A00D0F075 /* ezlog.docc */; };
 		227673BE2850D0740088CDC1 /* EZLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 227673BD2850D0740088CDC1 /* EZLog.swift */; };
 		2285B3FA28507B27000D641C /* DemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2285B3F928507B27000D641C /* DemoApp.swift */; };
@@ -18,7 +18,7 @@
 		22DECD8928644EDE00C7B820 /* ezlog.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 22DECD8728644EC400C7B820 /* ezlog.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		22DECD8A28644EE400C7B820 /* ezlog.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 22DECD8728644EC400C7B820 /* ezlog.xcframework */; };
 		3D05AE550E141BEE88ECC3A2 /* Pods_demo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D45CB834CB4DD84112515502 /* Pods_demo.framework */; };
-		D174AEC2FC7D3597F7E54FC6 /* Pods_ezlog.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EE3388DB27A73EF21E5F3B68 /* Pods_ezlog.framework */; };
+		9E7C5CE0212AB0EC39676610 /* Pods_EZLog.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 04E88D38406EC9872EE75ACF /* Pods_EZLog.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -45,7 +45,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				22400FD32851DDCA000DE162 /* ezlog.framework in Embed Frameworks */,
+				22400FD32851DDCA000DE162 /* EZLog.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -64,7 +64,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		225800BE2850CF9A00D0F075 /* ezlog.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ezlog.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		04E88D38406EC9872EE75ACF /* Pods_EZLog.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_EZLog.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		1EF522F1F26B984E5E4E9CE8 /* Pods-EZLog.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-EZLog.release.xcconfig"; path = "Target Support Files/Pods-EZLog/Pods-EZLog.release.xcconfig"; sourceTree = "<group>"; };
+		225800BE2850CF9A00D0F075 /* EZLog.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = EZLog.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		225800C02850CF9A00D0F075 /* ezlog.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ezlog.h; sourceTree = "<group>"; };
 		225800C12850CF9A00D0F075 /* ezlog.docc */ = {isa = PBXFileReference; lastKnownFileType = folder.documentationcatalog; path = ezlog.docc; sourceTree = "<group>"; };
 		227673BD2850D0740088CDC1 /* EZLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EZLog.swift; sourceTree = "<group>"; };
@@ -74,12 +76,12 @@
 		2285B3FD28507B29000D641C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2285B40028507B29000D641C /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		22DECD8728644EC400C7B820 /* ezlog.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = ezlog.xcframework; path = framework/ezlog.xcframework; sourceTree = "<group>"; };
+		3ACE03FA206B05466F8B2870 /* Pods-EZLog.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-EZLog.debug.xcconfig"; path = "Target Support Files/Pods-EZLog/Pods-EZLog.debug.xcconfig"; sourceTree = "<group>"; };
 		5214A0FD75E552EDAB83696D /* Pods-demo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-demo.release.xcconfig"; path = "Target Support Files/Pods-demo/Pods-demo.release.xcconfig"; sourceTree = "<group>"; };
 		8DCABA24E88FEF292654C996 /* Pods-demo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-demo.debug.xcconfig"; path = "Target Support Files/Pods-demo/Pods-demo.debug.xcconfig"; sourceTree = "<group>"; };
 		A6D153260A8950B7170801C1 /* Pods-ezlog.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ezlog.debug.xcconfig"; path = "Target Support Files/Pods-ezlog/Pods-ezlog.debug.xcconfig"; sourceTree = "<group>"; };
 		D45CB834CB4DD84112515502 /* Pods_demo.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_demo.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		E56DFE9B4D0974A1A9FEB79B /* Pods-ezlog.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ezlog.release.xcconfig"; path = "Target Support Files/Pods-ezlog/Pods-ezlog.release.xcconfig"; sourceTree = "<group>"; };
-		EE3388DB27A73EF21E5F3B68 /* Pods_ezlog.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_ezlog.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,7 +90,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				22DECD8A28644EE400C7B820 /* ezlog.xcframework in Frameworks */,
-				D174AEC2FC7D3597F7E54FC6 /* Pods_ezlog.framework in Frameworks */,
+				9E7C5CE0212AB0EC39676610 /* Pods_EZLog.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -108,25 +110,25 @@
 			children = (
 				22DECD8728644EC400C7B820 /* ezlog.xcframework */,
 				D45CB834CB4DD84112515502 /* Pods_demo.framework */,
-				EE3388DB27A73EF21E5F3B68 /* Pods_ezlog.framework */,
+				04E88D38406EC9872EE75ACF /* Pods_EZLog.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		225800BF2850CF9A00D0F075 /* ezlog */ = {
+		225800BF2850CF9A00D0F075 /* EZLog */ = {
 			isa = PBXGroup;
 			children = (
 				22D5D20F286416C700124342 /* Source */,
 				225800C12850CF9A00D0F075 /* ezlog.docc */,
 			);
-			path = ezlog;
+			path = EZLog;
 			sourceTree = "<group>";
 		};
 		2285B3CF28507AC7000D641C = {
 			isa = PBXGroup;
 			children = (
 				2285B3F828507B27000D641C /* demo */,
-				225800BF2850CF9A00D0F075 /* ezlog */,
+				225800BF2850CF9A00D0F075 /* EZLog */,
 				2285B3DA28507AC7000D641C /* Products */,
 				2219CEB32850852C005AC1A6 /* Frameworks */,
 				AAF21E9D6F4508703B274B78 /* Pods */,
@@ -138,7 +140,7 @@
 			isa = PBXGroup;
 			children = (
 				2285B3F728507B27000D641C /* demo.app */,
-				225800BE2850CF9A00D0F075 /* ezlog.framework */,
+				225800BE2850CF9A00D0F075 /* EZLog.framework */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -178,6 +180,8 @@
 				5214A0FD75E552EDAB83696D /* Pods-demo.release.xcconfig */,
 				A6D153260A8950B7170801C1 /* Pods-ezlog.debug.xcconfig */,
 				E56DFE9B4D0974A1A9FEB79B /* Pods-ezlog.release.xcconfig */,
+				3ACE03FA206B05466F8B2870 /* Pods-EZLog.debug.xcconfig */,
+				1EF522F1F26B984E5E4E9CE8 /* Pods-EZLog.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -213,9 +217,9 @@
 /* End PBXLegacyTarget section */
 
 /* Begin PBXNativeTarget section */
-		225800BD2850CF9A00D0F075 /* ezlog */ = {
+		225800BD2850CF9A00D0F075 /* EZLog */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 225800C42850CF9A00D0F075 /* Build configuration list for PBXNativeTarget "ezlog" */;
+			buildConfigurationList = 225800C42850CF9A00D0F075 /* Build configuration list for PBXNativeTarget "EZLog" */;
 			buildPhases = (
 				2FE90A42BFA2C36D2248D247 /* [CP] Check Pods Manifest.lock */,
 				225800B92850CF9A00D0F075 /* Headers */,
@@ -229,9 +233,9 @@
 			dependencies = (
 				2261EE0A28575EAC0031FEE6 /* PBXTargetDependency */,
 			);
-			name = ezlog;
+			name = EZLog;
 			productName = ezlog;
-			productReference = 225800BE2850CF9A00D0F075 /* ezlog.framework */;
+			productReference = 225800BE2850CF9A00D0F075 /* EZLog.framework */;
 			productType = "com.apple.product-type.framework";
 		};
 		2285B3F628507B27000D641C /* demo */ = {
@@ -275,7 +279,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 2285B3D328507AC7000D641C /* Build configuration list for PBXProject "EZlog" */;
+			buildConfigurationList = 2285B3D328507AC7000D641C /* Build configuration list for PBXProject "EZLog" */;
 			compatibilityVersion = "Xcode 13.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -289,7 +293,7 @@
 			projectRoot = "";
 			targets = (
 				2285B3F628507B27000D641C /* demo */,
-				225800BD2850CF9A00D0F075 /* ezlog */,
+				225800BD2850CF9A00D0F075 /* EZLog */,
 				2261EE0528575E610031FEE6 /* cargo_ios */,
 			);
 		};
@@ -330,7 +334,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-ezlog-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-EZLog-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -385,7 +389,7 @@
 /* Begin PBXTargetDependency section */
 		225800C82850CFD400D0F075 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 225800BD2850CF9A00D0F075 /* ezlog */;
+			target = 225800BD2850CF9A00D0F075 /* EZLog */;
 			targetProxy = 225800C72850CFD400D0F075 /* PBXContainerItemProxy */;
 		};
 		2261EE0A28575EAC0031FEE6 /* PBXTargetDependency */ = {
@@ -398,7 +402,7 @@
 /* Begin XCBuildConfiguration section */
 		225800C52850CF9A00D0F075 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A6D153260A8950B7170801C1 /* Pods-ezlog.debug.xcconfig */;
+			baseConfigurationReference = 3ACE03FA206B05466F8B2870 /* Pods-EZLog.debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -420,7 +424,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 12.3;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = wtf.s1.ezlog;
-				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				PRODUCT_NAME = EZLog;
 				SKIP_INSTALL = YES;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -431,7 +435,7 @@
 		};
 		225800C62850CF9A00D0F075 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E56DFE9B4D0974A1A9FEB79B /* Pods-ezlog.release.xcconfig */;
+			baseConfigurationReference = 1EF522F1F26B984E5E4E9CE8 /* Pods-EZLog.release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -453,7 +457,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 12.3;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = wtf.s1.ezlog;
-				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				PRODUCT_NAME = EZLog;
 				SKIP_INSTALL = YES;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -681,7 +685,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		225800C42850CF9A00D0F075 /* Build configuration list for PBXNativeTarget "ezlog" */ = {
+		225800C42850CF9A00D0F075 /* Build configuration list for PBXNativeTarget "EZLog" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				225800C52850CF9A00D0F075 /* Debug */,
@@ -699,7 +703,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		2285B3D328507AC7000D641C /* Build configuration list for PBXProject "EZlog" */ = {
+		2285B3D328507AC7000D641C /* Build configuration list for PBXProject "EZLog" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2285B3EB28507AC7000D641C /* Debug */,

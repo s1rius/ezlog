@@ -1,5 +1,5 @@
-framework module Pods_ezlog {
-  umbrella header "Pods-ezlog-umbrella.h"
+framework module Pods_EZLog {
+  umbrella header "Pods-EZLog-umbrella.h"
 
   export *
   module * { export * }

@@ -7,43 +7,43 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		028A16A31940EAB8A3E4F1A718B24681 /* Pods-ezlog-dummy.m in Sources */ = {isa = PBXBuildFile; fileRef = 17B707D86BA010BC6AE76240B7BF13C3 /* Pods-ezlog-dummy.m */; };
-		565D3AD4846861BBFB6879B69713002A /* Pods-demo-umbrella.h in Headers */ = {isa = PBXBuildFile; fileRef = 7DC1EE1909892386B89532CC5EF36AD3 /* Pods-demo-umbrella.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		273C044217395AED11F6155F15292493 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 73010CC983E3809BECEE5348DA1BB8C6 /* Foundation.framework */; };
+		565D3AD4846861BBFB6879B69713002A /* Pods-demo-umbrella.h in Headers */ = {isa = PBXBuildFile; fileRef = 84E35955A76165A4A16953B03DD740A5 /* Pods-demo-umbrella.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		5DBF69E3DA3DD0306BCAF097068CA5B4 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 73010CC983E3809BECEE5348DA1BB8C6 /* Foundation.framework */; };
-		93BCBEC5499F63FAA48776F39D9EB363 /* Pods-demo-dummy.m in Sources */ = {isa = PBXBuildFile; fileRef = A38DCCC93CBD75849B265E567B6638C2 /* Pods-demo-dummy.m */; };
-		B886F71F6D15A81BAB901902749F8DCA /* Pods-ezlog-umbrella.h in Headers */ = {isa = PBXBuildFile; fileRef = 19254079D582CFA742708B70F193D58D /* Pods-ezlog-umbrella.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		FC18397CC2E85C3E01539E478E46F3E1 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 73010CC983E3809BECEE5348DA1BB8C6 /* Foundation.framework */; };
+		93BCBEC5499F63FAA48776F39D9EB363 /* Pods-demo-dummy.m in Sources */ = {isa = PBXBuildFile; fileRef = BFD81B4740F351470AC0579136F0AD06 /* Pods-demo-dummy.m */; };
+		D3A9D6199CA486C7D6E7A43B3C7B00E0 /* Pods-EZLog-dummy.m in Sources */ = {isa = PBXBuildFile; fileRef = 0EFB8F7308B2499C0CE77C7C7D8E5ED1 /* Pods-EZLog-dummy.m */; };
+		FA2218082166D12C0758D42EA31B62D8 /* Pods-EZLog-umbrella.h in Headers */ = {isa = PBXBuildFile; fileRef = 036837CB446A051C4DFA89506F02A898 /* Pods-EZLog-umbrella.h */; settings = {ATTRIBUTES = (Public, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		04FCF9955499BE83F8D39AF63D593640 /* Pods-demo.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = "Pods-demo.modulemap"; sourceTree = "<group>"; };
-		12B1A540D2D09E0245D4422E561CA78F /* Pods-ezlog.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-ezlog.debug.xcconfig"; sourceTree = "<group>"; };
-		15E83B5D5C5AAF5CC140EEC478F38B7F /* Pods-ezlog */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "Pods-ezlog"; path = Pods_ezlog.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		17B707D86BA010BC6AE76240B7BF13C3 /* Pods-ezlog-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "Pods-ezlog-dummy.m"; sourceTree = "<group>"; };
-		19254079D582CFA742708B70F193D58D /* Pods-ezlog-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "Pods-ezlog-umbrella.h"; sourceTree = "<group>"; };
-		3914261E5E8C7469200D9046425FBBB9 /* Pods-demo-acknowledgements.markdown */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = "Pods-demo-acknowledgements.markdown"; sourceTree = "<group>"; };
+		036837CB446A051C4DFA89506F02A898 /* Pods-EZLog-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "Pods-EZLog-umbrella.h"; sourceTree = "<group>"; };
+		0EFB8F7308B2499C0CE77C7C7D8E5ED1 /* Pods-EZLog-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "Pods-EZLog-dummy.m"; sourceTree = "<group>"; };
+		2F18485C7CEA3BED999FFE937B0EEDB5 /* Pods-EZLog.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-EZLog.release.xcconfig"; sourceTree = "<group>"; };
+		3D1584837FA02EFFAEBED3F9AD44B9B0 /* Pods-EZLog-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-EZLog-Info.plist"; sourceTree = "<group>"; };
+		4DE6CD28F713D59559B65C141DC996B8 /* Pods-demo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-demo.debug.xcconfig"; sourceTree = "<group>"; };
+		5FAB65FC07B73F9487B25E9AAB79B30D /* Pods-demo-acknowledgements.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-demo-acknowledgements.plist"; sourceTree = "<group>"; };
 		620C2E500E91AE09F121C9670613B82F /* Pods-demo */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "Pods-demo"; path = Pods_demo.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		6404C5F421F9AEDC127EE29B01F3D394 /* Pods-demo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-demo.debug.xcconfig"; sourceTree = "<group>"; };
 		73010CC983E3809BECEE5348DA1BB8C6 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS14.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
-		7DC1EE1909892386B89532CC5EF36AD3 /* Pods-demo-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "Pods-demo-umbrella.h"; sourceTree = "<group>"; };
-		9D195F0584A77E86A6EE80F0CACCA462 /* Pods-demo-acknowledgements.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-demo-acknowledgements.plist"; sourceTree = "<group>"; };
+		84E35955A76165A4A16953B03DD740A5 /* Pods-demo-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "Pods-demo-umbrella.h"; sourceTree = "<group>"; };
+		8848CCED6E945A23AF2F52140C5B05C7 /* Pods-EZLog.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = "Pods-EZLog.modulemap"; sourceTree = "<group>"; };
 		9D940727FF8FB9C785EB98E56350EF41 /* Podfile */ = {isa = PBXFileReference; explicitFileType = text.script.ruby; includeInIndex = 1; indentWidth = 2; lastKnownFileType = text; name = Podfile; path = ../Podfile; sourceTree = SOURCE_ROOT; tabWidth = 2; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
-		9E01C200A985C8533B20A502CD3838A6 /* Pods-demo-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-demo-Info.plist"; sourceTree = "<group>"; };
-		A38DCCC93CBD75849B265E567B6638C2 /* Pods-demo-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "Pods-demo-dummy.m"; sourceTree = "<group>"; };
-		C10982ADEB28FF039946613D29DDFD10 /* Pods-ezlog-acknowledgements.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-ezlog-acknowledgements.plist"; sourceTree = "<group>"; };
-		C5C227E3410CF5728B6F7BD4F6E314D4 /* Pods-ezlog.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-ezlog.release.xcconfig"; sourceTree = "<group>"; };
-		DE02CE1A73B2C74CC9E425AA13DABD12 /* Pods-ezlog-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-ezlog-Info.plist"; sourceTree = "<group>"; };
-		EAD151707BFE77F069223350CB13D1C2 /* Pods-demo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-demo.release.xcconfig"; sourceTree = "<group>"; };
-		F11EB59BBE9208A639972013FF3C856E /* Pods-ezlog.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = "Pods-ezlog.modulemap"; sourceTree = "<group>"; };
-		F5E252F295D86DF5CB359B434880BC82 /* Pods-ezlog-acknowledgements.markdown */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = "Pods-ezlog-acknowledgements.markdown"; sourceTree = "<group>"; };
+		BFD81B4740F351470AC0579136F0AD06 /* Pods-demo-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "Pods-demo-dummy.m"; sourceTree = "<group>"; };
+		CF65590AC22C9B68E728533CB642683A /* Pods-EZLog-acknowledgements.markdown */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = "Pods-EZLog-acknowledgements.markdown"; sourceTree = "<group>"; };
+		D2445E30CC3391F7A47E98F22BBC1700 /* Pods-EZLog.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-EZLog.debug.xcconfig"; sourceTree = "<group>"; };
+		D2B43D2A09A5E9632A4CE55B803E3A0C /* Pods-demo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-demo.release.xcconfig"; sourceTree = "<group>"; };
+		D4522CD7641959BCD5092A60383669E1 /* Pods-EZLog */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "Pods-EZLog"; path = Pods_EZLog.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		DFBD08095E16A270382C3E540E1647F0 /* Pods-EZLog-acknowledgements.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-EZLog-acknowledgements.plist"; sourceTree = "<group>"; };
+		E699C0897EBCD1D303AB74F69E1196D6 /* Pods-demo.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = "Pods-demo.modulemap"; sourceTree = "<group>"; };
+		EE52E4413E7C98D00B9C99B747EEE790 /* Pods-demo-acknowledgements.markdown */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = "Pods-demo-acknowledgements.markdown"; sourceTree = "<group>"; };
+		FEC2C6309913DBF81B88615F1C7567ED /* Pods-demo-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-demo-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		4A7166D9A921D5ED218359B2F6976459 /* Frameworks */ = {
+		3F085FD08300A4F2B481EB3CCE82FEC2 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FC18397CC2E85C3E01539E478E46F3E1 /* Foundation.framework in Frameworks */,
+				273C044217395AED11F6155F15292493 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -66,54 +66,29 @@
 			name = iOS;
 			sourceTree = "<group>";
 		};
-		5D95656DF811389214A0F173B4C17E61 /* Pods-demo */ = {
-			isa = PBXGroup;
-			children = (
-				04FCF9955499BE83F8D39AF63D593640 /* Pods-demo.modulemap */,
-				3914261E5E8C7469200D9046425FBBB9 /* Pods-demo-acknowledgements.markdown */,
-				9D195F0584A77E86A6EE80F0CACCA462 /* Pods-demo-acknowledgements.plist */,
-				A38DCCC93CBD75849B265E567B6638C2 /* Pods-demo-dummy.m */,
-				9E01C200A985C8533B20A502CD3838A6 /* Pods-demo-Info.plist */,
-				7DC1EE1909892386B89532CC5EF36AD3 /* Pods-demo-umbrella.h */,
-				6404C5F421F9AEDC127EE29B01F3D394 /* Pods-demo.debug.xcconfig */,
-				EAD151707BFE77F069223350CB13D1C2 /* Pods-demo.release.xcconfig */,
-			);
-			name = "Pods-demo";
-			path = "Target Support Files/Pods-demo";
-			sourceTree = "<group>";
-		};
-		734BB989E6809F683985842F74DC1AC1 /* Pods-ezlog */ = {
-			isa = PBXGroup;
-			children = (
-				F11EB59BBE9208A639972013FF3C856E /* Pods-ezlog.modulemap */,
-				F5E252F295D86DF5CB359B434880BC82 /* Pods-ezlog-acknowledgements.markdown */,
-				C10982ADEB28FF039946613D29DDFD10 /* Pods-ezlog-acknowledgements.plist */,
-				17B707D86BA010BC6AE76240B7BF13C3 /* Pods-ezlog-dummy.m */,
-				DE02CE1A73B2C74CC9E425AA13DABD12 /* Pods-ezlog-Info.plist */,
-				19254079D582CFA742708B70F193D58D /* Pods-ezlog-umbrella.h */,
-				12B1A540D2D09E0245D4422E561CA78F /* Pods-ezlog.debug.xcconfig */,
-				C5C227E3410CF5728B6F7BD4F6E314D4 /* Pods-ezlog.release.xcconfig */,
-			);
-			name = "Pods-ezlog";
-			path = "Target Support Files/Pods-ezlog";
-			sourceTree = "<group>";
-		};
-		A22D40BCFEB7D7F7C9ED83BA07716C1C /* Products */ = {
+		5FF19E2FAEE75B3B1D50F6D0497F99CB /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				620C2E500E91AE09F121C9670613B82F /* Pods-demo */,
-				15E83B5D5C5AAF5CC140EEC478F38B7F /* Pods-ezlog */,
+				D4522CD7641959BCD5092A60383669E1 /* Pods-EZLog */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		C6D3B673A1846A9A1F9617F7C7B7D9F1 /* Targets Support Files */ = {
+		A509ADE998793BF10A7BF7651CE8B309 /* Pods-EZLog */ = {
 			isa = PBXGroup;
 			children = (
-				5D95656DF811389214A0F173B4C17E61 /* Pods-demo */,
-				734BB989E6809F683985842F74DC1AC1 /* Pods-ezlog */,
+				8848CCED6E945A23AF2F52140C5B05C7 /* Pods-EZLog.modulemap */,
+				CF65590AC22C9B68E728533CB642683A /* Pods-EZLog-acknowledgements.markdown */,
+				DFBD08095E16A270382C3E540E1647F0 /* Pods-EZLog-acknowledgements.plist */,
+				0EFB8F7308B2499C0CE77C7C7D8E5ED1 /* Pods-EZLog-dummy.m */,
+				3D1584837FA02EFFAEBED3F9AD44B9B0 /* Pods-EZLog-Info.plist */,
+				036837CB446A051C4DFA89506F02A898 /* Pods-EZLog-umbrella.h */,
+				D2445E30CC3391F7A47E98F22BBC1700 /* Pods-EZLog.debug.xcconfig */,
+				2F18485C7CEA3BED999FFE937B0EEDB5 /* Pods-EZLog.release.xcconfig */,
 			);
-			name = "Targets Support Files";
+			name = "Pods-EZLog";
+			path = "Target Support Files/Pods-EZLog";
 			sourceTree = "<group>";
 		};
 		CF1408CF629C7361332E53B88F7BD30C = {
@@ -121,8 +96,8 @@
 			children = (
 				9D940727FF8FB9C785EB98E56350EF41 /* Podfile */,
 				D210D550F4EA176C3123ED886F8F87F5 /* Frameworks */,
-				A22D40BCFEB7D7F7C9ED83BA07716C1C /* Products */,
-				C6D3B673A1846A9A1F9617F7C7B7D9F1 /* Targets Support Files */,
+				5FF19E2FAEE75B3B1D50F6D0497F99CB /* Products */,
+				ED12BDD2C57A29C153DD7CA5C2826234 /* Targets Support Files */,
 			);
 			sourceTree = "<group>";
 		};
@@ -134,14 +109,39 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		ED12BDD2C57A29C153DD7CA5C2826234 /* Targets Support Files */ = {
+			isa = PBXGroup;
+			children = (
+				F1EF997274EDC12C09F3ADA3F2655515 /* Pods-demo */,
+				A509ADE998793BF10A7BF7651CE8B309 /* Pods-EZLog */,
+			);
+			name = "Targets Support Files";
+			sourceTree = "<group>";
+		};
+		F1EF997274EDC12C09F3ADA3F2655515 /* Pods-demo */ = {
+			isa = PBXGroup;
+			children = (
+				E699C0897EBCD1D303AB74F69E1196D6 /* Pods-demo.modulemap */,
+				EE52E4413E7C98D00B9C99B747EEE790 /* Pods-demo-acknowledgements.markdown */,
+				5FAB65FC07B73F9487B25E9AAB79B30D /* Pods-demo-acknowledgements.plist */,
+				BFD81B4740F351470AC0579136F0AD06 /* Pods-demo-dummy.m */,
+				FEC2C6309913DBF81B88615F1C7567ED /* Pods-demo-Info.plist */,
+				84E35955A76165A4A16953B03DD740A5 /* Pods-demo-umbrella.h */,
+				4DE6CD28F713D59559B65C141DC996B8 /* Pods-demo.debug.xcconfig */,
+				D2B43D2A09A5E9632A4CE55B803E3A0C /* Pods-demo.release.xcconfig */,
+			);
+			name = "Pods-demo";
+			path = "Target Support Files/Pods-demo";
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
-		33FD7778D08CB624BF98208A1CE3ED3D /* Headers */ = {
+		8868BDCAD4B8ABF9004D744C093BAF7F /* Headers */ = {
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B886F71F6D15A81BAB901902749F8DCA /* Pods-ezlog-umbrella.h in Headers */,
+				FA2218082166D12C0758D42EA31B62D8 /* Pods-EZLog-umbrella.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -174,22 +174,22 @@
 			productReference = 620C2E500E91AE09F121C9670613B82F /* Pods-demo */;
 			productType = "com.apple.product-type.framework";
 		};
-		21D5B3A4684E443CAEF1CF43B07BB6B5 /* Pods-ezlog */ = {
+		3B66C8964D95C9C06FB9EF0C939BA9DB /* Pods-EZLog */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 9D86908D914DB7BE565BC46100AC4EA6 /* Build configuration list for PBXNativeTarget "Pods-ezlog" */;
+			buildConfigurationList = 5462AE541688BED0FCFFF67E89E3255F /* Build configuration list for PBXNativeTarget "Pods-EZLog" */;
 			buildPhases = (
-				33FD7778D08CB624BF98208A1CE3ED3D /* Headers */,
-				A3BCF023A7BD796A5BF8161A5125CA88 /* Sources */,
-				4A7166D9A921D5ED218359B2F6976459 /* Frameworks */,
-				754F9CD29B223BA6FE98AE6ACFC27F9A /* Resources */,
+				8868BDCAD4B8ABF9004D744C093BAF7F /* Headers */,
+				95F4A7008CEB2E8F6E50E297CA9A78E0 /* Sources */,
+				3F085FD08300A4F2B481EB3CCE82FEC2 /* Frameworks */,
+				0FA893E08BE0EF618CF89D74526F6ABD /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = "Pods-ezlog";
-			productName = Pods_ezlog;
-			productReference = 15E83B5D5C5AAF5CC140EEC478F38B7F /* Pods-ezlog */;
+			name = "Pods-EZLog";
+			productName = Pods_EZLog;
+			productReference = D4522CD7641959BCD5092A60383669E1 /* Pods-EZLog */;
 			productType = "com.apple.product-type.framework";
 		};
 /* End PBXNativeTarget section */
@@ -210,25 +210,25 @@
 				en,
 			);
 			mainGroup = CF1408CF629C7361332E53B88F7BD30C;
-			productRefGroup = A22D40BCFEB7D7F7C9ED83BA07716C1C /* Products */;
+			productRefGroup = 5FF19E2FAEE75B3B1D50F6D0497F99CB /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				06211BFED24C96E7ADA9B774FAC62F28 /* Pods-demo */,
-				21D5B3A4684E443CAEF1CF43B07BB6B5 /* Pods-ezlog */,
+				3B66C8964D95C9C06FB9EF0C939BA9DB /* Pods-EZLog */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		432D290B59997C392FE8F49C11BCB6A7 /* Resources */ = {
+		0FA893E08BE0EF618CF89D74526F6ABD /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		754F9CD29B223BA6FE98AE6ACFC27F9A /* Resources */ = {
+		432D290B59997C392FE8F49C11BCB6A7 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -238,11 +238,11 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		A3BCF023A7BD796A5BF8161A5125CA88 /* Sources */ = {
+		95F4A7008CEB2E8F6E50E297CA9A78E0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				028A16A31940EAB8A3E4F1A718B24681 /* Pods-ezlog-dummy.m in Sources */,
+				D3A9D6199CA486C7D6E7A43B3C7B00E0 /* Pods-EZLog-dummy.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -259,7 +259,7 @@
 /* Begin XCBuildConfiguration section */
 		1143C31894FA6D84B7F91E41C736427F /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = EAD151707BFE77F069223350CB13D1C2 /* Pods-demo.release.xcconfig */;
+			baseConfigurationReference = D2B43D2A09A5E9632A4CE55B803E3A0C /* Pods-demo.release.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
 				CLANG_ENABLE_OBJC_WEAK = NO;
@@ -295,47 +295,9 @@
 			};
 			name = Release;
 		};
-		2124384B8BAB1FD7A19897BC9E2A851B /* Release */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = C5C227E3410CF5728B6F7BD4F6E314D4 /* Pods-ezlog.release.xcconfig */;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
-				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
-				CURRENT_PROJECT_VERSION = 1;
-				DEFINES_MODULE = YES;
-				DYLIB_COMPATIBILITY_VERSION = 1;
-				DYLIB_CURRENT_VERSION = 1;
-				DYLIB_INSTALL_NAME_BASE = "@rpath";
-				INFOPLIST_FILE = "Target Support Files/Pods-ezlog/Pods-ezlog-Info.plist";
-				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 12.3;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@loader_path/Frameworks",
-				);
-				MACH_O_TYPE = staticlib;
-				MODULEMAP_FILE = "Target Support Files/Pods-ezlog/Pods-ezlog.modulemap";
-				OTHER_LDFLAGS = "";
-				OTHER_LIBTOOLFLAGS = "";
-				PODS_ROOT = "$(SRCROOT)";
-				PRODUCT_BUNDLE_IDENTIFIER = "org.cocoapods.${PRODUCT_NAME:rfc1034identifier}";
-				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				VALIDATE_PRODUCT = YES;
-				VERSIONING_SYSTEM = "apple-generic";
-				VERSION_INFO_PREFIX = "";
-			};
-			name = Release;
-		};
 		2F784ED838972B792B61404EB046E3C0 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 6404C5F421F9AEDC127EE29B01F3D394 /* Pods-demo.debug.xcconfig */;
+			baseConfigurationReference = 4DE6CD28F713D59559B65C141DC996B8 /* Pods-demo.debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
 				CLANG_ENABLE_OBJC_WEAK = NO;
@@ -370,7 +332,44 @@
 			};
 			name = Debug;
 		};
-		81F8D4F2F7A41D8223C1B32C81033009 /* Debug */ = {
+		6570256C85B4688150DEFD028C192B37 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D2445E30CC3391F7A47E98F22BBC1700 /* Pods-EZLog.debug.xcconfig */;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
+				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				INFOPLIST_FILE = "Target Support Files/Pods-EZLog/Pods-EZLog-Info.plist";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACH_O_TYPE = staticlib;
+				MODULEMAP_FILE = "Target Support Files/Pods-EZLog/Pods-EZLog.modulemap";
+				OTHER_LDFLAGS = "";
+				OTHER_LIBTOOLFLAGS = "";
+				PODS_ROOT = "$(SRCROOT)";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.cocoapods.${PRODUCT_NAME:rfc1034identifier}";
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Debug;
+		};
+		90D4D09BCB6A4660E43ACBE9ECB6FE9A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -423,7 +422,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.3;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -436,7 +435,7 @@
 			};
 			name = Debug;
 		};
-		949893C6606874DA4EEF6BD2EA125F08 /* Release */ = {
+		9553C89E183877A5CB2F3C6801BEC129 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -486,7 +485,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.3;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -498,9 +497,9 @@
 			};
 			name = Release;
 		};
-		E4BCCFFDDB661F131235D0B79A8B23BE /* Debug */ = {
+		D2F600A13E214EDBBD8BB799892905FF /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 12B1A540D2D09E0245D4422E561CA78F /* Pods-ezlog.debug.xcconfig */;
+			baseConfigurationReference = 2F18485C7CEA3BED999FFE937B0EEDB5 /* Pods-EZLog.release.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
 				CLANG_ENABLE_OBJC_WEAK = NO;
@@ -512,16 +511,16 @@
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
-				INFOPLIST_FILE = "Target Support Files/Pods-ezlog/Pods-ezlog-Info.plist";
+				INFOPLIST_FILE = "Target Support Files/Pods-EZLog/Pods-EZLog-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 12.3;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
 				MACH_O_TYPE = staticlib;
-				MODULEMAP_FILE = "Target Support Files/Pods-ezlog/Pods-ezlog.modulemap";
+				MODULEMAP_FILE = "Target Support Files/Pods-EZLog/Pods-EZLog.modulemap";
 				OTHER_LDFLAGS = "";
 				OTHER_LIBTOOLFLAGS = "";
 				PODS_ROOT = "$(SRCROOT)";
@@ -530,10 +529,11 @@
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
 			};
-			name = Debug;
+			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
@@ -550,17 +550,17 @@
 		4821239608C13582E20E6DA73FD5F1F9 /* Build configuration list for PBXProject "Pods" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				81F8D4F2F7A41D8223C1B32C81033009 /* Debug */,
-				949893C6606874DA4EEF6BD2EA125F08 /* Release */,
+				90D4D09BCB6A4660E43ACBE9ECB6FE9A /* Debug */,
+				9553C89E183877A5CB2F3C6801BEC129 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		9D86908D914DB7BE565BC46100AC4EA6 /* Build configuration list for PBXNativeTarget "Pods-ezlog" */ = {
+		5462AE541688BED0FCFFF67E89E3255F /* Build configuration list for PBXNativeTarget "Pods-EZLog" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				E4BCCFFDDB661F131235D0B79A8B23BE /* Debug */,
-				2124384B8BAB1FD7A19897BC9E2A851B /* Release */,
+				6570256C85B4688150DEFD028C192B37 /* Debug */,
+				D2F600A13E214EDBBD8BB799892905FF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

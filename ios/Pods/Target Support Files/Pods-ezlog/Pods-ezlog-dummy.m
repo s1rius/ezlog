@@ -1,5 +1,5 @@
 #import <Foundation/Foundation.h>
-@interface PodsDummy_Pods_ezlog : NSObject
+@interface PodsDummy_Pods_EZLog : NSObject
 @end
-@implementation PodsDummy_Pods_ezlog
+@implementation PodsDummy_Pods_EZLog
 @end
