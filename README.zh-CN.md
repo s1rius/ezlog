@@ -1,37 +1,31 @@
-# EZLog
+# EZLog是一个高效的跨平台的日志库
+EZLog灵感来自[Xlog](https://github.com/Tencent/mars)和[Loagan](https://github.com/Meituan-Dianping/Logan)，用[Rust](https://www.rust-lang.org/)重写。
 
-[中文介绍](README.zh-CN.md)
+## 特性
+- iOS, Android, MacOS 支持
+- 使用[mmap](https://man7.org/linux/man-pages/man2/mmap.2.html)做日志映射
+- 认证加密[Authenticated encryption - Wikipedia](https://en.wikipedia.org/wiki/Authenticated_encryption)
+- [zlib](https://en.wikipedia.org/wiki/Zlib)压缩
+- 日志回捞
+- 日志清理
+- 命令行解析工具
 
-EZLog is a high efficiency Cross-platform logging library.
-
-it is inspired by [Xlog](https://github.com/Tencent/mars) and [Loagan](https://github.com/Meituan-Dianping/Logan), rewrite in [Rust](https://www.rust-lang.org/).
-
-## Feature
-- iOS, Android, MacOS support.
-- map file into memory by [mmap](https://man7.org/linux/man-pages/man2/mmap.2.html).
-- [zlib](https://en.wikipedia.org/wiki/Zlib) compression.
-- [AEAD encryption](https://en.wikipedia.org/wiki/Authenticated_encryption).
-- fetch log by callback.
-- trim out of date files.
-- CLI paser support.
-
-## Quick Start
-
+## 快速开始
 ### iOS
 
-By CocoaPods
+使用CocoaPods管理依赖
 
-#### Add EZLog to Podfile
+#### 添加 EZLog 到 Podfile
 
 ```
 pod 'EZLog', '~> 0.1'
 ```
-then
+更新
 
 ```
 pod update
 ```
-#### Open Xcode, add sample code
+#### 打开Xcode, 添加示例代码
 
 ```swift
 import EZLog
@@ -74,13 +68,13 @@ init() {
 }
 ```
 
-3. click run and see console ouput.
+3. 点击运行，查看控制台输出
 
 ### Android
 
-#### Add ezlog to dependencies
+#### 添加依赖
 
-open top-level `build.gradle`, add `mavenCentral` to repositories.
+打开项目顶层`build.gradle`文件, 添加`mavenCentral`
 
 ```groovy
 buildscript {
@@ -100,7 +94,7 @@ allprojects {
 }
 ```
 
-open app level `build.gradle`, add `ezlog`
+在应用目录的`build.gradle`文件中, 添加`ezlog`依赖
 
 ```
 dependencies {
@@ -108,9 +102,9 @@ dependencies {
 }
 ```
 
-sync gradle
+同步 gradle
 
-#### Setup in application. For example
+#### 在应用中初始化。例如
 
 ```kotlin
 override fun onCreate() {
@@ -152,85 +146,87 @@ override fun onCreate() {
 ```
 
 <details>
-<summary><b>Build from source code</b></summary>
+<summary><b>从源码构建</b></summary>
 </p>
-install and config rust
 
-```shell
+安装配置`Rust`
+
+```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source $HOME/.cargo/env
 ```
 
-use rust nightly default
+使用nightly版本
 
-```shell
-rustup default nightly
+``` 
+rustup default nightly 
 ```
 
-if you already install `rust`, keep update
+保证`Rust`是最新版
 
-```shell
+```
 rustup update
 ```
 
-we use [build-std](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#build-std) feature, so add nightly src component
+构建时使用了[build-std](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#build-std)特性，所以需要添加std的源码组件
 
-```shell
+```
 rustup component add rust-src --toolchain nightly-x86_64-apple-darwin
 ```
 
-add target: iOS, android, etc...
+添加构建目标: iOS, android
 
-```shell
+```
 rustup target add aarch64-linux-android armv7-linux-androideabi aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
 ```
 
-clone repository and open in command line tool. then run
+克隆仓库到本地后，在命令行中执行
 
-```shell
+```
 cargo check
 ```
 
-wait crates download...
+等待所有的依赖下载...构建ezlog包
 
-```shell
+```
 cargo build -p ezlog
 ```
 
-#### For android build
+####  android工程构建
 
-we use `cargo-ndk` to build dylib
+使用`cargo-ndk`来构建动态链接库
 
-```shell
+```
 cargo install cargo-ndk
 ```
 
-cd android
+在仓库的android目录下执行
 
-```shell
+```
 sh b_android.sh
 ```
 
-then open current workspace in AndroidStudio
+在AndroidStudio中打开android项目
 
-#### For iOS build
 
-install `cbindgen`
+#### iOS工程构建
 
-```shell
+安装 `cbindgen`
+
+```
 cargo install --force cbindgen
 ```
 
-cd ios dir
+在仓库的ios目录执行
 
-```shell
+```
 sh b_ios.sh
 ```
 
-open the `ios/EZlog.xcworkspace` in Xcode
+在Xcode里打开`ios/EZlog.xcworkspace`
 
 </details>
 
-## License
+## 协议
 
-See [LICENSE-MIT](LICENSE-MIT), [LICENSE-APACHE](LICENSE-APACHE), 
+详见 [LICENSE-MIT](LICENSE-MIT), [LICENSE-APACHE](LICENSE-APACHE), 

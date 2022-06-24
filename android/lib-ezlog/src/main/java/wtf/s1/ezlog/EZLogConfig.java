@@ -25,6 +25,9 @@ public class EZLogConfig {
         this.cipherNonce = new byte[]{};
     }
 
+    /**
+     * EZLog Builder
+     */
     public static class Builder {
         @NotNull String logName;
         int maxLevel;
@@ -42,41 +45,75 @@ public class EZLogConfig {
             this.dirPath = dirPath;
         }
 
-        public Builder level(int level) {
+        /**
+         * set up the max level, any log's level < maxLevel will be filtered out.
+         * @param level the max level
+         */
+        public Builder maxLevel(int level) {
             this.maxLevel = level;
             return this;
         }
 
+        /**
+         * set log file expired days. The log files which out of date will be deleted
+         * when trim() function call
+         *
+         * @param days keep log file days
+         */
         public Builder keepDays(int days) {
             this.keepDays = days;
             return this;
         }
 
+        /**
+         * set compress kind
+         * @param compress compress kind
+         */
         public Builder compress(int compress) {
             this.compress = compress;
             return this;
         }
 
+        /**
+         * set compress level. eg: default, fast, best
+         * @param compressLevel compress level
+         */
         public Builder compressLevel(int compressLevel) {
             this.compressLevel = compressLevel;
             return this;
         }
 
+        /**
+         * set cipher kind
+         * @param cipher cipher kind
+         */
         public Builder cipher(int cipher) {
             this.cipher = cipher;
             return this;
         }
 
+        /**
+         * set cipher key
+         * @param cipherKey cipher key
+         */
         public Builder cipherKey(byte[] cipherKey) {
             this.cipherKey = cipherKey;
             return this;
         }
 
+        /**
+         * set cipher nonce
+         * @param cipherNonce nonce
+         */
         public Builder cipherNonce(byte[] cipherNonce) {
             this.cipherNonce = cipherNonce;
             return this;
         }
 
+        /**
+         * when enable trace, all event will print out to Logcat
+         * @param isEnable is trace enable
+         */
         public Builder enableTrace(boolean isEnable) {
             this.enableTrace = isEnable;
             return this;

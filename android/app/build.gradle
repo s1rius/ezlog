@@ -53,4 +53,5 @@ dependencies {
     implementation Deps.Kotlin.ktxCore
     implementation Deps.AndroidX.appcompat
     implementation(project(":lib-ezlog"))
+    // implementation "wtf.s1.ezlog:ezlog:0.1.1"
 }

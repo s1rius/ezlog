@@ -26,6 +26,8 @@ class DebugApp : Application() {
             .build()
         EZLog.initWith(config)
 
+        EZLog.v("ezlog", "first blood")
+
         EZLog._registerCallback(object : Callback {
             override fun onLogsFetchSuccess(
                 logName: String?,
