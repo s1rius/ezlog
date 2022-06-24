@@ -8,19 +8,18 @@
 
 Pod::Spec.new do |s|
   s.name             = 'EZLog'
-  s.version          = '0.1.0'
+  s.version          = '0.1.1'
   s.summary          = 'A high efficiency Cross-platform Logging Library.'
   s.swift_version = '5.6'
 
   s.description      = <<-DESC
   A high efficiency Cross-platform Logging Library.
-  Supports:AEAD
                        DESC
 
   s.homepage         = 'https://github.com/s1rius/ezlog'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
   s.author           = { 's1rius' => 's1rius.noone@gmail.com' }
-  s.source           = { :git => 'https://github.com/s1rius/ezlog.git', :tag => s.version.to_s }
+  s.source           = { :git => 'https://github.com/s1rius/ezlog.git', :tag => 'v0.1.1' }
 
   s.ios.deployment_target = '15.0'
 
