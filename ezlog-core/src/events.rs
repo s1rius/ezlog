@@ -50,7 +50,7 @@ pub fn set_event_listener(event: &'static dyn Event) {
     })
 }
 
-/// Every important log case make an event. 
+/// Every important log case make an event.
 /// if you care about what's things going on, just register an event listener.
 #[macro_export]
 macro_rules! event {

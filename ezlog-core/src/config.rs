@@ -7,13 +7,13 @@ use std::{
 use memmap2::{MmapMut, MmapOptions};
 use time::{format_description, Date, Duration, OffsetDateTime};
 
+#[allow(unused_imports)]
+use crate::EZLogger;
 use crate::{
     errors::{IllegalArgumentError, LogError, ParseError},
     CipherKind, CompressKind, CompressLevel, Header, Level, Version, DEFAULT_LOG_FILE_SUFFIX,
     DEFAULT_LOG_NAME, DEFAULT_MAX_LOG_SIZE,
 };
-#[allow(unused_imports)]
-use crate::EZLogger;
 
 pub const DATE_FORMAT: &str = "[year]_[month]_[day]";
 
@@ -88,15 +88,35 @@ impl EZLogConfig {
     }
 
     pub fn create_mmap_file(&self, time: OffsetDateTime) -> crate::Result<(PathBuf, MmapMut)> {
+        let (file, path) = self.create_log_file(time)?;
+        let mmap = unsafe { MmapOptions::new().map_mut(&file)? };
+        Ok((path, mmap))
+    }
+
+    pub(crate) fn create_log_file(&self, time: OffsetDateTime) -> crate::Result<(File, PathBuf)> {
         let file_name = self.now_file_name(time)?;
         let max_size = self.max_size;
         let path = Path::new(&self.dir_path).join(file_name);
 
-        let file = internal_create_log_file(&path, max_size)?;
-
-        let mmap = unsafe { MmapOptions::new().map_mut(&file)? };
-
-        Ok((path, mmap))
+        if let Some(p) = &path.parent() {
+            if !p.exists() {
+                fs::create_dir_all(p)?;
+            }
+        }
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(&path)?;
+        let mut len = file.metadata()?.len();
+        if len == 0 {
+            len = max_size;
+            if len == 0 {
+                len = DEFAULT_MAX_LOG_SIZE;
+            }
+            file.set_len(len)?;
+        }
+        Ok((file, path))
     }
 
     pub(crate) fn is_file_out_of_date(&self, file_name: &str) -> crate::Result<bool> {
@@ -274,28 +294,6 @@ impl Default for EZLogConfigBuilder {
     fn default() -> Self {
         Self::new()
     }
-}
-
-pub(crate) fn internal_create_log_file(path: &PathBuf, max_size: u64) -> crate::Result<File> {
-    if let Some(p) = path.parent() {
-        if !p.exists() {
-            fs::create_dir_all(p)?;
-        }
-    }
-    let file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open(path)?;
-    let mut len = file.metadata()?.len();
-    if len == 0 {
-        len = max_size;
-        if len == 0 {
-            len = DEFAULT_MAX_LOG_SIZE;
-        }
-        file.set_len(len)?;
-    }
-    Ok(file)
 }
 
 pub(crate) fn parse_date_from_str(date_str: &str, case: &str) -> crate::Result<Date> {

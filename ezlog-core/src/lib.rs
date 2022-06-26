@@ -22,7 +22,7 @@ pub use self::config::EZLogConfigBuilder;
 pub use self::events::Event;
 pub use self::events::EventPrinter;
 
-use appender::EZMmapAppender;
+use appender::EZAppender;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use compress::ZlibCodec;
 use crossbeam_channel::{Sender, TrySendError};
@@ -445,7 +445,7 @@ pub struct FetchResult {
 /// The Logger struct to implement the Log encode.
 pub struct EZLogger {
     config: Rc<EZLogConfig>,
-    appender: EZMmapAppender,
+    appender: Box<dyn Write>,
     compression: Option<Box<dyn Compress>>,
     cryptor: Option<Box<dyn Cryptor>>,
 }
@@ -453,7 +453,7 @@ pub struct EZLogger {
 impl EZLogger {
     pub fn new(config: EZLogConfig) -> Result<Self> {
         let rc_conf = Rc::new(config);
-        let appender = EZMmapAppender::new(Rc::clone(&rc_conf))?;
+        let appender = Box::new(EZAppender::new(Rc::clone(&rc_conf))?);
         let compression = EZLogger::create_compress(&rc_conf);
         let cryptor = EZLogger::create_cryptor(&rc_conf)?;
 
@@ -916,8 +916,7 @@ impl Header {
         writer.write_u8(self.flag)?;
         writer.write_u32::<BigEndian>(self.recorder_position)?;
         writer.write_u8(self.compress.into())?;
-        writer.write_u8(self.cipher.into())?;
-        Ok(())
+        writer.write_u8(self.cipher.into())
     }
 
     pub fn decode(reader: &mut dyn Read) -> std::result::Result<Self, errors::LogError> {

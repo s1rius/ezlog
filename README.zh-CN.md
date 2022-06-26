@@ -4,7 +4,7 @@ EZLog灵感来自[Xlog](https://github.com/Tencent/mars)和[Loagan](https://gith
 ## 特性
 - iOS, Android, MacOS 支持
 - 使用[mmap](https://man7.org/linux/man-pages/man2/mmap.2.html)做日志映射
-- 认证加密[Authenticated encryption - Wikipedia](https://en.wikipedia.org/wiki/Authenticated_encryption)
+- [认证加密](https://en.wikipedia.org/wiki/Authenticated_encryption)
 - [zlib](https://en.wikipedia.org/wiki/Zlib)压缩
 - 日志回捞
 - 日志清理
