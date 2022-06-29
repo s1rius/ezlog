@@ -16,11 +16,11 @@ rm -rf ../target/fat-ios-sim/release/libezlog.a
 
 lipo -create ../target/aarch64-apple-ios-sim/release/libezlog.a ../target/x86_64-apple-ios/release/libezlog.a -output ../target/fat-ios-sim/release/libezlog.a
 
-rm -rf framework/ezlog.xcframework
+rm -rf framework/EZLogFramework.xcframework
 
 xcodebuild -create-xcframework \
     -library ../target/aarch64-apple-ios/release/libezlog.a \
-    -headers ezlog/Source/ezlog.h \
+    -headers ezlog/Sources/ezlog.h \
     -library ../target/fat-ios-sim/release/libezlog.a \
-    -headers ezlog/Source/ezlog.h \
-    -output framework/ezlog.xcframework
+    -headers ezlog/Sources/ezlog.h \
+    -output framework/EZLogFramework.xcframework
