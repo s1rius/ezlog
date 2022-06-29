@@ -13,6 +13,7 @@ pub trait Event {
     fn create_logger(&self, id: &str) {}
     fn create_logger_end(&self, id: &str) {}
     fn create_logger_err(&self, id: &str, err: &str) {}
+    fn mmap_err(&self, err: &str) {}
     fn record(&self, id: &str) {}
     fn record_end(&self, id: &str) {}
     fn compress(&self, id: &str) {}
@@ -68,6 +69,9 @@ macro_rules! event {
     };
     (create_logger_fail $log_name:expr, $err:expr) => {
         $crate::events::listener().create_logger_err($log_name, $err);
+    };
+    (mmap_err $err:expr) => {
+        $crate::events::listener().mmap_err($err);
     };
     (record $record_id:expr) => {
         $crate::events::listener().record($record_id);
@@ -189,6 +193,9 @@ impl Event for EventPrinter {
     }
     fn create_logger_err(&self, id: &str, err: &str) {
         println_with_time!("{}, {}, {}", "create logger err", id, err)
+    }
+    fn mmap_err(&self, err: &str) {
+        println_with_time!("{}, {}", "mmap create err", err)
     }
     fn record(&self, id: &str) {
         println_with_time!("{}, {}", id, "record")

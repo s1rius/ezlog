@@ -32,6 +32,7 @@ use log::Record;
 use memmap2::MmapMut;
 use once_cell::sync::OnceCell;
 
+use std::error::Error;
 use std::path::PathBuf;
 use std::{
     cmp,
@@ -128,7 +129,7 @@ fn init_log_channel() -> Sender<EZMsg> {
                                 event!(create_logger_end & name);
                             }
                             Err(e) => {
-                                event!(create_logger_fail & name, &format!("{}", e));
+                                event!(create_logger_fail & name, &e.to_string());
                             }
                         };
                     }
@@ -136,9 +137,7 @@ fn init_log_channel() -> Sender<EZMsg> {
                         let log = match get_map().get_mut(&record.log_id()) {
                             Some(l) => l,
                             None => {
-                                event!(
-                                    internal_err & format!("logger not found {}", record.t_id())
-                                );
+                                event!(unknown_err & record.t_id(), "logger not found");
                                 continue;
                             }
                         };
@@ -158,13 +157,13 @@ fn init_log_channel() -> Sender<EZMsg> {
                             }
                             Err(err) => match err {
                                 LogError::Compress(err) => {
-                                    event!(compress_fail & record.t_id(), &format!("{}", err));
+                                    event!(compress_fail & record.t_id(), &err.to_string());
                                 }
                                 LogError::Crypto(err) => {
-                                    event!(encrypt_fail & record.t_id(), &format!("{}", err))
+                                    event!(encrypt_fail & record.t_id(), &err.to_string())
                                 }
                                 _ => {
-                                    event!(unknown_err & record.t_id(), &format!("{}", err))
+                                    event!(unknown_err & record.t_id(), &err.to_string())
                                 }
                             },
                         }
@@ -195,7 +194,7 @@ fn init_log_channel() -> Sender<EZMsg> {
                             Some(l) => l,
                             None => {
                                 event!(
-                                    internal_err
+                                    ffi_call_err
                                         & format!("logger not found on fetch logs {}", task.name)
                                 );
                                 continue;
@@ -214,7 +213,7 @@ fn init_log_channel() -> Sender<EZMsg> {
                                         logs: Some(logs),
                                         error: None,
                                     })
-                                    .unwrap_or_else(report_channel_send_err);
+                                    .unwrap_or_else(ffi_err_handle);
                             }
                             Err(e) => {
                                 task.task_sender
@@ -222,15 +221,15 @@ fn init_log_channel() -> Sender<EZMsg> {
                                         name: task.name,
                                         date: task.date,
                                         logs: None,
-                                        error: Some(format!("{}", e)),
+                                        error: Some(e.to_string()),
                                     })
-                                    .unwrap_or_else(report_channel_send_err);
+                                    .unwrap_or_else(ffi_err_handle);
                             }
                         }
                     }
                 },
                 Err(err) => {
-                    event!(internal_err & format!("{}", err));
+                    event!(internal_err & err.to_string());
                 }
             }
         }) {
@@ -252,7 +251,7 @@ fn init_callback_channel() -> Sender<FetchResult> {
             Ok(result) => {
                 invoke_fetch_callback(result);
             }
-            Err(e) => event!(internal_err & format!("{}", e)),
+            Err(e) => event!(ffi_call_err & e.to_string()),
         }) {
         Ok(_) => {
             event!(init "init callback success");
@@ -319,7 +318,14 @@ fn post_msg(msg: EZMsg) -> bool {
 }
 
 fn report_channel_send_err<T>(err: TrySendError<T>) {
-    event!(internal_err & format!("{}", err));
+    event!(internal_err & err.to_string());
+}
+
+fn ffi_err_handle<T>(err: T)
+where
+    T: Error,
+{
+    event!(ffi_call_err & err.to_string());
 }
 
 pub(crate) fn log_id(name: &str) -> u64 {

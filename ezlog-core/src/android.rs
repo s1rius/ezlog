@@ -1,6 +1,6 @@
 use crate::{
-    event, events::EventPrinter, set_boxed_callback, thread_name, CipherKind, CompressKind,
-    CompressLevel, EZLogConfigBuilder, EZRecordBuilder, Level,
+    event, events::EventPrinter, set_boxed_callback, set_event_listener, thread_name, CipherKind,
+    CompressKind, CompressLevel, EZLogConfigBuilder, EZRecordBuilder, Level,
 };
 use jni::{
     errors::JniError,
@@ -240,12 +240,12 @@ struct AndroidCallback;
 impl crate::EZLogCallback for AndroidCallback {
     fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
         call_on_fetch_success(name, date, logs)
-            .unwrap_or_else(|e| event!(ffi_call_err & format!("{}", e)));
+            .unwrap_or_else(|e| event!(ffi_call_err & e.to_string()));
     }
 
     fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
         call_on_fetch_fail(name, date, err)
-            .unwrap_or_else(|e| event!(ffi_call_err & format!("{}", e)));
+            .unwrap_or_else(|e| event!(ffi_call_err & e.to_string()));
     }
 }
 

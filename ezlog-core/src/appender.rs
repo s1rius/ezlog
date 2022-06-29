@@ -31,7 +31,9 @@ impl EZAppender {
         config: &EZLogConfig,
         time: OffsetDateTime,
     ) -> Result<Box<dyn AppenderInner>> {
-        if let Ok(inner) = MmapAppendInner::new(config, time) {
+        if let Ok(inner) = MmapAppendInner::new(config, time).map_err(|e| {
+            event!(mmap_err & e.to_string());
+        }) {
             return Ok(Box::new(inner));
         } else {
             //todo mmap create error
@@ -112,10 +114,6 @@ impl MmapAppendInner {
             inner.write_header()?;
         }
         Ok(inner)
-    }
-
-    pub(crate) fn new_now(config: &EZLogConfig) -> Result<Self> {
-        MmapAppendInner::new(config, OffsetDateTime::now_utc())
     }
 
     fn write_header(&mut self) -> std::result::Result<(), std::io::Error> {
@@ -353,7 +351,7 @@ mod tests {
             .max_size(1024)
             .build();
 
-        let inner = MmapAppendInner::new_now(&config).unwrap();
+        let inner = MmapAppendInner::new(&config, OffsetDateTime::now_utc()).unwrap();
         assert!(inner.is_oversize(1015));
         assert!(!inner.is_oversize(1014));
         assert!(inner.is_overtime(time::OffsetDateTime::now_utc() + Duration::days(1)));
