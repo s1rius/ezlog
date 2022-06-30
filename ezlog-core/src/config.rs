@@ -1,4 +1,5 @@
 use std::{
+    cmp,
     fs::{self, File, OpenOptions},
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
@@ -10,9 +11,10 @@ use time::{format_description, Date, Duration, OffsetDateTime};
 #[allow(unused_imports)]
 use crate::EZLogger;
 use crate::{
+    appender::rename_current_file,
     errors::{IllegalArgumentError, LogError, ParseError},
-    CipherKind, CompressKind, CompressLevel, Header, Level, Version, DEFAULT_LOG_FILE_SUFFIX,
-    DEFAULT_LOG_NAME, DEFAULT_MAX_LOG_SIZE,
+    event, CipherKind, CompressKind, CompressLevel, Header, Level, Version,
+    DEFAULT_LOG_FILE_SUFFIX, DEFAULT_LOG_NAME, DEFAULT_MAX_LOG_SIZE, MIN_LOG_SIZE,
 };
 
 pub const DATE_FORMAT: &str = "[year]_[month]_[day]";
@@ -95,7 +97,7 @@ impl EZLogConfig {
 
     pub(crate) fn create_log_file(&self, time: OffsetDateTime) -> crate::Result<(File, PathBuf)> {
         let file_name = self.now_file_name(time)?;
-        let max_size = self.max_size;
+        let max_size = cmp::max(self.max_size, MIN_LOG_SIZE);
         let path = Path::new(&self.dir_path).join(file_name);
 
         if let Some(p) = &path.parent() {
@@ -115,6 +117,9 @@ impl EZLogConfig {
                 len = DEFAULT_MAX_LOG_SIZE;
             }
             file.set_len(len)?;
+        } else if len != max_size {
+            rename_current_file(&path)?;
+            return self.create_log_file(time);
         }
         Ok((file, path))
     }
@@ -164,6 +169,32 @@ impl EZLogConfig {
             }
         }
         false
+    }
+
+    pub fn query_log_files_for_date(&self, date: Date) -> Vec<PathBuf> {
+        let mut logs = Vec::new();
+        match fs::read_dir(&self.dir_path) {
+            Ok(dir) => {
+                for file in dir {
+                    match file {
+                        Ok(file) => {
+                            if let Some(name) = file.file_name().to_str() {
+                                if self.is_file_same_date(name, date) {
+                                    logs.push(file.path());
+                                }
+                            };
+                        }
+                        Err(e) => {
+                            event!(
+                                query_log_files_err & format!("query: traversal file error: {}", e)
+                            );
+                        }
+                    }
+                }
+            }
+            Err(e) => event!(query_log_files_err & format!("query: dir error: {}", e)),
+        }
+        logs
     }
 }
 
@@ -309,7 +340,9 @@ pub(crate) fn parse_date_from_str(date_str: &str, case: &str) -> crate::Result<D
 #[cfg(test)]
 mod tests {
 
-    use crate::EZLogConfigBuilder;
+    use std::fs::{self, OpenOptions};
+
+    use crate::{appender::EZAppender, CipherKind, CompressKind, EZLogConfigBuilder, EZLogger};
     use time::{macros::datetime, Duration, OffsetDateTime};
 
     #[test]
@@ -347,5 +380,45 @@ mod tests {
         assert!(config
             .read_file_name_as_date("test_2019_06_13.123.mmap")
             .is_ok());
+    }
+
+    #[test]
+    fn test_log_files_length() {
+        let temp = dirs::download_dir().unwrap().join("ezlog_test");
+        if temp.exists() {
+            fs::remove_dir_all(&temp).unwrap();
+        }
+
+        let key = b"an example very very secret key.";
+        let nonce = b"unique nonce";
+        let config = EZLogConfigBuilder::new()
+            .dir_path(temp.clone().into_os_string().into_string().unwrap())
+            .name(String::from("all_feature"))
+            .file_suffix(String::from("mmap"))
+            .compress(CompressKind::ZLIB)
+            .cipher(CipherKind::AES128GCM)
+            .cipher_key(key.to_vec())
+            .cipher_nonce(nonce.to_vec())
+            .build();
+
+        let appender = EZAppender::create_inner(&config).unwrap();
+        let f = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(appender.file_path())
+            .unwrap();
+        drop(appender);
+
+        f.set_len(1).unwrap();
+
+        let appender = EZAppender::create_inner(&config).unwrap();
+        drop(appender);
+
+        let files = config.query_log_files_for_date(OffsetDateTime::now_utc().date());
+
+        assert_eq!(files.len(), 2);
+        if temp.exists() {
+            fs::remove_dir_all(&temp).unwrap();
+        }
     }
 }

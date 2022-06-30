@@ -183,7 +183,9 @@ impl ByteArrayAppenderInner {
         if header.is_empty() {
             header = Header::create(config);
             write_header = true;
-        } else if !header.is_empty() && !header.is_valid(config) {
+        } else if (!header.is_empty() && !header.is_valid(config))
+            || _file.metadata()?.len() != config.max_size as u64
+        {
             rename_current_file(&file_path)?;
             (_file, file_path) = config.create_log_file(time)?;
             header = Header::create(config);

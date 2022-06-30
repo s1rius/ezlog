@@ -61,7 +61,10 @@ pub(crate) const UNKNOWN: &str = "UNKNOWN";
 pub(crate) const RECORD_SIGNATURE_START: u8 = 0x3b;
 pub(crate) const RECORD_SIGNATURE_END: u8 = 0x21;
 
-pub(crate) const DEFAULT_MAX_LOG_SIZE: u64 = 150 * 1024;
+pub(crate) const DEFAULT_MAX_LOG_SIZE: u64 = 150 * 1000;
+
+/// Minimum log file size must greater than [V1_LOG_HEADER_SIZE].
+pub(crate) const MIN_LOG_SIZE: u64 = 100;
 
 /// Log file fixed header length.
 pub const V1_LOG_HEADER_SIZE: usize = 10;
@@ -668,29 +671,7 @@ impl EZLogger {
     }
 
     pub fn query_log_files_for_date(&self, date: Date) -> Vec<PathBuf> {
-        let mut logs = Vec::new();
-        match fs::read_dir(&self.config.dir_path) {
-            Ok(dir) => {
-                for file in dir {
-                    match file {
-                        Ok(file) => {
-                            if let Some(name) = file.file_name().to_str() {
-                                if self.config.is_file_same_date(name, date) {
-                                    logs.push(file.path());
-                                }
-                            };
-                        }
-                        Err(e) => {
-                            event!(
-                                query_log_files_err & format!("query: traversal file error: {}", e)
-                            );
-                        }
-                    }
-                }
-            }
-            Err(e) => event!(query_log_files_err & format!("query: dir error: {}", e)),
-        }
-        logs
+        self.config.query_log_files_for_date(date)
     }
 }
 
