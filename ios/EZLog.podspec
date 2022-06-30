@@ -19,7 +19,7 @@ Pod::Spec.new do |s|
   s.homepage         = 'https://github.com/s1rius/ezlog'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
   s.author           = { 's1rius' => 's1rius.noone@gmail.com' }
-  s.source           = { :git => 'https://github.com/s1rius/ezlog.git', :tag => 'v0.1.1' }
+  s.source           = { :git => 'https://github.com/s1rius/ezlog.git', :tag => s.version.to_s }
 
   s.ios.deployment_target = '15.0'
 
