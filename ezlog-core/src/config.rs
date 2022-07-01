@@ -171,6 +171,10 @@ impl EZLogConfig {
         false
     }
 
+    pub(crate) fn writable_size(&self) -> u64 {
+        self.max_size - Header::fixed_size() as u64
+    }
+
     pub fn query_log_files_for_date(&self, date: Date) -> Vec<PathBuf> {
         let mut logs = Vec::new();
         match fs::read_dir(&self.dir_path) {
@@ -342,7 +346,7 @@ mod tests {
 
     use std::fs::{self, OpenOptions};
 
-    use crate::{appender::EZAppender, CipherKind, CompressKind, EZLogConfigBuilder, EZLogger};
+    use crate::{appender::EZAppender, CipherKind, CompressKind, EZLogConfigBuilder};
     use time::{macros::datetime, Duration, OffsetDateTime};
 
     #[test]
@@ -383,8 +387,8 @@ mod tests {
     }
 
     #[test]
-    fn test_log_files_length() {
-        let temp = dirs::download_dir().unwrap().join("ezlog_test");
+    fn test_query_log_files() {
+        let temp = dirs::download_dir().unwrap().join("ezlog_test_config");
         if temp.exists() {
             fs::remove_dir_all(&temp).unwrap();
         }

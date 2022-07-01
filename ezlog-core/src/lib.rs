@@ -63,7 +63,8 @@ pub(crate) const RECORD_SIGNATURE_END: u8 = 0x21;
 
 pub(crate) const DEFAULT_MAX_LOG_SIZE: u64 = 150 * 1000;
 
-/// Minimum log file size must greater than [V1_LOG_HEADER_SIZE].
+/// Minimum log file size may greater than 4kb.
+/// https://stackoverflow.com/a/26002578/2782445
 pub(crate) const MIN_LOG_SIZE: u64 = 100;
 
 /// Log file fixed header length.
@@ -506,9 +507,28 @@ impl EZLogger {
     }
 
     fn append(&mut self, record: &EZRecord) -> Result<()> {
-        let buf = self.encode_as_block(record)?;
-        self.appender.write_all(&buf)?;
-        Ok(())
+        let mut e: Option<LogError> = None;
+        if record.content.len() > self.config.max_size as usize / 2 {
+            record.trunks(&self.config).iter().for_each(|record| {
+                match self.encode_as_block(record) {
+                    Ok(buf) => match self.appender.write_all(&buf) {
+                        Ok(_) => {}
+                        Err(err) => e = Some(LogError::IoError(err)),
+                    },
+                    Err(err) => {
+                        e = Some(err);
+                    }
+                }
+            })
+        } else {
+            let buf = self.encode_as_block(record)?;
+            self.appender.write_all(&buf)?;
+        }
+        if let Some(err) = e {
+            Err(err)
+        } else {
+            Ok(())
+        }
     }
 
     fn encode(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
@@ -881,7 +901,7 @@ impl Header {
         Header {
             version: Version::V1,
             flag: 0,
-            recorder_position: V1_LOG_HEADER_SIZE as u32,
+            recorder_position: Header::fixed_size() as u32,
             compress: CompressKind::ZLIB,
             cipher: CipherKind::AES128GCM,
         }
@@ -891,10 +911,14 @@ impl Header {
         Header {
             version: config.version,
             flag: 0,
-            recorder_position: V1_LOG_HEADER_SIZE as u32,
+            recorder_position: Header::fixed_size() as u32,
             compress: config.compress,
             cipher: config.cipher,
         }
+    }
+
+    pub fn fixed_size() -> usize {
+        V1_LOG_HEADER_SIZE
     }
 
     pub fn encode(&self, writer: &mut dyn Write) -> std::result::Result<(), io::Error> {
@@ -912,8 +936,8 @@ impl Header {
         let version = reader.read_u8()?;
         let flag = reader.read_u8()?;
         let mut recorder_size = reader.read_u32::<BigEndian>()?;
-        if recorder_size < V1_LOG_HEADER_SIZE as u32 {
-            recorder_size = V1_LOG_HEADER_SIZE as u32;
+        if recorder_size < Header::fixed_size() as u32 {
+            recorder_size = Header::fixed_size() as u32;
         }
 
         let compress = reader.read_u8()?;
@@ -934,7 +958,7 @@ impl Header {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.version == Version::UNKNOWN && self.recorder_position <= V1_LOG_HEADER_SIZE as u32
+        self.version == Version::UNKNOWN && self.recorder_position <= Header::fixed_size() as u32
     }
 }
 
@@ -1008,6 +1032,22 @@ impl EZRecord {
         }
     }
 
+    #[inline]
+    pub fn to_trunk_builder(&self) -> EZRecordBuilder {
+        EZRecordBuilder {
+            record: EZRecord {
+                id: 0,
+                log_name: self.log_name.clone(),
+                level: self.level,
+                target: self.target.clone(),
+                time: self.time,
+                thread_id: self.thread_id,
+                thread_name: self.thread_name.clone(),
+                content: "".into(),
+            },
+        }
+    }
+
     pub fn from(r: &Record) -> Self {
         let t = thread::current();
         let t_id = thread_id::get();
@@ -1033,6 +1073,36 @@ impl EZRecord {
         self.content.hash(&mut hasher);
         self.time.hash(&mut hasher);
         hasher.finish()
+    }
+
+    pub fn trunks(&self, config: &EZLogConfig) -> Vec<EZRecord> {
+        let mut trunks: Vec<EZRecord> = Vec::new();
+        let mut split_content: Vec<char> = Vec::new();
+        let mut size = 0;
+        let chars = self.content.chars();
+        chars.for_each(|c| {
+            size += c.len_utf8();
+            if size > config.max_size as usize / 2 {
+                let ez = self
+                    .to_trunk_builder()
+                    .content(split_content.iter().collect::<String>())
+                    .build();
+                trunks.push(ez);
+                split_content.clear();
+                size = c.len_utf8();
+                split_content.push(c)
+            } else {
+                split_content.push(c);
+            }
+        });
+        if !split_content.is_empty() {
+            let ez = self
+                .to_trunk_builder()
+                .content(String::from_iter(&split_content))
+                .build();
+            trunks.push(ez);
+        }
+        trunks
     }
 }
 
@@ -1257,7 +1327,7 @@ pub(crate) fn next_date(time: OffsetDateTime) -> OffsetDateTime {
 
 #[cfg(test)]
 mod tests {
-    use std::fs::OpenOptions;
+    use std::fs::{OpenOptions, self};
     use std::io::{BufReader, Read, Seek, SeekFrom, Write};
 
     use aes_gcm::aead::{Aead, NewAead};
@@ -1267,7 +1337,7 @@ mod tests {
 
     use crate::{
         config::EZLogConfigBuilder, CipherKind, CompressKind, EZLogConfig, EZLogger,
-        EZRecordBuilder, Header, RECORD_SIGNATURE_END, RECORD_SIGNATURE_START, V1_LOG_HEADER_SIZE,
+        EZRecordBuilder, Header, RECORD_SIGNATURE_END, RECORD_SIGNATURE_START,
     };
 
     fn create_config() -> EZLogConfig {
@@ -1279,8 +1349,8 @@ mod tests {
         let nonce = b"unique nonce";
         EZLogConfigBuilder::new()
             .dir_path(
-                dirs::desktop_dir()
-                    .unwrap()
+                dirs::download_dir()
+                    .unwrap().join("ezlog_test")
                     .into_os_string()
                     .into_string()
                     .unwrap(),
@@ -1311,20 +1381,16 @@ mod tests {
         let header = Header::new();
         let mut v = Vec::new();
         header.encode(&mut v).unwrap();
-        assert_eq!(v.len(), V1_LOG_HEADER_SIZE);
+        assert_eq!(v.len(), Header::fixed_size());
     }
 
     #[test]
     fn test_compress() {
         let plaint_text = b"dsafafafaasdlfkaldfjiiwoeuriowiiwueroiwur\n";
-        println!("{:?}", b"\n");
-        println!("{:?}", plaint_text);
 
         let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
         e.write_all(plaint_text).unwrap();
         let compressed = e.finish().unwrap();
-
-        println!("{:?}", compressed);
 
         let mut d = ZlibDecoder::new(compressed.as_slice());
 
@@ -1358,6 +1424,16 @@ mod tests {
     }
 
     #[test]
+    fn test_record_truncks() {
+        let config = EZLogConfigBuilder::new().max_size(6).build();
+        let record = EZRecordBuilder::new().content("深圳".into()).build();
+        let trunks = record.trunks(&config);
+        assert_eq!(trunks.len(), 2);
+        assert_eq!(trunks[0].content, "深");
+        assert_eq!(trunks[1].content, "圳");
+    }
+
+    #[test]
     fn teset_encode_decode() {
         let config = create_all_feature_config();
         let mut logger = EZLogger::new(config).unwrap();
@@ -1386,10 +1462,12 @@ mod tests {
 
         let mut reader = BufReader::new(origin_log);
         reader
-            .seek(SeekFrom::Start(V1_LOG_HEADER_SIZE as u64))
+            .seek(SeekFrom::Start(Header::fixed_size() as u64))
             .unwrap();
 
         let decode = logger.decode(&mut reader).unwrap();
-        println!("{}", String::from_utf8(decode).unwrap())
+        println!("{}", String::from_utf8(decode).unwrap());
+
+        fs::remove_dir_all(&config.dir_path).unwrap();
     }
 }

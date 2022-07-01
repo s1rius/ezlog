@@ -1,6 +1,6 @@
 use std::{
     fs::OpenOptions,
-    io::{BufReader, BufWriter},
+    io::{BufReader, BufWriter, Error, ErrorKind},
     path::PathBuf,
     rc::Rc,
 };
@@ -59,6 +59,7 @@ impl EZAppender {
         if self.inner.is_oversize(buf_size) {
             // drop current inner, then rename the log file
             self.inner = Box::new(NopInner::empty());
+
             rename_current_file(self.inner.file_path())?;
 
             self.inner = Self::create_inner_by_time(&self.config, time)?;
@@ -69,6 +70,10 @@ impl EZAppender {
 
 impl Write for EZAppender {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        if buf.len() > self.config.writable_size() as usize {
+            return Err(Error::new(ErrorKind::Other, "buf_size is over max_size"));
+        }
+
         self.check_rolling(buf.len())
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         self.inner.write(buf)
@@ -89,7 +94,7 @@ pub(crate) struct MmapAppendInner {
 impl MmapAppendInner {
     pub(crate) fn new(config: &EZLogConfig, time: OffsetDateTime) -> Result<Self> {
         let (mut file_path, mut mmap) = config.create_mmap_file(time)?;
-        let mut c = Cursor::new(&mut mmap[0..V1_LOG_HEADER_SIZE]);
+        let mut c = Cursor::new(&mut mmap[0..Header::fixed_size()]);
         let mut header = Header::decode(&mut c).unwrap_or_else(|_| Header::new());
         let next_date = next_date(time);
 
@@ -117,13 +122,25 @@ impl MmapAppendInner {
     }
 
     fn write_header(&mut self) -> std::result::Result<(), std::io::Error> {
-        let mut c = Cursor::new(&mut self.mmap[0..V1_LOG_HEADER_SIZE]);
+        self.check_len_valid(Header::fixed_size())?;
+        let mut c = Cursor::new(&mut self.mmap[0..Header::fixed_size()]);
         self.header.encode(&mut c)
     }
 
     fn write_buf(&mut self, buf: &[u8], start: usize) -> std::io::Result<usize> {
+        self.check_len_valid(start + buf.len())?;
         let mut c = Cursor::new(&mut self.mmap[start..start + buf.len()]);
         c.write(buf)
+    }
+
+    fn check_len_valid(&mut self, len: usize) -> std::io::Result<()> {
+        if len > self.mmap.len() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("log mmap len is not match given len {}", len),
+            ));
+        }
+        Ok(())
     }
 }
 
@@ -175,7 +192,7 @@ impl ByteArrayAppenderInner {
         let mut byte_array = vec![0u8; config.max_size as usize];
         BufReader::new(&_file).read_exact(&mut byte_array)?;
 
-        let mut c = Cursor::new(&mut byte_array[0..V1_LOG_HEADER_SIZE]);
+        let mut c = Cursor::new(&mut byte_array[0..Header::fixed_size()]);
         let mut header = Header::decode(&mut c).unwrap_or_else(|_| Header::new());
         let next_date = next_date(time);
 
@@ -205,12 +222,24 @@ impl ByteArrayAppenderInner {
     }
 
     fn write_header(&mut self) -> std::result::Result<(), std::io::Error> {
-        let mut c = Cursor::new(&mut self.byte_array[0..V1_LOG_HEADER_SIZE]);
+        let mut c = Cursor::new(&mut self.byte_array[0..Header::fixed_size()]);
         self.header.encode(&mut c)
     }
 
-    fn write_buf(&mut self, buf: &[u8], start: usize) {
-        (&mut self.byte_array[start..start + buf.len()]).copy_from_slice(buf)
+    fn write_buf(&mut self, buf: &[u8], start: usize) -> std::io::Result<usize> {
+        self.check_len_valid(start + buf.len())?;
+        (&mut self.byte_array[start..start + buf.len()]).copy_from_slice(buf);
+        Ok(start + buf.len())
+    }
+
+    fn check_len_valid(&mut self, len: usize) -> std::io::Result<()> {
+        if len > self.byte_array.len() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("log byte array len is not match given len {}", len),
+            ));
+        }
+        Ok(())
     }
 }
 
@@ -219,8 +248,7 @@ impl Write for ByteArrayAppenderInner {
         let start = self.header.recorder_position as usize;
         self.header.recorder_position += buf.len() as u32;
         self.write_header()?;
-        self.write_buf(buf, start);
-        Ok(0)
+        self.write_buf(buf, start)
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
@@ -415,7 +443,7 @@ mod tests {
         let file = current_file(&appender.file_path()).unwrap();
         let mut reader: BufReader<File> = BufReader::new(file);
         reader
-            .seek(SeekFrom::Start(V1_LOG_HEADER_SIZE as u64))
+            .seek(SeekFrom::Start(Header::fixed_size() as u64))
             .unwrap();
         reader.read(&mut read_buf).unwrap();
 
@@ -447,7 +475,7 @@ mod tests {
         let file = current_file(&log_path).unwrap();
         let mut reader = BufReader::new(file);
         reader
-            .seek(SeekFrom::Start(V1_LOG_HEADER_SIZE as u64))
+            .seek(SeekFrom::Start(Header::fixed_size() as u64))
             .unwrap();
         reader.read_exact(&mut read_buf).unwrap();
         assert_eq!(read_buf, buf);

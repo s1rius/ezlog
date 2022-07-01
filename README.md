@@ -23,12 +23,12 @@ By CocoaPods
 
 #### Add EZLog to Podfile
 
-```
+```shell
 pod 'EZLog', '~> 0.1'
 ```
 then
 
-```
+```shell
 pod update
 ```
 #### Open Xcode, add sample code
@@ -102,7 +102,7 @@ allprojects {
 
 open app level `build.gradle`, add `ezlog`
 
-```
+```groovy
 dependencies {
     implementation "wtf.s1.ezlog:ezlog:0.1.1"
 }

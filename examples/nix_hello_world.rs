@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use ezlog::{
     create_log, CipherKind, CompressKind, EZLogCallback, EZLogConfig, EZLogConfigBuilder, EZLogger,
-    EZRecord, EventPrinter, V1_LOG_HEADER_SIZE,
+    EZRecord, EventPrinter, Header,
 };
 use log::{debug, error, info, trace, warn, LevelFilter};
 use log::{Metadata, Record};
@@ -82,7 +82,7 @@ fn read_log_file_rewrite() {
 
     let mut cursor = Cursor::new(buffer);
     cursor
-        .seek(SeekFrom::Start(V1_LOG_HEADER_SIZE as u64))
+        .seek(SeekFrom::Start(Header::fixed_size() as u64))
         .unwrap();
 
     let plaintext_log_path = path.with_extension(".log");

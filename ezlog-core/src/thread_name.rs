@@ -58,7 +58,7 @@ mod tests {
     use crate::thread_name::get_name;
 
     #[test]
-    fn create_thread() {
+    fn test_get_thread_name() {
         let j = std::thread::Builder::new()
             .name("test 1234567890123456".to_string())
             .spawn(|| {
