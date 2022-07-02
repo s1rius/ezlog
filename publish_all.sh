@@ -29,11 +29,13 @@ cargo +nightly publish -p ezlog-cli
 
 echo ios publish
 cd ios
-pod lib lint ./ios/EZLog.podspec
-pod trunk push ./ios/EZLog.podspec --allow-warnings
+pod lib lint EZLog.podspec
+pod trunk push EZLog.podspec --allow-warnings
 cd ..
 
 echo android publish
 cd android
 sh publish.sh
+
+echo https://oss.sonatype.org/
 cd ..
