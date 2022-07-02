@@ -98,7 +98,7 @@ allprojects {
 
 ```
 dependencies {
-    implementation "wtf.s1.ezlog:ezlog:0.1.1"
+    implementation "wtf.s1.ezlog:ezlog:0.1.2"
 }
 ```
 
