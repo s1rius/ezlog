@@ -1,6 +1,6 @@
 #![feature(core_ffi_c)]
 #![feature(core_c_str)]
-#![doc = include_str!("../../README.md")]
+#![doc = include_str!("../README.md")]
 
 mod appender;
 mod compress;

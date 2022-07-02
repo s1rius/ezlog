@@ -7,7 +7,7 @@ homepage = "https://github.com/s1rius/ezlog"
 repository = "https://github.com/s1rius/ezlog"
 license = "MIT OR Apache-2.0"
 keywords = ["ezlog"]
-readme = "../README.md"
+readme = "README.md"
 
 [lib]
 crate-type = ["lib", "cdylib", "staticlib"]
