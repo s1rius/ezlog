@@ -334,6 +334,7 @@ pub fn request_log_files_for_date(log_name: &str, date_str: &str) {
         .unwrap_or_else(report_channel_send_err);
 }
 
+#[inline]
 fn post_msg(msg: EZMsg) -> bool {
     get_sender()
         .try_send(msg)
@@ -341,10 +342,12 @@ fn post_msg(msg: EZMsg) -> bool {
         .is_ok()
 }
 
+#[inline]
 fn report_channel_send_err<T>(err: TrySendError<T>) {
     event!(internal_err & err.to_string());
 }
 
+#[inline]
 fn ffi_err_handle<T>(err: T)
 where
     T: Error,
@@ -582,7 +585,6 @@ impl EZLogger {
     fn create_size_chunk(size: usize) -> Result<Vec<u8>> {
         let mut chunk: Vec<u8> = Vec::new();
         match size {
-            // u8::MAX
             size if size < (u8::MAX as usize) => {
                 chunk.write_u8(1)?;
                 chunk.write_u8(size as u8)?;

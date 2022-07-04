@@ -1,6 +1,7 @@
 # EZLog
 
-[中文介绍](README.zh-CN.md)
+[中文介绍](README.zh-CN.md)</p>
+[🦀️Rust 移动端开发体验](./docs/JOURNAL.md)
 
 EZLog is a high efficiency Cross-platform logging library.
 
