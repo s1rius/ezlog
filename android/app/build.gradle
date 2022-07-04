@@ -20,6 +20,21 @@ android {
     compileSdkVersion 30
     buildToolsVersion "30.0.3"
 
+    signingConfigs {
+        release {
+            def props = new Properties()
+
+            def fileInputStream = new FileInputStream(file('../signing.properties'))
+            props.load(fileInputStream)
+            fileInputStream.close()
+
+            storeFile = file(props['storeFilePath'])
+            storePassword = props['storePassword']
+            keyAlias = props['keyAlias']
+            keyPassword = props['keyPassword']
+        }
+    }
+
     defaultConfig {
         applicationId "wtf.s1.ezlog.demo"
         minSdkVersion Versions.minSdkVersion
@@ -32,10 +47,12 @@ android {
 
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
+            signingConfig signingConfigs.release
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -52,6 +69,8 @@ android {
 dependencies {
     implementation Deps.Kotlin.ktxCore
     implementation Deps.AndroidX.appcompat
+    implementation('com.tencent.mars:mars-xlog:1.2.5')
+    implementation('com.dianping.android.sdk:logan:1.2.4')
     implementation(project(":lib-ezlog"))
     // implementation "wtf.s1.ezlog:ezlog:0.1.1"
 }
