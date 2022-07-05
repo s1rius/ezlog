@@ -21,7 +21,7 @@ Pod::Spec.new do |s|
   s.author           = { 's1rius' => 's1rius.noone@gmail.com' }
   s.source           = { :git => 'https://github.com/s1rius/ezlog.git', :tag => s.version.to_s }
 
-  s.ios.deployment_target = '15.0'
+  s.ios.deployment_target = '13.0'
 
   s.source_files = 'ios/EZLog/Source/**/*'
   s.ios.vendored_frameworks = 'ios/framework/ezlog.xcframework'

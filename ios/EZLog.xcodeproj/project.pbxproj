@@ -69,6 +69,7 @@
 		225800BE2850CF9A00D0F075 /* EZLog.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = EZLog.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		225800C02850CF9A00D0F075 /* ezlog.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ezlog.h; sourceTree = "<group>"; };
 		225800C12850CF9A00D0F075 /* ezlog.docc */ = {isa = PBXFileReference; lastKnownFileType = folder.documentationcatalog; path = ezlog.docc; sourceTree = "<group>"; };
+		226BFDDA287432FB0022B62E /* EZLog.podspec */ = {isa = PBXFileReference; lastKnownFileType = text; path = EZLog.podspec; sourceTree = "<group>"; };
 		227673BD2850D0740088CDC1 /* EZLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EZLog.swift; sourceTree = "<group>"; };
 		2285B3F728507B27000D641C /* demo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = demo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2285B3F928507B27000D641C /* DemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoApp.swift; sourceTree = "<group>"; };
@@ -127,6 +128,7 @@
 		2285B3CF28507AC7000D641C = {
 			isa = PBXGroup;
 			children = (
+				226BFDDA287432FB0022B62E /* EZLog.podspec */,
 				2285B3F828507B27000D641C /* demo */,
 				225800BF2850CF9A00D0F075 /* EZLog */,
 				2285B3DA28507AC7000D641C /* Products */,
@@ -414,7 +416,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -447,7 +449,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -636,7 +638,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -668,7 +670,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
