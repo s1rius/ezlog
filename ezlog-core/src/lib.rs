@@ -550,9 +550,7 @@ impl EZLogger {
         }
         if let Some(compression) = &self.compression {
             event!(compress_start & record.t_id());
-            buf = compression
-                .compress(&buf)
-                .map_err(|e| LogError::Compress(e))?;
+            buf = compression.compress(&buf).map_err(LogError::Compress)?;
             event!(compress_end & record.t_id());
         }
         Ok(buf)
@@ -561,13 +559,13 @@ impl EZLogger {
     ///
     pub fn encode_as_block(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
         let mut chunk: Vec<u8> = Vec::new();
-        chunk.append(&mut vec![RECORD_SIGNATURE_START]);
+        chunk.push(RECORD_SIGNATURE_START);
         let mut buf = self.encode(record)?;
         let size = buf.len();
         let mut size_chunk = EZLogger::create_size_chunk(size)?;
         chunk.append(&mut size_chunk);
         chunk.append(&mut buf);
-        chunk.append(&mut vec![RECORD_SIGNATURE_END]);
+        chunk.push(RECORD_SIGNATURE_END);
         Ok(chunk)
     }
 

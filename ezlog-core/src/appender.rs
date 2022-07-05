@@ -94,7 +94,10 @@ pub(crate) struct MmapAppendInner {
 impl MmapAppendInner {
     pub(crate) fn new(config: &EZLogConfig, time: OffsetDateTime) -> Result<Self> {
         let (mut file_path, mut mmap) = config.create_mmap_file(time)?;
-        let mut c = Cursor::new(&mut mmap[0..Header::fixed_size()]);
+        let mmap_header = &mut mmap
+            .get(0..Header::fixed_size())
+            .ok_or_else(|| io::Error::new(ErrorKind::InvalidData, "mmap get header vec error"))?;
+        let mut c = Cursor::new(mmap_header);
         let mut header = Header::decode(&mut c).unwrap_or_else(|_| Header::new());
         let next_date = next_date(time);
 
@@ -122,25 +125,29 @@ impl MmapAppendInner {
     }
 
     fn write_header(&mut self) -> std::result::Result<(), std::io::Error> {
-        self.check_len_valid(Header::fixed_size())?;
-        let mut c = Cursor::new(&mut self.mmap[0..Header::fixed_size()]);
+        let mmap_header = self.mmap.get_mut(0..Header::fixed_size()).ok_or_else(|| {
+            io::Error::new(ErrorKind::InvalidData, "mmap write header vec get error")
+        })?;
+
+        let mut c = Cursor::new(mmap_header);
         self.header.encode(&mut c)
     }
 
     fn write_buf(&mut self, buf: &[u8], start: usize) -> std::io::Result<usize> {
-        self.check_len_valid(start + buf.len())?;
-        let mut c = Cursor::new(&mut self.mmap[start..start + buf.len()]);
+        let mmap_len = self.mmap.len();
+        let m = self.mmap.get_mut(start..start + buf.len()).ok_or_else(|| {
+            io::Error::new(
+                ErrorKind::InvalidData,
+                format!(
+                    "invalid data write len = {}, start = {}, buf len = {}",
+                    mmap_len,
+                    start,
+                    buf.len()
+                ),
+            )
+        })?;
+        let mut c = Cursor::new(m);
         c.write(buf)
-    }
-
-    fn check_len_valid(&mut self, len: usize) -> std::io::Result<()> {
-        if len > self.mmap.len() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("log mmap len is not match given len {}", len),
-            ));
-        }
-        Ok(())
     }
 }
 
@@ -192,7 +199,9 @@ impl ByteArrayAppenderInner {
         let mut byte_array = vec![0u8; config.max_size as usize];
         BufReader::new(&_file).read_exact(&mut byte_array)?;
 
-        let mut c = Cursor::new(&mut byte_array[0..Header::fixed_size()]);
+        let mut c = Cursor::new(byte_array.get(0..Header::fixed_size()).ok_or_else(|| {
+            io::Error::new(ErrorKind::InvalidData, "byte array get header vec error")
+        })?);
         let mut header = Header::decode(&mut c).unwrap_or_else(|_| Header::new());
         let next_date = next_date(time);
 
@@ -222,24 +231,36 @@ impl ByteArrayAppenderInner {
     }
 
     fn write_header(&mut self) -> std::result::Result<(), std::io::Error> {
-        let mut c = Cursor::new(&mut self.byte_array[0..Header::fixed_size()]);
+        let header = self
+            .byte_array
+            .get_mut(0..Header::fixed_size())
+            .ok_or_else(|| {
+                io::Error::new(
+                    ErrorKind::InvalidData,
+                    "byte array write header vec get error",
+                )
+            })?;
+        let mut c = Cursor::new(header);
         self.header.encode(&mut c)
     }
 
     fn write_buf(&mut self, buf: &[u8], start: usize) -> std::io::Result<usize> {
-        self.check_len_valid(start + buf.len())?;
-        (&mut self.byte_array[start..start + buf.len()]).copy_from_slice(buf);
-        Ok(start + buf.len())
-    }
-
-    fn check_len_valid(&mut self, len: usize) -> std::io::Result<()> {
-        if len > self.byte_array.len() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("log byte array len is not match given len {}", len),
-            ));
-        }
-        Ok(())
+        let byte_array_len = self.byte_array.len();
+        let buf_write = self
+            .byte_array
+            .get_mut(start..start + buf.len())
+            .ok_or_else(|| {
+                io::Error::new(
+                    ErrorKind::InvalidData,
+                    format!(
+                        "invalid data write len = {}, start = {}, buf len = {}",
+                        byte_array_len,
+                        start,
+                        buf.len()
+                    ),
+                )
+            })?;
+        Cursor::new(buf_write).write(buf)
     }
 }
 

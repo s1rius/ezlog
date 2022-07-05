@@ -26,8 +26,8 @@ mod tests {
 
     #[test]
     fn test_error() {
-        use std::io;
         use crate::errors::LogError;
+        use std::io;
 
         let err = LogError::IoError(io::Error::new(io::ErrorKind::Other, "test"));
         assert_eq!(err.to_string(), "io error: test");

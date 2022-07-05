@@ -17,16 +17,14 @@ impl Aes256Gcm {
             return Err(LogError::IllegalArgument(format!(
                 "key must be 32 bytes long, but current len = {}",
                 key.len()
-            ))
-            .into());
+            )));
         }
 
         if nonce.len() != 12 {
             return Err(LogError::IllegalArgument(format!(
                 "nonce must be 12 bytes long, but current len = {}",
                 nonce.len()
-            ))
-            .into());
+            )));
         }
         let _key = Key::from_slice(key);
         Ok(Aes256Gcm {
