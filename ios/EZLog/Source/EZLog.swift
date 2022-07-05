@@ -15,7 +15,7 @@ public struct EZLogger {
         ezlogCreate(config: config)
     }
     
-    func log(level: Level, message: String, target: String? = "") {
+    func log(level: Level, message: String, target: String = "") {
         ezlog_log(self.config.name, UInt8(level.rawValue), target, message)
     }
     
@@ -26,23 +26,23 @@ public struct EZLogger {
 
 extension EZLogger {
     
-    public func trace(_ message: @autoclosure () -> String, target: @autoclosure() -> String? = "") {
+    public func trace(_ message: @autoclosure () -> String, target: @autoclosure() -> String = "") {
         self.log(level: Level.trace, message: message(), target: target())
     }
     
-    public func debug(_ message: @autoclosure () -> String, target: @autoclosure() -> String? = "") {
+    public func debug(_ message: @autoclosure () -> String, target: @autoclosure() -> String = "") {
         self.log(level: Level.debug, message: message(), target: target())
     }
     
-    public func info(_ message: @autoclosure () -> String, target: @autoclosure() -> String? = "") {
+    public func info(_ message: @autoclosure () -> String, target: @autoclosure() -> String = "") {
         self.log(level: Level.info, message: message(), target: target())
     }
     
-    public func warn(_ message: @autoclosure () -> String, target: @autoclosure() -> String? = "") {
+    public func warn(_ message: @autoclosure () -> String, target: @autoclosure() -> String = "") {
         self.log(level: Level.warning, message: message(), target: target())
     }
     
-    public func error(_ message: @autoclosure () -> String, target: @autoclosure() -> String? = "") {
+    public func error(_ message: @autoclosure () -> String, target: @autoclosure() -> String = "") {
         self.log(level: Level.error, message: message(), target: target())
     }
 }
