@@ -11,10 +11,9 @@ use time::{format_description, Date, Duration, OffsetDateTime};
 #[allow(unused_imports)]
 use crate::EZLogger;
 use crate::{
-    appender::rename_current_file,
-    errors::{IllegalArgumentError, LogError, ParseError},
-    event, CipherKind, CompressKind, CompressLevel, Header, Level, Version,
-    DEFAULT_LOG_FILE_SUFFIX, DEFAULT_LOG_NAME, DEFAULT_MAX_LOG_SIZE, MIN_LOG_SIZE,
+    appender::rename_current_file, errors::LogError, event, CipherKind, CompressKind,
+    CompressLevel, Header, Level, Version, DEFAULT_LOG_FILE_SUFFIX, DEFAULT_LOG_NAME,
+    DEFAULT_MAX_LOG_SIZE, MIN_LOG_SIZE,
 };
 
 pub const DATE_FORMAT: &str = "[year]_[month]_[day]";
@@ -75,15 +74,15 @@ pub struct EZLogConfig {
 impl EZLogConfig {
     pub(crate) fn now_file_name(&self, now: OffsetDateTime) -> crate::Result<String> {
         let format = format_description::parse(DATE_FORMAT).map_err(|_e| {
-            crate::errors::LogError::Parse(ParseError::new(format!(
+            crate::errors::LogError::Parse(format!(
                 "Unable to create a formatter; this is a bug in EZLogConfig#now_file_name: {}",
                 _e
-            )))
+            ))
         })?;
         let date = now.format(&format).map_err(|_| {
-            crate::errors::LogError::Parse(ParseError::new(
+            crate::errors::LogError::Parse(
                 "Unable to format date; this is a bug in EZLogConfig#now_file_name".to_string(),
-            ))
+            )
         })?;
         let str = format!("{}_{}.{}", self.name, date, self.file_suffix);
         Ok(str)
@@ -133,13 +132,15 @@ impl EZLogConfig {
     pub(crate) fn read_file_name_as_date(&self, file_name: &str) -> crate::Result<OffsetDateTime> {
         const SAMPLE: &str = "2022_02_22";
         if !file_name.starts_with(format!("{}_", &self.name).as_str()) {
-            return Err(LogError::IllegalArgument(IllegalArgumentError::new(
-                format!("file name is not start with name {}", file_name),
+            return Err(LogError::IllegalArgument(format!(
+                "file name is not start with name {}",
+                file_name
             )));
         }
         if !file_name.len() < self.name.len() + SAMPLE.len() + 1 {
-            return Err(LogError::IllegalArgument(IllegalArgumentError::new(
-                format!("file name length is not right {}", file_name),
+            return Err(LogError::IllegalArgument(format!(
+                "file name length is not right {}",
+                file_name
             )));
         }
         let date_str = &file_name[self.name.len() + 1..self.name.len() + 1 + SAMPLE.len()];
@@ -332,12 +333,10 @@ impl Default for EZLogConfigBuilder {
 }
 
 pub(crate) fn parse_date_from_str(date_str: &str, case: &str) -> crate::Result<Date> {
-    let format = format_description::parse(DATE_FORMAT).map_err(|_e| {
-        crate::errors::LogError::Parse(ParseError::new(format!("{} {} {}", case, date_str, _e)))
-    })?;
-    let date = Date::parse(date_str, &format).map_err(|_e| {
-        crate::errors::LogError::Parse(ParseError::new(format!("{} {} {}", case, date_str, _e)))
-    })?;
+    let format = format_description::parse(DATE_FORMAT)
+        .map_err(|_e| crate::errors::LogError::Parse(format!("{} {} {}", case, date_str, _e)))?;
+    let date = Date::parse(date_str, &format)
+        .map_err(|_e| crate::errors::LogError::Parse(format!("{} {} {}", case, date_str, _e)))?;
     Ok(date)
 }
 

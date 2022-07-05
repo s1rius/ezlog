@@ -27,7 +27,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use compress::ZlibCodec;
 use crossbeam_channel::{Sender, TrySendError};
 use crypto::{Aes128Gcm, Aes256Gcm};
-use errors::{CryptoError, LogError, ParseError};
+use errors::LogError;
 use log::Record;
 use memmap2::MmapMut;
 use once_cell::sync::OnceCell;
@@ -100,7 +100,7 @@ fn get_fetch_sender() -> &'static Sender<FetchResult> {
 }
 
 /// Init ezlog
-/// 
+///
 /// init ezlog, setup panic hook, trigger event when panic.
 ///
 /// # Examples
@@ -110,7 +110,7 @@ fn get_fetch_sender() -> &'static Sender<FetchResult> {
 /// ```
 pub fn init() {
     std::panic::set_hook(Box::new(|p| {
-        event!(panic &format!("ezlog panic: {p:?}"));
+        event!(panic & format!("ezlog panic: {p:?}"));
     }));
 }
 
@@ -550,7 +550,9 @@ impl EZLogger {
         }
         if let Some(compression) = &self.compression {
             event!(compress_start & record.t_id());
-            buf = compression.compress(&buf)?;
+            buf = compression
+                .compress(&buf)
+                .map_err(|e| LogError::Compress(e))?;
             event!(compress_end & record.t_id());
         }
         Ok(buf)
@@ -601,9 +603,7 @@ impl EZLogger {
     ) -> Result<Vec<u8>> {
         let start_sign = reader.read_u8()?;
         if RECORD_SIGNATURE_START != start_sign {
-            return Err(LogError::Parse(ParseError::new(
-                "record start sign error".to_string(),
-            )));
+            return Err(LogError::Parse("record start sign error".to_string()));
         }
         let size_of_size = reader.read_u8()?;
         let content_size: usize = match size_of_size {
@@ -615,9 +615,7 @@ impl EZLogger {
         reader.read_exact(&mut chunk)?;
         let end_sign = reader.read_u8()?;
         if RECORD_SIGNATURE_END != end_sign {
-            return Err(LogError::Parse(ParseError::new(
-                "record end sign error".to_string(),
-            )));
+            return Err(LogError::Parse("record end sign error".to_string()));
         }
         EZLogger::decode_msg_content(&chunk, compression, cryptor)
     }
@@ -722,12 +720,12 @@ impl<T: Compression + Decompression> Compress for T {}
 
 /// Encrypt function abstract
 pub trait Encryptor {
-    fn encrypt(&self, data: &[u8]) -> std::result::Result<Vec<u8>, CryptoError>;
+    fn encrypt(&self, data: &[u8]) -> std::result::Result<Vec<u8>, LogError>;
 }
 
 /// decrypt function abstract
 pub trait Decryptor {
-    fn decrypt(&self, data: &[u8]) -> std::result::Result<Vec<u8>, CryptoError>;
+    fn decrypt(&self, data: &[u8]) -> std::result::Result<Vec<u8>, LogError>;
 }
 
 impl<T: Encryptor + Decryptor> Cryptor for T {}
@@ -812,9 +810,7 @@ impl std::str::FromStr for CipherKind {
             "AES_128_GCM" => Ok(CipherKind::AES128GCM),
             "AES_256_GCM" => Ok(CipherKind::AES256GCM),
             "NONE" => Ok(CipherKind::NONE),
-            _ => Err(errors::LogError::Parse(ParseError::new(String::from(
-                "unknown cipher kind",
-            )))),
+            _ => Err(errors::LogError::Parse("unknown cipher kind".to_string())),
         }
     }
 }
@@ -1337,7 +1333,7 @@ pub(crate) fn next_date(time: OffsetDateTime) -> OffsetDateTime {
 
 #[cfg(test)]
 mod tests {
-    use std::fs::{OpenOptions, self};
+    use std::fs::{self, OpenOptions};
     use std::io::{BufReader, Read, Seek, SeekFrom, Write};
 
     use aes_gcm::aead::{Aead, NewAead};
@@ -1360,7 +1356,8 @@ mod tests {
         EZLogConfigBuilder::new()
             .dir_path(
                 dirs::download_dir()
-                    .unwrap().join("ezlog_test")
+                    .unwrap()
+                    .join("ezlog_test")
                     .into_os_string()
                     .into_string()
                     .unwrap(),

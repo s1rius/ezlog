@@ -214,7 +214,7 @@ fn call_on_fetch_fail(name: &str, date: &str, err_msg: &str) {
 /// Request logger's files path array by specified date
 /// before call this function, you should register a callback
 /// call
-/// 
+///
 /// ```swift
 /// ezlog_register_callback(callback);
 /// ```
