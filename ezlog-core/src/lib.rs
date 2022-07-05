@@ -100,9 +100,19 @@ fn get_fetch_sender() -> &'static Sender<FetchResult> {
 }
 
 /// Init ezlog
+/// 
+/// init ezlog, setup panic hook, trigger event when panic.
 ///
-/// current implementation is empty.
-pub fn init() {}
+/// # Examples
+/// ```
+/// use ezlog::init;
+/// init();
+/// ```
+pub fn init() {
+    std::panic::set_hook(Box::new(|p| {
+        event!(panic &format!("ezlog panic: {p:?}"));
+    }));
+}
 
 /// Trim all [EZLogger]s outdated files
 ///

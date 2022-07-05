@@ -29,6 +29,7 @@ pub trait Event {
     fn flush_all_end(&self) {}
     fn internal_err(&self, err: &str) {}
     fn record_filter_out(&self, id: &str, info: &str) {}
+    fn panic(&self, info: &str) {}
 }
 
 use std::sync::Once;
@@ -126,6 +127,9 @@ macro_rules! event {
     };
     (ffi_call_err $e:expr) => {
         $crate::events::listener().internal_err($e)
+    };
+    (panic $e:expr) => {
+        $crate::events::listener().panic($e)
     };
 }
 
@@ -241,6 +245,10 @@ impl Event for EventPrinter {
     }
     fn record_filter_out(&self, id: &str, info: &str) {
         println_with_time!("{} log filter , {}", id, info)
+    }
+
+    fn panic(&self, info: &str) {
+        println_with_time!("panic {}", info)
     }
 }
 
