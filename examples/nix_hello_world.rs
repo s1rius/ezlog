@@ -17,8 +17,7 @@ static EVENT_LISTENER: EventPrinter = EventPrinter;
 
 pub fn main() {
     println!("start");
-    ezlog::init();
-    ezlog::set_event_listener(&EVENT_LISTENER);
+    ezlog::init_with_event(&EVENT_LISTENER);
     ezlog::set_boxed_callback(Box::new(SimpleCallback));
     log::set_logger(&LOGGER)
         .map(|()| log::set_max_level(LevelFilter::Trace))

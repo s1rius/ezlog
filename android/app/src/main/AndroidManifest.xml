@@ -10,10 +10,7 @@
         android:name=".DebugApp"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Main"
-        tools:replace="android:extractNativeLibs"
-        android:extractNativeLibs="true"
-        tools:ignore="UnusedAttribute">
+        android:theme="@style/Theme.Main">
         <activity android:name=".MainActivity"
             android:exported="true">
             <intent-filter>

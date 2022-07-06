@@ -1,3 +1,5 @@
+#![warn(clippy::unwrap_used)]
+#![warn(clippy::expect_used)]
 #![feature(core_ffi_c)]
 #![feature(core_c_str)]
 #![doc = include_str!("../README.md")]
@@ -23,6 +25,8 @@ pub use self::events::Event;
 pub use self::events::EventPrinter;
 
 use appender::EZAppender;
+#[cfg(feature = "backtrace")]
+use backtrace::Backtrace;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use compress::ZlibCodec;
 use crossbeam_channel::{Sender, TrySendError};
@@ -109,9 +113,12 @@ fn get_fetch_sender() -> &'static Sender<FetchResult> {
 /// init();
 /// ```
 pub fn init() {
-    std::panic::set_hook(Box::new(|p| {
-        event!(panic & format!("ezlog panic: {p:?}"));
-    }));
+    hook_panic();
+}
+
+pub fn init_with_event(event: &'static dyn Event) {
+    set_event_listener(event);
+    init();
 }
 
 /// Trim all [EZLogger]s outdated files
@@ -1255,7 +1262,7 @@ impl Level {
     /// assert_eq!(Some(Level::Trace), levels.last());
     /// ```
     pub fn iter() -> impl Iterator<Item = Self> {
-        (1..6).map(|i| Self::from_usize(i).unwrap())
+        (1..6).map(|i| Self::from_usize(i).unwrap_or(Level::Error))
     }
 }
 
@@ -1327,6 +1334,21 @@ impl fmt::Display for Level {
 
 pub(crate) fn next_date(time: OffsetDateTime) -> OffsetDateTime {
     time.date().midnight().assume_utc() + Duration::days(1)
+}
+
+#[cfg(feature = "backtrace")]
+fn hook_panic() {
+    std::panic::set_hook(Box::new(|p| {
+        let bt = Backtrace::new();
+        event!(panic & format!("ezlog: \n {p:?} \n{bt:?} \n"));
+    }));
+}
+
+#[cfg(not(feature = "backtrace"))]
+fn hook_panic() {
+    std::panic::set_hook(Box::new(|p| {
+        event!(panic & format!("ezlog: \n {p:?}"));
+    }));
 }
 
 #[cfg(test)]
