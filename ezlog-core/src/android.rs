@@ -83,12 +83,15 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_createLogger(
     j_cipher_key: jbyteArray,
     j_cipher_nonce: jbyteArray,
 ) {
-    let log_name: String = env.get_string(j_log_name).unwrap().into();
+    let log_name: String = env
+        .get_string(j_log_name)
+        .map(|s| s.into())
+        .unwrap_or_default();
     let log_level: Level = Level::from_usize(j_level as usize).unwrap_or(Level::Trace);
     let log_dir = env
         .get_string(j_dir_path)
         .map(|dir| dir.into())
-        .unwrap_or_else(|_| "".to_string());
+        .unwrap_or_default();
     let duration: Duration = Duration::days(j_keep_days as i64);
     let compress: CompressKind = CompressKind::from(j_compress as u8);
     let compress_level: CompressLevel = CompressLevel::from(j_compress_level as u8);
@@ -108,6 +111,11 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_createLogger(
         .cipher_nonce(cipher_nonce)
         .build();
 
+    if !config.is_valid() {
+        event!(ffi_call_err & format!("create logger config error {config:?}"));
+        return;
+    }
+
     crate::create_log(config);
 }
 
@@ -123,19 +131,19 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_log(
     let log_name: String = env
         .get_string(j_log_name)
         .map(|name| name.into())
-        .unwrap_or_else(|_| "".to_string());
+        .unwrap_or_default();
 
     let log_level: Level = Level::from_usize(j_level as usize).unwrap_or(Level::Trace);
 
     let target = env
         .get_string(j_target)
         .map(|jstr| jstr.into())
-        .unwrap_or_else(|_| "".to_string());
+        .unwrap_or_default();
 
     let content = env
         .get_string(j_content)
         .map(|jstr| jstr.into())
-        .unwrap_or_else(|_| "".to_string());
+        .unwrap_or_default();
 
     let record = EZRecordBuilder::new()
         .log_name(log_name)
@@ -163,7 +171,7 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_flush(
     let log_name: String = env
         .get_string(j_log_name)
         .map(|name| name.into())
-        .unwrap_or_else(|_| "".to_string());
+        .unwrap_or_default();
     crate::flush(&log_name);
 }
 
@@ -178,9 +186,8 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_registerCallback(
         Ok(gloableCallback) => {
             CALL_BACK_REF
                 .set(gloableCallback)
-                .map_err(|_| event!(ffi_call_err "set callback error"))
-                .unwrap_or(());
-            set_boxed_callback(Box::new(AndroidCallback))
+                .map(|_| set_boxed_callback(Box::new(AndroidCallback)))
+                .unwrap_or_else(|_| event!(ffi_call_err "set callback error"));
         }
         Err(e) => event!(ffi_call_err & format!("register callback error: {}", e)),
     }
@@ -196,12 +203,12 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_requestLogFilesForDate(
     let log_name: String = env
         .get_string(j_log_name)
         .map(|name| name.into())
-        .unwrap_or_else(|_| "".to_string());
+        .unwrap_or_default();
 
-    let date = env
+    let date: String = env
         .get_string(j_date)
         .map(|jstr| jstr.into())
-        .unwrap_or_else(|_| "".to_string());
+        .unwrap_or_default();
 
     crate::request_log_files_for_date(&log_name, &date);
 }
@@ -232,20 +239,18 @@ fn get_class(env: &JNIEnv, class: &str) -> Option<GlobalRef> {
     let class = env
         .find_class(class)
         .unwrap_or_else(|_| panic!("Class {} not found", class));
-    Some(env.new_global_ref(class).unwrap())
+    env.new_global_ref(class).map_err(ffi_fail).ok()
 }
 
 struct AndroidCallback;
 
 impl crate::EZLogCallback for AndroidCallback {
     fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
-        call_on_fetch_success(name, date, logs)
-            .unwrap_or_else(|e| event!(ffi_call_err & e.to_string()));
+        call_on_fetch_success(name, date, logs).unwrap_or_else(ffi_fail);
     }
 
     fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
-        call_on_fetch_fail(name, date, err)
-            .unwrap_or_else(|e| event!(ffi_call_err & e.to_string()));
+        call_on_fetch_fail(name, date, err).unwrap_or_else(ffi_fail);
     }
 }
 
@@ -297,7 +302,7 @@ fn call_on_fetch_fail(name: &str, date: &str, err_msg: &str) -> Result<(), jni::
         }
     }
 }
-
+#[inline]
 unsafe fn internal_call_on_fetch_fail<'a>(
     env: &JNIEnv<'a>,
     name: JString,
@@ -318,6 +323,7 @@ unsafe fn internal_call_on_fetch_fail<'a>(
     Ok(())
 }
 
+#[inline]
 unsafe fn get_env<'a>() -> Result<JNIEnv<'a>, jni::errors::Error> {
     if let Some(jvm) = JVM.get() {
         match jvm.get_env() {
@@ -359,6 +365,11 @@ where
         env.set_object_array_element(jobjArray, i as i32, op(log)?)?;
     }
     Ok(jobjArray)
+}
+
+#[inline]
+fn ffi_fail(e: jni::errors::Error) {
+    event!(ffi_call_err & e.to_string());
 }
 
 mod tests {}

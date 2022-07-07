@@ -88,6 +88,10 @@ impl EZLogConfig {
         Ok(str)
     }
 
+    pub fn is_valid(&self) -> bool {
+        !self.dir_path.is_empty() && !self.name.is_empty() && !self.file_suffix.is_empty()
+    }
+
     pub fn create_mmap_file(&self, time: OffsetDateTime) -> crate::Result<(PathBuf, MmapMut)> {
         let (file, path) = self.create_log_file(time)?;
         let mmap = unsafe { MmapOptions::new().map_mut(&file)? };
