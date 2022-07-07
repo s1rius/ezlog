@@ -10,8 +10,6 @@ use core::slice;
 use std::ffi::CString;
 use std::ffi::NulError;
 
-static mut CALL_BACK: MaybeUninit<Callback> = MaybeUninit::uninit();
-static mut ONCE_REGISTER: std::sync::Once = Once::new();
 
 /// Init ezlog, must call before any other function
 #[no_mangle]
@@ -61,9 +59,9 @@ pub unsafe extern "C" fn ezlog_create_log(
     let compress_level = CompressLevel::from(c_compress_level);
     let cipher = CipherKind::from(c_cipher);
     let key_bytes = slice::from_raw_parts(c_cipher_key, c_key_len);
-    let cipher_key: Vec<u8> = Vec::from(key_bytes);
+    let cipher_key: Vec<u8> = key_bytes.to_owned();
     let nonce_bytes = slice::from_raw_parts(c_cipher_nonce, c_nonce_len);
-    let cipher_nonce: Vec<u8> = Vec::from(nonce_bytes);
+    let cipher_nonce: Vec<u8> = nonce_bytes.to_owned();
 
     let config = EZLogConfigBuilder::new()
         .name(log_name)
@@ -104,13 +102,9 @@ pub unsafe extern "C" fn ezlog_log(
 }
 
 /// Register callback function for get logger's file path asynchronously
-/// todo thread safe
 #[no_mangle]
 pub unsafe extern "C" fn ezlog_register_callback(callback: Callback) {
-    ONCE_REGISTER.call_once(|| {
-        CALL_BACK.as_mut_ptr().write(callback);
-    });
-    set_boxed_callback(Box::new(AppleCallback));
+    set_boxed_callback(Box::new(callback));
 }
 
 /// map to c Callback stuct
@@ -122,8 +116,6 @@ pub struct Callback {
     failPoint: *mut c_void,
     onLogsFetchFail: extern "C" fn(*mut c_void, *const c_char, *const c_char, *const c_char),
 }
-
-unsafe impl Send for Callback {}
 
 impl Callback {
     pub fn success(
@@ -179,35 +171,22 @@ impl Callback {
     }
 }
 
+impl EZLogCallback for Callback {
+    fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
+        self.success(name, date, logs)
+            .unwrap_or_else(|e| event!(ffi_call_err & format!("ffi: {}", e)));
+    }
+
+    fn on_fetch_fail(&self, name: &str, date: &str, err_msg: &str) {
+        self.fail(name, date, err_msg)
+            .unwrap_or_else(|e| event!(ffi_call_err & format!("ffi: {}", e)));
+    }
+}
+
 impl Drop for Callback {
     fn drop(&mut self) {
-        panic!("CompletedCallback must have explicit succeeded or failed call")
-    }
-}
-
-fn call_on_fetch_success(name: &str, date: &str, logs: &[&str]) {
-    unsafe {
-        if ONCE_REGISTER.is_completed() {
-            let callback = &*CALL_BACK.as_ptr();
-            callback
-                .success(name, date, logs)
-                .unwrap_or_else(|e| event!(ffi_call_err & format!("ffi: {}", e)));
-        } else {
-            event!(ffi_call_err "ffi: callback not registered");
-        }
-    }
-}
-
-fn call_on_fetch_fail(name: &str, date: &str, err_msg: &str) {
-    unsafe {
-        if ONCE_REGISTER.is_completed() {
-            let callback = &*CALL_BACK.as_ptr();
-            callback
-                .fail(name, date, err_msg)
-                .unwrap_or_else(|e| event!(ffi_call_err & format!("ffi: {}", e)));
-        } else {
-            event!(ffi_call_err "ffi: callback not registered");
-        }
+        // now it is a gloabl callback, so we can't drop it
+        // todo panic!("CompletedCallback must have explicit succeeded or failed call")
     }
 }
 
@@ -226,17 +205,4 @@ pub unsafe extern "C" fn ezlog_request_log_files_for_date(
     let log_name = CStr::from_ptr(c_log_name).to_string_lossy().into_owned();
     let date = CStr::from_ptr(c_date).to_string_lossy().into_owned();
     crate::request_log_files_for_date(&log_name, &date);
-}
-
-/// Callback impl EZLogCallback
-struct AppleCallback;
-
-impl EZLogCallback for AppleCallback {
-    fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
-        call_on_fetch_success(name, date, logs);
-    }
-
-    fn on_fetch_fail(&self, name: &str, date: &str, err_msg: &str) {
-        call_on_fetch_fail(name, date, err_msg)
-    }
 }

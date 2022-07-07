@@ -173,7 +173,7 @@ public enum CompressLevel: Int, Codable {
 
 public struct EZLogConfig {
     var level: Level
-var dirPath: String
+    var dirPath: String
     var name: String
     var keepDays: Int
     var maxSize: Int
