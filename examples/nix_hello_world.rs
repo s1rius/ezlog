@@ -1,5 +1,5 @@
 use std::fs::OpenOptions;
-use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
+use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom};
 
 use std::thread;
 use std::time::Duration;
@@ -38,7 +38,7 @@ pub fn main() {
     println!("end");
 
     thread::sleep(Duration::from_secs(1));
-    //read_log_file_rewrite();
+    read_log_file_rewrite();
 }
 
 fn get_config() -> EZLogConfig {
@@ -68,7 +68,6 @@ fn read_log_file_rewrite() {
     let (path, _mmap) = log_config
         .create_mmap_file(OffsetDateTime::now_utc())
         .unwrap();
-    let mut logger = EZLogger::new(log_config).unwrap();
     let file = OpenOptions::new()
         .read(true)
         .write(true)
@@ -92,26 +91,13 @@ fn read_log_file_rewrite() {
         .open(plaintext_log_path)
         .unwrap();
 
-    let mut w = BufWriter::new(plaintext_log);
+    let mut writer = BufWriter::new(plaintext_log);
 
-    let mut end = false;
+    let mut compression = EZLogger::create_compress(&log_config);
+    let mut cryptor = EZLogger::create_cryptor(&log_config).unwrap();
 
-    loop {
-        if end {
-            break;
-        }
-
-        match logger.decode(&mut cursor) {
-            Ok(buf) => {
-                println!("{:?}", &buf);
-                w.write(&buf).unwrap();
-            }
-            Err(_) => {
-                end = true;
-            }
-        }
-    }
-    w.flush().unwrap();
+    EZLogger::decode_body_and_write(&mut cursor, &mut writer, &mut compression, &mut cryptor)
+        .unwrap();
 }
 
 struct SimpleLogger;

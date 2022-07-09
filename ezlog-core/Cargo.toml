@@ -16,6 +16,7 @@ crate-type = ["lib", "cdylib", "staticlib"]
 default = ["log"]
 backtrace = ["dep:backtrace"]
 log = ["dep:log"]
+decode = []
 
 [dependencies]
 libc = "0.2"

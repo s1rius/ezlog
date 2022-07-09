@@ -598,11 +598,34 @@ impl EZLogger {
         Ok(chunk)
     }
 
-    pub fn decode(&mut self, reader: &mut dyn Read) -> Result<Vec<u8>> {
-        EZLogger::decode_from_read(reader, &self.compression, &self.cryptor)
+    #[cfg(feature = "decode")]
+    pub fn decode_record(&mut self, reader: &mut dyn Read) -> Result<Vec<u8>> {
+        EZLogger::decode_record_from_read(reader, &self.compression, &self.cryptor)
     }
 
-    pub fn decode_from_read(
+    #[cfg(feature = "decode")]
+    pub fn decode_body_and_write(
+        reader: &mut dyn Read,
+        writer: &mut dyn Write,
+        compression: &Option<Box<dyn Compress>>,
+        cryptor: &Option<Box<dyn Cryptor>>,
+    ) -> io::Result<()> {
+        loop {
+            match EZLogger::decode_record_from_read(reader, compression, cryptor) {
+                Ok(buf) => {
+                    writer.write_all(&buf)?;
+                }
+                Err(e) => {
+                    println!("{}", e);
+                    break;
+                }
+            }
+        }
+        writer.flush()
+    }
+
+    #[cfg(feature = "decode")]
+    pub fn decode_record_from_read(
         reader: &mut dyn Read,
         compression: &Option<Box<dyn Compress>>,
         cryptor: &Option<Box<dyn Cryptor>>,
@@ -623,10 +646,11 @@ impl EZLogger {
         if RECORD_SIGNATURE_END != end_sign {
             return Err(LogError::Parse("record end sign error".to_string()));
         }
-        EZLogger::decode_msg_content(&chunk, compression, cryptor)
+        EZLogger::decode_record_content(&chunk, compression, cryptor)
     }
 
-    pub fn decode_msg_content(
+    #[cfg(feature = "decode")]
+    pub fn decode_record_content(
         chunk: &[u8],
         compression: &Option<Box<dyn Compress>>,
         cryptor: &Option<Box<dyn Cryptor>>,
@@ -1463,6 +1487,7 @@ mod tests {
         assert_eq!(trunks[1].content, "圳");
     }
 
+    #[cfg(feature = "decode")]
     #[test]
     fn teset_encode_decode() {
         let config = create_all_feature_config();
@@ -1495,7 +1520,7 @@ mod tests {
             .seek(SeekFrom::Start(Header::fixed_size() as u64))
             .unwrap();
 
-        let decode = logger.decode(&mut reader).unwrap();
+        let decode = logger.decode_record(&mut reader).unwrap();
         println!("{}", String::from_utf8(decode).unwrap());
 
         fs::remove_dir_all(&config.dir_path).unwrap();

@@ -10,7 +10,6 @@ use core::slice;
 use std::ffi::CString;
 use std::ffi::NulError;
 
-
 /// Init ezlog, must call before any other function
 #[no_mangle]
 pub extern "C" fn ezlog_init(enable_trace: c_uint) {

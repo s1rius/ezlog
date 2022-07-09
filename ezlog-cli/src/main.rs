@@ -1,6 +1,6 @@
 use std::{
     fs::OpenOptions,
-    io::{BufReader, BufWriter, Read, Write},
+    io::{BufReader, BufWriter, Read},
     path::PathBuf,
 };
 
@@ -137,22 +137,14 @@ pub fn main() {
     );
 
     let mut plain_text_write = BufWriter::new(output_file);
-    let mut end = false;
-    loop {
-        if end {
-            break;
-        }
 
-        match EZLogger::decode_from_read(&mut buf_reader, &compression, &decryptor) {
-            Ok(buf) => {
-                plain_text_write.write_all(&buf).unwrap();
-            }
-            Err(_e) => {
-                end = true;
-            }
-        }
-    }
-    plain_text_write.flush().unwrap();
+    EZLogger::decode_body_and_write(
+        &mut buf_reader,
+        &mut plain_text_write,
+        &compression,
+        &decryptor,
+    )
+    .unwrap();
 }
 
 #[cfg(test)]

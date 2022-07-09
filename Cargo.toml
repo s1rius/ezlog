@@ -15,7 +15,7 @@ codegen-units = 1   # Reduce number of codegen units to increase optimizations.
 # strip = true        # Strip symbols from binary*
 
 [dependencies]
-ezlog = {path = "ezlog-core"}
+ezlog = {path = "ezlog-core", features = ["decode"]}
 log = "0.4.17"
 time = { version = "0.3", default-features = false, features = ["formatting"] }
 
