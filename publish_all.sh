@@ -7,14 +7,14 @@ echo build rust
 cargo build --workspace
 
 echo build iOS
-cd ios
+pushd ios
 sh b_ios.sh
-cd ..
+popd
 
 echo build android
-cd android
+pushd android
 sh b_android.sh
-cd ..
+popd
 
 echo git tag $1
 
@@ -28,14 +28,14 @@ cargo +nightly publish -p ezlog
 cargo +nightly publish -p ezlog-cli
 
 echo ios publish
-cd ios
+pushd ios
 pod lib lint EZLog.podspec
 pod trunk push EZLog.podspec --allow-warnings
-cd ..
+popd
 
 echo android publish
-cd android
+pushd android
 sh publish.sh
+popd
 
 echo https://oss.sonatype.org/
-cd ..

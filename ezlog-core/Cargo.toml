@@ -13,13 +13,14 @@ readme = "README.md"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [features]
-default = []
+default = ["log"]
 backtrace = ["dep:backtrace"]
+log = ["dep:log"]
 
 [dependencies]
 libc = "0.2"
 memmap2 = "0.5.3"
-log = "0.4.17"
+log = { version = "0.4", optional = true }
 byteorder = "1"
 flate2 = "1.0"
 aead = "0.4.3"

@@ -142,22 +142,24 @@ macro_rules! println_with_time {
     }};
 }
 
-#[cfg(target_os = "android")]
+#[cfg(all(target_os = "android", feature = "log"))]
 use android_logger::AndroidLogger;
 
-#[cfg(target_os = "android")]
 /// android logcat already has time prefix
 /// just print current log
+
+#[cfg(target_os = "android")]
 macro_rules! println_with_time {
     ($($arg:tt)*) => {{
+        #[cfg(feature = "log")]
         crate::events::android_print(format_args!($($arg)*));
     }};
 }
 
-#[cfg(target_os = "android")]
+#[cfg(all(target_os = "android", feature = "log"))]
 static ANDROID_LOGGER: once_cell::sync::OnceCell<AndroidLogger> = once_cell::sync::OnceCell::new();
 
-#[cfg(target_os = "android")]
+#[cfg(all(target_os = "android", feature = "log"))]
 fn android_print(record: std::fmt::Arguments) {
     use android_logger::Config;
     use log::{Log, RecordBuilder};
@@ -182,6 +184,7 @@ impl Event for NopEvent {}
 pub struct EventPrinter;
 impl EventPrinter {}
 
+#[allow(unused_variables)]
 impl Event for EventPrinter {
     fn init(&self, info: &str) {
         println_with_time!("{}, {}", "init", info);

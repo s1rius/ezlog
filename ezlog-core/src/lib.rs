@@ -25,14 +25,11 @@ pub use self::events::Event;
 pub use self::events::EventPrinter;
 
 use appender::EZAppender;
-#[cfg(feature = "backtrace")]
-use backtrace::Backtrace;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use compress::ZlibCodec;
 use crossbeam_channel::{Sender, TrySendError};
 use crypto::{Aes128Gcm, Aes256Gcm};
 use errors::LogError;
-use log::Record;
 use memmap2::MmapMut;
 use once_cell::sync::OnceCell;
 
@@ -54,13 +51,17 @@ use time::format_description::well_known::Rfc3339;
 use time::Date;
 use time::{Duration, OffsetDateTime};
 
+#[cfg(feature = "backtrace")]
+use backtrace::Backtrace;
+#[cfg(feature = "log")]
+use log::Record;
+
 /// A [EZLogger] default name. current is "default".
 pub const DEFAULT_LOG_NAME: &str = "default";
 pub(crate) const FILE_SIGNATURE: &[u8; 2] = b"ez";
 
 pub(crate) const DEFAULT_LOG_FILE_SUFFIX: &str = "mmap";
 static LOG_LEVEL_NAMES: [&str; 6] = ["OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"];
-pub(crate) const UNKNOWN: &str = "UNKNOWN";
 
 pub(crate) const RECORD_SIGNATURE_START: u8 = 0x3b;
 pub(crate) const RECORD_SIGNATURE_END: u8 = 0x21;
@@ -1059,10 +1060,11 @@ impl EZRecord {
         }
     }
 
+    #[cfg(feature = "log")]
     pub fn from(r: &Record) -> Self {
         let t = thread::current();
         let t_id = thread_id::get();
-        let t_name = t.name().unwrap_or(UNKNOWN);
+        let t_name = t.name().unwrap_or_default();
         EZRecordBuilder::new()
             .log_name(DEFAULT_LOG_NAME.to_string())
             .level(r.metadata().level().into())
@@ -1314,6 +1316,7 @@ impl Ord for Level {
     }
 }
 
+#[cfg(feature = "log")]
 impl From<log::Level> for Level {
     fn from(log_level: log::Level) -> Self {
         match log_level {
