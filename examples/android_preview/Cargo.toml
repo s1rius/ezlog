@@ -1,0 +1,28 @@
+[package]
+name = "ezlog-android-preview"
+version = "0.1.0"
+edition = "2021"
+description = "Preview for building an android app with EZLog"
+publish = false
+license = "MIT OR Apache-2.0"
+
+[lib]
+name = "ezlog_android_preview"
+crate-type = ["cdylib"]
+
+[dependencies]
+ezlog = { path = "../../ezlog-core", features = ["decode"]}
+
+[target.'cfg(target_os = "android")'.dependencies]
+ndk-glue = "0.6.2"
+
+[package.metadata.android.sdk]
+min_sdk_version = 23
+target_sdk_version = 30
+max_sdk_version = 29
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.WRITE_EXTERNAL_STORAGE"
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.READ_EXTERNAL_STORAGE"

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
-members = ["ezlog-cli", "ezlog-core"]
+members = ["ezlog-cli", "ezlog-core", "examples/android_preview"]
 
 # https://github.com/johnthagen/min-sized-rust
 [profile.release]
@@ -19,30 +19,10 @@ ezlog = {path = "ezlog-core", features = ["decode"]}
 log = "0.4.17"
 time = { version = "0.3", default-features = false, features = ["formatting"] }
 
-[target.'cfg(target_os = "android")'.dependencies]
-# ndk-glue = "0.6.2"
-
 [dev-dependencies]
 dirs = "4.0"
 
-
 [[example]]
-name = "android_hello_world"
-path = "examples/android_hello_world.rs"
-crate-type = ["cdylib"]
-
-[package.metadata.android.sdk]
-min_sdk_version = 23
-target_sdk_version = 30
-max_sdk_version = 29
-
-[[package.metadata.android.uses_permission]]
-name = "android.permission.WRITE_EXTERNAL_STORAGE"
-
-[[package.metadata.android.uses_permission]]
-name = "android.permission.READ_EXTERNAL_STORAGE"
-
-[[example]]
-name = "nix_hello_world"
-path = "examples/nix_hello_world.rs"
+name = "hello_world"
+path = "examples/hello_world.rs"
 crate-type = ["bin"]
