@@ -15,7 +15,7 @@ use once_cell::sync::OnceCell;
 use time::Duration;
 
 static JVM: OnceCell<JavaVM> = OnceCell::new();
-static CALL_BACK_CALSS: OnceCell<GlobalRef> = OnceCell::new();
+static CALL_BACK_CLASS: OnceCell<GlobalRef> = OnceCell::new();
 static CALL_BACK_REF: OnceCell<GlobalRef> = OnceCell::new();
 
 static mut ON_FETCH_SUCCESS_METHOD: Option<JMethodID> = None;
@@ -27,7 +27,7 @@ static EVENT_LISTENER: EventPrinter = EventPrinter {};
 pub extern "system" fn JNI_OnLoad(vm: JavaVM, _: *mut c_void) -> jint {
     if let Ok(env) = vm.get_env() {
         if let Some(c) = get_class(&env, "wtf/s1/ezlog/Callback") {
-            CALL_BACK_CALSS
+            CALL_BACK_CLASS
                 .set(c)
                 .map_err(|_| event!(ffi_call_err "find callback err"))
                 .unwrap_or(());
