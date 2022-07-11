@@ -1,5 +1,5 @@
 [package]
-name = "ezlog-android-preview"
+name = "ezlog_android_preview"
 version = "0.1.0"
 edition = "2021"
 description = "Preview for building an android app with EZLog"

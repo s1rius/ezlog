@@ -53,6 +53,8 @@ use time::{Duration, OffsetDateTime};
 
 #[cfg(feature = "backtrace")]
 use backtrace::Backtrace;
+#[cfg(feature = "decode")]
+use io::BufRead;
 #[cfg(feature = "log")]
 use log::Record;
 
@@ -599,13 +601,13 @@ impl EZLogger {
     }
 
     #[cfg(feature = "decode")]
-    pub fn decode_record(&mut self, reader: &mut dyn Read) -> Result<Vec<u8>> {
+    pub fn decode_record(&mut self, reader: &mut dyn BufRead) -> Result<Vec<u8>> {
         EZLogger::decode_record_from_read(reader, &self.compression, &self.cryptor)
     }
 
     #[cfg(feature = "decode")]
     pub fn decode_body_and_write(
-        reader: &mut dyn Read,
+        reader: &mut dyn BufRead,
         writer: &mut dyn Write,
         compression: &Option<Box<dyn Compress>>,
         cryptor: &Option<Box<dyn Cryptor>>,
@@ -613,11 +615,21 @@ impl EZLogger {
         loop {
             match EZLogger::decode_record_from_read(reader, compression, cryptor) {
                 Ok(buf) => {
+                    if buf.is_empty() {
+                        break;
+                    }
                     writer.write_all(&buf)?;
                 }
                 Err(e) => {
-                    println!("{}", e);
-                    break;
+                    if let LogError::IoError(err) = e {
+                        if err.kind() == io::ErrorKind::UnexpectedEof {
+                            break;
+                        }
+                        println!("decode log error {err:?}");
+                    } else {
+                        println!("decode log error {e:?}");
+                    }
+                    continue;
                 }
             }
         }
@@ -626,14 +638,16 @@ impl EZLogger {
 
     #[cfg(feature = "decode")]
     pub fn decode_record_from_read(
-        reader: &mut dyn Read,
+        reader: &mut dyn BufRead,
         compression: &Option<Box<dyn Compress>>,
         cryptor: &Option<Box<dyn Cryptor>>,
     ) -> Result<Vec<u8>> {
-        let start_sign = reader.read_u8()?;
-        if RECORD_SIGNATURE_START != start_sign {
-            return Err(LogError::Parse("record start sign error".to_string()));
+        let mut buf = Vec::new();
+        let nums = reader.read_until(RECORD_SIGNATURE_START, &mut buf)?;
+        if nums == 0 {
+            return Ok(buf);
         }
+
         let size_of_size = reader.read_u8()?;
         let content_size: usize = match size_of_size {
             1 => reader.read_u8()? as usize,

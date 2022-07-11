@@ -7,9 +7,9 @@ static EVENT_LISTENER: EventPrinter = EventPrinter;
 
 /// Quick run example on android device
 /// you can run this example, and see the logcat without open AndroidStudio/IDEA
-/// 
+///
 /// # Example
-/// 
+///
 /// ```shell
 /// cargo install cargo-apk
 /// cargo apk run -p ezlog-android-preview
