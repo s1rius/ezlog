@@ -16,10 +16,6 @@ use time::Duration;
 
 static JVM: OnceCell<JavaVM> = OnceCell::new();
 static CALL_BACK_CLASS: OnceCell<GlobalRef> = OnceCell::new();
-static CALL_BACK_REF: OnceCell<GlobalRef> = OnceCell::new();
-
-static mut ON_FETCH_SUCCESS_METHOD: Option<JMethodID> = None;
-static mut ON_FETCH_FAIL_METHOD: Option<JMethodID> = None;
 
 static EVENT_LISTENER: EventPrinter = EventPrinter {};
 
@@ -31,22 +27,6 @@ pub extern "system" fn JNI_OnLoad(vm: JavaVM, _: *mut c_void) -> jint {
                 .set(c)
                 .map_err(|_| event!(ffi_call_err "find callback err"))
                 .unwrap_or(());
-        }
-
-        unsafe {
-            ON_FETCH_SUCCESS_METHOD = get_method_id(
-                &env,
-                "wtf/s1/ezlog/Callback",
-                "onLogsFetchSuccess",
-                "(Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;)V",
-            );
-
-            ON_FETCH_FAIL_METHOD = get_method_id(
-                &env,
-                "wtf/s1/ezlog/Callback",
-                "onLogsFetchFail",
-                "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
-            );
         }
     }
 
@@ -184,10 +164,7 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_registerCallback(
 ) {
     match env.new_global_ref(j_callback) {
         Ok(gloableCallback) => {
-            CALL_BACK_REF
-                .set(gloableCallback)
-                .map(|_| set_boxed_callback(Box::new(AndroidCallback)))
-                .unwrap_or_else(|_| event!(ffi_call_err "set callback error"));
+            set_boxed_callback(Box::new(AndroidCallback::new(&env, gloableCallback)));
         }
         Err(e) => event!(ffi_call_err & format!("register callback error: {}", e)),
     }
@@ -242,85 +219,108 @@ fn get_class(env: &JNIEnv, class: &str) -> Option<GlobalRef> {
     env.new_global_ref(class).map_err(ffi_fail).ok()
 }
 
-struct AndroidCallback;
+struct AndroidCallback<'a> {
+    callback: GlobalRef,
+    fail_method_id: JMethodID<'a>,
+    success_method_id: JMethodID<'a>,
+}
 
-impl crate::EZLogCallback for AndroidCallback {
+impl<'a> AndroidCallback<'a> {
+    fn new(env: &JNIEnv, callback: GlobalRef) -> Self {
+        let fail_method_id = get_method_id(
+            env,
+            "wtf/s1/ezlog/EZLogCallback",
+            "onFail",
+            "(Ljava/lang/String;)V",
+        )
+        .unwrap();
+        let success_method_id = get_method_id(
+            env,
+            "wtf/s1/ezlog/EZLogCallback",
+            "onSuccess",
+            "(Ljava/lang/String;)V",
+        )
+        .unwrap();
+        Self {
+            callback,
+            fail_method_id,
+            success_method_id,
+        }
+    }
+
+    fn internal_fetch_success(
+        &self,
+        name: &str,
+        date: &str,
+        logs: &[&str],
+    ) -> Result<(), jni::errors::Error> {
+        unsafe {
+            match get_env() {
+                Ok(env) => {
+                    let name = env.new_string(name)?;
+                    let date = env.new_string(date)?;
+                    let j_logs = vec_to_jobjectArray(
+                        &env,
+                        logs,
+                        "java/lang/String",
+                        |x| env.new_string(x),
+                        env.new_string("")?,
+                    )?;
+
+                    let args: &[JValue] = &[name.into(), date.into(), j_logs.into()];
+                    env.call_method_unchecked(
+                        &self.callback,
+                        self.success_method_id,
+                        jni::signature::JavaType::Primitive(Primitive::Void),
+                        args,
+                    )?;
+                    Ok(())
+                }
+                Err(e) => Err(e),
+            }
+        }
+    }
+
+    #[inline]
+    fn internal_fetch_fail(
+        &self,
+        name: &str,
+        date: &str,
+        err_msg: &str,
+    ) -> Result<(), jni::errors::Error> {
+        unsafe {
+            match get_env() {
+                Ok(env) => {
+                    let name = env.new_string(name)?;
+                    let date = env.new_string(date)?;
+                    let err = env.new_string(err_msg)?;
+
+                    let args: &[JValue] = &[name.into(), date.into(), err.into()];
+
+                    env.call_method_unchecked(
+                        &self.callback,
+                        self.fail_method_id,
+                        jni::signature::JavaType::Primitive(Primitive::Void),
+                        args,
+                    )?;
+                    Ok(())
+                }
+                Err(e) => Err(e),
+            }
+        }
+    }
+}
+
+impl crate::EZLogCallback for AndroidCallback<'_> {
     fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
-        call_on_fetch_success(name, date, logs).unwrap_or_else(ffi_fail);
+        self.internal_fetch_success(name, date, logs)
+            .unwrap_or_else(ffi_fail);
     }
 
     fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
-        call_on_fetch_fail(name, date, err).unwrap_or_else(ffi_fail);
+        self.internal_fetch_fail(name, date, err)
+            .unwrap_or_else(ffi_fail);
     }
-}
-
-#[inline]
-fn call_on_fetch_success(name: &str, date: &str, logs: &[&str]) -> Result<(), jni::errors::Error> {
-    unsafe {
-        match get_env() {
-            Ok(env) => {
-                let name = env.new_string(name)?;
-                let date = env.new_string(date)?;
-                let j_logs = vec_to_jobjectArray(
-                    &env,
-                    logs,
-                    "java/lang/String",
-                    |x| env.new_string(x),
-                    env.new_string("")?,
-                )?;
-
-                let args: &[JValue] = &[name.into(), date.into(), j_logs.into()];
-                if let Some(method) = ON_FETCH_SUCCESS_METHOD {
-                    if let Some(callback) = CALL_BACK_REF.get() {
-                        env.call_method_unchecked(
-                            callback,
-                            method,
-                            jni::signature::JavaType::Primitive(Primitive::Void),
-                            args,
-                        )?;
-                    }
-                }
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
-    }
-}
-
-#[inline]
-fn call_on_fetch_fail(name: &str, date: &str, err_msg: &str) -> Result<(), jni::errors::Error> {
-    unsafe {
-        match get_env() {
-            Ok(env) => {
-                let name = env.new_string(name)?;
-                let date = env.new_string(date)?;
-                let err = env.new_string(err_msg)?;
-
-                internal_call_on_fetch_fail(&env, name, date, err)
-            }
-            Err(e) => Err(e),
-        }
-    }
-}
-#[inline]
-unsafe fn internal_call_on_fetch_fail<'a>(
-    env: &JNIEnv<'a>,
-    name: JString,
-    date: JString,
-    err: JString,
-) -> Result<(), jni::errors::Error> {
-    let args: &[JValue] = &[name.into(), date.into(), err.into()];
-    if let Some(method) = ON_FETCH_FAIL_METHOD {
-        if let Some(callback) = CALL_BACK_REF.get() {
-            env.call_method_unchecked(
-                callback,
-                method,
-                jni::signature::JavaType::Primitive(Primitive::Void),
-                args,
-            )?;
-        }
-    }
-    Ok(())
 }
 
 #[inline]
