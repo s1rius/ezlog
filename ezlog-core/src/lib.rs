@@ -78,7 +78,7 @@ pub(crate) const MIN_LOG_SIZE: u64 = 100;
 pub const V1_LOG_HEADER_SIZE: usize = 10;
 
 // maybe set as threadlocal variable
-static mut LOG_MAP: MaybeUninit<HashMap<u64, EZLogger>> = MaybeUninit::uninit();
+static mut LOG_MAP: MaybeUninit<HashMap<String, EZLogger>> = MaybeUninit::uninit();
 static LOG_MAP_INIT: Once = Once::new();
 
 static mut GLOABLE_CALLBACK: &dyn EZLogCallback = &NopCallback;
@@ -87,7 +87,7 @@ static CALLBACK_INIT: Once = Once::new();
 type Result<T> = std::result::Result<T, LogError>;
 
 #[inline]
-fn get_map() -> &'static mut HashMap<u64, EZLogger> {
+fn get_map() -> &'static mut HashMap<String, EZLogger> {
     LOG_MAP_INIT.call_once(|| unsafe {
         ptr::write(LOG_MAP.as_mut_ptr(), HashMap::new());
     });
@@ -147,9 +147,8 @@ fn init_log_channel() -> Sender<EZMsg> {
                         let name = config.name.clone();
                         match EZLogger::new(config) {
                             Ok(log) => {
-                                let log_id = crate::log_id(&log.config.name);
                                 let map = get_map();
-                                map.insert(log_id, log);
+                                map.insert(log.config.name.clone(), log);
                                 event!(create_logger_end & name);
                             }
                             Err(e) => {
@@ -158,7 +157,7 @@ fn init_log_channel() -> Sender<EZMsg> {
                         };
                     }
                     EZMsg::Record(record) => {
-                        let log = match get_map().get_mut(&record.log_id()) {
+                        let log = match get_map().get_mut(&record.log_name) {
                             Some(l) => l,
                             None => {
                                 event!(unknown_err & record.t_id(), "logger not found");
@@ -193,8 +192,7 @@ fn init_log_channel() -> Sender<EZMsg> {
                         }
                     }
                     EZMsg::ForceFlush(name) => {
-                        let id = log_id(&name);
-                        let log = match get_map().get_mut(&id) {
+                        let log = match get_map().get_mut(&name) {
                             Some(l) => l,
                             None => {
                                 event!(internal_err & name);
@@ -214,7 +212,7 @@ fn init_log_channel() -> Sender<EZMsg> {
                         get_map().values().for_each(|logger| logger.trim());
                     }
                     EZMsg::FetchLog(task) => {
-                        let logger = match get_map().get_mut(&log_id(&task.name)) {
+                        let logger = match get_map().get_mut(&task.name) {
                             Some(l) => l,
                             None => {
                                 event!(
@@ -353,12 +351,6 @@ where
     T: Error,
 {
     event!(ffi_call_err & err.to_string());
-}
-
-pub(crate) fn log_id(name: &str) -> u64 {
-    let mut hasher = DefaultHasher::new();
-    name.hash(&mut hasher);
-    hasher.finish()
 }
 
 fn invoke_fetch_callback(result: FetchResult) {
@@ -1034,11 +1026,6 @@ impl EZRecord {
     }
 
     #[inline]
-    pub fn log_id(&self) -> u64 {
-        crate::log_id(&self.log_name)
-    }
-
-    #[inline]
     pub fn level(&self) -> Level {
         self.level
     }
@@ -1396,29 +1383,31 @@ fn hook_panic() {
 
 #[cfg(test)]
 mod tests {
-    use std::fs::{self, OpenOptions};
-    use std::io::{BufReader, Read, Seek, SeekFrom, Write};
+    use std::io::{Read, Write};
 
     use aes_gcm::aead::{Aead, NewAead};
     use aes_gcm::{Aes256Gcm, Key, Nonce}; // Or `Aes128Gcm`
     use flate2::{bufread::ZlibDecoder, write::ZlibEncoder, Compression};
-    use time::OffsetDateTime;
 
     use crate::{
-        config::EZLogConfigBuilder, CipherKind, CompressKind, EZLogConfig, EZLogger,
-        EZRecordBuilder, Header, RECORD_SIGNATURE_END, RECORD_SIGNATURE_START,
+        config::EZLogConfigBuilder, EZLogConfig, EZRecordBuilder, Header, RECORD_SIGNATURE_END,
+        RECORD_SIGNATURE_START,
     };
 
     fn create_config() -> EZLogConfig {
         EZLogConfig::default()
     }
 
+    #[cfg(feature = "decode")]
     fn create_all_feature_config() -> EZLogConfig {
+        use crate::CipherKind;
+        use crate::CompressKind;
+
         let key = b"an example very very secret key.";
         let nonce = b"unique nonce";
         EZLogConfigBuilder::new()
             .dir_path(
-                dirs::download_dir()
+                dirs::cache_dir()
                     .unwrap()
                     .join("ezlog_test")
                     .into_os_string()
@@ -1506,6 +1495,11 @@ mod tests {
     #[cfg(feature = "decode")]
     #[test]
     fn teset_encode_decode() {
+        use crate::EZLogger;
+        use std::fs::{self, OpenOptions};
+        use std::io::{BufReader, Seek, SeekFrom};
+        use time::OffsetDateTime;
+
         let config = create_all_feature_config();
         let mut logger = EZLogger::new(config).unwrap();
 

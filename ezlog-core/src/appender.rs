@@ -369,7 +369,7 @@ mod tests {
         let nonce = b"unique nonce";
         EZLogConfigBuilder::new()
             .dir_path(
-                dirs::desktop_dir()
+                dirs::cache_dir()
                     .unwrap()
                     .into_os_string()
                     .into_string()
@@ -390,7 +390,7 @@ mod tests {
         let config = EZLogConfigBuilder::new()
             .name("test".to_string())
             .dir_path(
-                dirs::desktop_dir()
+                dirs::cache_dir()
                     .unwrap()
                     .into_os_string()
                     .into_string()
@@ -444,7 +444,7 @@ mod tests {
 
         let c = EZLogConfigBuilder::new()
             .dir_path(
-                dirs::desktop_dir()
+                dirs::cache_dir()
                     .unwrap()
                     .into_os_string()
                     .into_string()
@@ -475,7 +475,7 @@ mod tests {
 
         let c = EZLogConfigBuilder::new()
             .dir_path(
-                dirs::desktop_dir()
+                dirs::cache_dir()
                     .unwrap()
                     .into_os_string()
                     .into_string()

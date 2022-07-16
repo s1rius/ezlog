@@ -47,7 +47,7 @@ fn get_config() -> EZLogConfig {
     EZLogConfigBuilder::new()
         .level(ezlog::Level::Trace)
         .dir_path(
-            dirs::desktop_dir()
+            dirs::cache_dir()
                 .unwrap()
                 .into_os_string()
                 .into_string()
@@ -83,7 +83,7 @@ fn read_log_file_rewrite() {
         .seek(SeekFrom::Start(Header::fixed_size() as u64))
         .unwrap();
 
-    let plaintext_log_path = path.with_extension(".log");
+    let plaintext_log_path = path.with_extension("ez.log");
     let plaintext_log = OpenOptions::new()
         .read(true)
         .write(true)

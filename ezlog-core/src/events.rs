@@ -133,7 +133,7 @@ macro_rules! event {
     };
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "linux"))]
 macro_rules! println_with_time {
     ($($arg:tt)*) => {{
         use time::{OffsetDateTime, format_description::well_known::Rfc3339};
