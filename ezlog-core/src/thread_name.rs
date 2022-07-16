@@ -1,5 +1,7 @@
 #![warn(missing_docs)]
-use std::ffi::CStr;
+#![allow(dead_code)]
+
+use core::ffi::CStr;
 
 #[cfg(unix)]
 extern crate libc;
@@ -22,11 +24,13 @@ pub fn get() -> String {
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 fn get_name() -> String {
+    use core::ffi::c_char;
+
     // https://github.com/torvalds/linux/blob/master/include/uapi/linux/prctl.h#L57
     const PR_GET_NAME: libc::c_int = 16;
 
     let mut name = vec![0u8; 16];
-    let name_ptr = name.as_mut_ptr();
+    let name_ptr = name.as_mut_ptr() as *const c_char;
 
     // pthread wrapper only appeared in glibc 2.12, so we use syscall
     // directly.

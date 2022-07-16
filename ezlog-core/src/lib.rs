@@ -1407,7 +1407,7 @@ mod tests {
         let nonce = b"unique nonce";
         EZLogConfigBuilder::new()
             .dir_path(
-                dirs::download_dir()
+                dirs::cache_dir()
                     .unwrap()
                     .join("ezlog_test")
                     .into_os_string()

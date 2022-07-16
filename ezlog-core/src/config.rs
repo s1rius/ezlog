@@ -391,7 +391,7 @@ mod tests {
 
     #[test]
     fn test_query_log_files() {
-        let temp = dirs::download_dir().unwrap().join("ezlog_test_config");
+        let temp = dirs::cache_dir().unwrap().join("ezlog_test_config");
         if temp.exists() {
             fs::remove_dir_all(&temp).unwrap();
         }

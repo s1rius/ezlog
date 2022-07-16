@@ -47,7 +47,7 @@ fn get_config() -> EZLogConfig {
     EZLogConfigBuilder::new()
         .level(ezlog::Level::Trace)
         .dir_path(
-            dirs::desktop_dir()
+            dirs::cache_dir()
                 .unwrap()
                 .into_os_string()
                 .into_string()

@@ -14,7 +14,7 @@ static EVENT_LISTENER: EventPrinter = EventPrinter;
 ///
 /// ```shell
 /// cargo install cargo-apk
-/// cargo apk run -p ezlog_android_preview
+/// cargo apk run -p ezlog_android_preview -Zbuild-std
 /// adb logcat --pid=$(adb shell pidof -s rust.ezlog_android_preview)
 /// ```
 #[cfg_attr(target_os = "android", ndk_glue::main(backtrace = "on"))]
