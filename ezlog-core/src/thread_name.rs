@@ -1,6 +1,7 @@
 #![warn(missing_docs)]
 #![allow(dead_code)]
 
+#[cfg(unix)]
 use core::ffi::CStr;
 
 #[cfg(unix)]
@@ -57,6 +58,14 @@ fn get_name() -> String {
     }
 }
 
+/// cant get thread name by winapi
+/// track this [issue](https://github.com/retep998/winapi-rs/issues/862)
+#[cfg(target_os = "windows")]
+fn get_name() -> String {
+    use std::thread;
+    thread::current().name().unwrap_or("unknown").to_owned()
+}
+
 #[cfg(test)]
 mod tests {
     use crate::thread_name::get_name;
@@ -66,7 +75,11 @@ mod tests {
         let j = std::thread::Builder::new()
             .name("test 1234567890123456".to_string())
             .spawn(|| {
-                assert_eq!(get_name(), "test 1234567890");
+                if cfg!(target_os = "windows") {
+                    assert_eq!(get_name(), "test 1234567890123456");
+                } else {
+                    assert_eq!(get_name(), "test 1234567890");
+                }
             })
             .unwrap();
         j.join().unwrap();

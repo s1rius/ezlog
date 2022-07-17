@@ -2,7 +2,13 @@ name: Build & Test
 
 on:
   schedule:
-    - cron: '30 8 * * *'
+    - cron: '30 0 * * *'
+
+# push on dev for test
+# on:
+#   push:
+#     branches:    
+#       - dev
 
 env:
   CARGO_TERM_COLOR: always
@@ -14,7 +20,7 @@ jobs:
       matrix:
         platform:
           - ubuntu-latest
-          # - windows-latest
+          - windows-latest
           - macos-latest
     runs-on: ${{ matrix.platform }}
 
@@ -29,7 +35,6 @@ jobs:
           default: true
           override: true
       - name: Build & Test - ezlog All Features
-        # if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
         run: cargo test --manifest-path ./ezlog-core/Cargo.toml --verbose --all-features --no-fail-fast
       - name: Build & Test - ezlog_cli
         run: cargo test --manifest-path ./ezlog-cli/Cargo.toml --verbose --no-default-features --no-fail-fast

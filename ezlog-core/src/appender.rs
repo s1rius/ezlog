@@ -413,7 +413,9 @@ mod tests {
                 .assume_utc()
                 + Duration::hours(23)
         ));
-        fs::remove_file(inner.file_path()).unwrap();
+        let mut file_path = inner.file_path().to_owned();
+        drop(inner);
+        fs::remove_file(file_path).unwrap();
 
         let inner = ByteArrayAppenderInner::new(&config, OffsetDateTime::now_utc()).unwrap();
         assert!(inner.is_oversize(1015));
@@ -426,7 +428,9 @@ mod tests {
                 .assume_utc()
                 + Duration::hours(23)
         ));
-        fs::remove_file(inner.file_path()).unwrap();
+        file_path = inner.file_path().to_owned();
+        drop(inner);
+        fs::remove_file(file_path).unwrap();
     }
 
     fn current_file(path: &PathBuf) -> std::result::Result<File, errors::LogError> {
