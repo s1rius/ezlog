@@ -7,6 +7,6 @@ echo "publish module lib-ezlog"
 pushd android
 # https://oss.sonatype.org/
 ./gradlew :lib-ezlog:publish
-./gradlew :lib-ezlog:closeAndReleaseRepository
+./gradlew closeAndReleaseRepository
 
 popd
