@@ -4,7 +4,7 @@ object Versions {
     const val kotlin = "1.5.30"
     const val ktx = "1.0.0"
     const val coroutines = "1.5.2"
-    const val gradlePlugin = "7.1.1"
+    const val gradlePlugin = "7.1.2"
     const val lifecycle = "2.2.0"
     const val minSdkVersion = 21
     const val targetSdkVersion = 31
@@ -47,6 +47,6 @@ object ClassPaths {
     const val gradlePlugin = "com.android.tools.build:gradle:${Versions.gradlePlugin}"
     const val gradleApi = "com.android.tools.build:gradle-api:${Versions.gradlePlugin}"
     const val kotlinPlugin = "org.jetbrains.kotlin:kotlin-gradle-plugin:${Versions.kotlin}"
-    const val vanniktechMavenPublishPlugin = "com.vanniktech:gradle-maven-publish-plugin:0.18.0"
+    const val vanniktechMavenPublishPlugin = "com.vanniktech:gradle-maven-publish-plugin:0.21.0"
     const val dokaa = "org.jetbrains.dokka:dokka-gradle-plugin:1.6.10"
 }
