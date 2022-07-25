@@ -1,0 +1,29 @@
+name: Publish-Rust
+
+on:
+  push:
+    # Pattern matched against refs/tags
+    tags:
+      - "*" # Push events to every tag not containing /
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_LOG: "trace"
+  CRATES_TOKEN: ${{ secrets.CRATES_TOKEN }}
+
+jobs:
+  publish-rust:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          components: rustfmt, clippy
+      - name: Publish ezlog on crates.io
+        run: cargo +nightly publish --package ezlog --token ${CRATES_TOKEN}
+      - name: Publish ezlog-cli on crates.io
+        run: cargo +nightly publish --package ezlog-cli --token ${CRATES_TOKEN}
