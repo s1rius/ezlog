@@ -2,8 +2,7 @@
 #![allow(dead_code)]
 
 #[cfg(unix)]
-use core::ffi::CStr;
-
+use std::ffi::CStr;
 #[cfg(unix)]
 extern crate libc;
 
@@ -25,7 +24,7 @@ pub fn get() -> String {
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 fn get_name() -> String {
-    use core::ffi::c_char;
+    use libc::c_char;
 
     // https://github.com/torvalds/linux/blob/master/include/uapi/linux/prctl.h#L57
     const PR_GET_NAME: libc::c_int = 16;
@@ -50,6 +49,7 @@ fn get_name() -> String {
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 fn get_name() -> String {
+
     let mut name = vec![0i8; 16];
     let name_ptr = name.as_mut_ptr();
     unsafe {

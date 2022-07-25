@@ -1,7 +1,5 @@
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::expect_used)]
-#![feature(core_ffi_c)]
-#![feature(core_c_str)]
 #![doc = include_str!("../README.md")]
 
 mod appender;
