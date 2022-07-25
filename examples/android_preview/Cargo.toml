@@ -14,7 +14,7 @@ crate-type = ["cdylib"]
 ezlog = { path = "../../ezlog-core", features = ["decode"]}
 
 [target.'cfg(target_os = "android")'.dependencies]
-ndk-glue = "0.6.2"
+ndk-glue = "0.7.0"
 
 [package.metadata.android.sdk]
 min_sdk_version = 23
