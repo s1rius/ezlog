@@ -2,10 +2,10 @@ use libc::c_void;
 
 use crate::events::EventPrinter;
 use crate::*;
+use core::slice;
 use libc::c_char;
 use libc::c_uchar;
 use libc::c_uint;
-use core::slice;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::ffi::NulError;
