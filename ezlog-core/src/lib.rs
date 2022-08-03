@@ -1383,8 +1383,9 @@ fn hook_panic() {
 mod tests {
     use std::io::{Read, Write};
 
-    use aes_gcm::aead::{Aead, NewAead};
-    use aes_gcm::{Aes256Gcm, Key, Nonce}; // Or `Aes128Gcm`
+    use aead::KeyInit;
+    use aes_gcm::aead::{Aead};
+    use aes_gcm::{Aes256Gcm, Nonce}; // Or `Aes128Gcm`
     use flate2::{bufread::ZlibDecoder, write::ZlibEncoder, Compression};
 
     use crate::{
@@ -1459,8 +1460,7 @@ mod tests {
     /// https://docs.rs/aes-gcm/latest/aes_gcm/
     #[test]
     fn test_cipher() {
-        let key = Key::from_slice(b"an example very very secret key.");
-        let cipher = Aes256Gcm::new(key);
+        let cipher = Aes256Gcm::new_from_slice(b"an example very very secret key.").unwrap();
 
         let nonce = Nonce::from_slice(b"unique nonce"); // 96-bits; unique per message
 
