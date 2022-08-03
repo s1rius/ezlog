@@ -20,16 +20,16 @@ impl Aes256Gcm {
                 nonce.len()
             )));
         }
-        return match aes_gcm::Aes256Gcm::new_from_slice(key) {
+        match aes_gcm::Aes256Gcm::new_from_slice(key) {
             Ok(cipher) => Ok(Aes256Gcm {
                 nonce: nonce.to_owned(),
-                cipher: cipher,
+                cipher,
             }),
             Err(e) => Err(LogError::IllegalArgument(format!(
                 "key length invalid {}",
                 e
             ))),
-        };
+        }
     }
 }
 
@@ -67,16 +67,16 @@ impl Aes128Gcm {
             )));
         }
 
-        return match aes_gcm::Aes128Gcm::new_from_slice(key) {
+        match aes_gcm::Aes128Gcm::new_from_slice(key) {
             Ok(cipher) => Ok(Aes128Gcm {
                 nonce: nonce.to_owned(),
-                cipher: cipher,
+                cipher,
             }),
             Err(e) => Err(LogError::IllegalArgument(format!(
                 "key length invalid {}",
                 e
             ))),
-        };
+        }
     }
 }
 
