@@ -6,9 +6,6 @@ use std::ffi::CStr;
 #[cfg(unix)]
 extern crate libc;
 
-#[cfg(windows)]
-extern crate winapi;
-
 #[cfg(target_os = "redox")]
 extern crate syscall;
 
@@ -49,7 +46,6 @@ fn get_name() -> String {
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 fn get_name() -> String {
-
     let mut name = vec![0i8; 16];
     let name_ptr = name.as_mut_ptr();
     unsafe {
@@ -58,12 +54,32 @@ fn get_name() -> String {
     }
 }
 
-/// cant get thread name by winapi
-/// track this [issue](https://github.com/retep998/winapi-rs/issues/862)
 #[cfg(target_os = "windows")]
 fn get_name() -> String {
+    use ::windows::core::HRESULT;
     use std::thread;
-    thread::current().name().unwrap_or("unknown").to_owned()
+    use windows::core::PWSTR;
+    use windows_sys::Win32::System::Threading;
+
+    unsafe {
+        let raw = Box::into_raw(Box::new(PWSTR::null().as_ptr()));
+        let hresult = HRESULT(Threading::GetThreadDescription(
+            Threading::GetCurrentThread(),
+            raw,
+        ));
+        let mut name: String = String::default();
+        if hresult.is_ok() {
+            let pwstr = PWSTR::from_raw(*raw);
+            name = pwstr.to_string().unwrap_or_default();
+        }
+
+        if name.is_empty() {
+            name = thread::current().name().unwrap_or("unknown").to_string();
+        }
+
+        let _ = Box::from_raw(raw);
+        name
+    }
 }
 
 #[cfg(test)]
@@ -71,15 +87,31 @@ mod tests {
     use crate::thread_name::get_name;
 
     #[test]
+    #[cfg(target_os = "windows")]
+    fn test_get_thread_name() {
+        use windows::core::HRESULT;
+        use windows::core::HSTRING;
+        use windows::core::PCWSTR;
+        use windows_sys::Win32::System::Threading;
+
+        unsafe {
+            let cname = HSTRING::from("test 1234567890123456");
+            let w_result = HRESULT(Threading::SetThreadDescription(
+                Threading::GetCurrentThread(),
+                PCWSTR::from(&cname).as_ptr(),
+            ));
+            assert!(w_result.is_ok());
+            assert_eq!(get_name(), "test 1234567890123456".to_string());
+        }
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
     fn test_get_thread_name() {
         let j = std::thread::Builder::new()
             .name("test 1234567890123456".to_string())
             .spawn(|| {
-                if cfg!(target_os = "windows") {
-                    assert_eq!(get_name(), "test 1234567890123456");
-                } else {
-                    assert_eq!(get_name(), "test 1234567890");
-                }
+                assert_eq!(get_name(), "test 1234567890");
             })
             .unwrap();
         j.join().unwrap();

@@ -1384,7 +1384,7 @@ mod tests {
     use std::io::{Read, Write};
 
     use aead::KeyInit;
-    use aes_gcm::aead::{Aead};
+    use aes_gcm::aead::Aead;
     use aes_gcm::{Aes256Gcm, Nonce}; // Or `Aes128Gcm`
     use flate2::{bufread::ZlibDecoder, write::ZlibEncoder, Compression};
 
