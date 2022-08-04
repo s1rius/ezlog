@@ -62,22 +62,22 @@ fn get_name() -> String {
     use windows_sys::Win32::System::Threading;
 
     unsafe {
-        let raw = Box::into_raw(Box::new(PWSTR::null().as_ptr()));
+
+        let mut raw = PWSTR::null();
+        let pwstr = &mut raw as *mut PWSTR as _;
         let hresult = HRESULT(Threading::GetThreadDescription(
             Threading::GetCurrentThread(),
-            raw,
+            pwstr ,
         ));
+
         let mut name: String = String::default();
         if hresult.is_ok() {
-            let pwstr = PWSTR::from_raw(*raw);
-            name = pwstr.to_string().unwrap_or_default();
+            name = raw.to_string().unwrap_or_default();
         }
 
         if name.is_empty() {
             name = thread::current().name().unwrap_or("unknown").to_string();
         }
-
-        let _ = Box::from_raw(raw);
         name
     }
 }
