@@ -163,10 +163,9 @@ source $HOME/.cargo/env
 ```
 
 use rust nightly
-rustup 1.64.0-nightly-2022-07-15 has a bug, cant compile crate `time`
 
 ```shell
-rustup default nightly-2022-07-12
+rustup default nightly-2022-08-10
 ```
 
 we use [build-std](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#build-std) feature, so add nightly src component
