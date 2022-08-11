@@ -159,7 +159,7 @@ source $HOME/.cargo/env
 使用nightly版本
 
 ``` 
-rustup default nightly-2022-07-12
+rustup default nightly-2022-08-10
 ```
 
 构建时使用了[build-std](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#build-std)特性，所以需要添加std的源码组件
