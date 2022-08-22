@@ -1,0 +1,35 @@
+PODS:
+  - EZLog (0.1.5)
+  - ezlog_flutter (0.0.1):
+    - EZLog (~> 0.1.5)
+    - Flutter
+  - Flutter (1.0.0)
+  - path_provider_ios (0.0.1):
+    - Flutter
+
+DEPENDENCIES:
+  - ezlog_flutter (from `.symlinks/plugins/ezlog_flutter/ios`)
+  - Flutter (from `Flutter`)
+  - path_provider_ios (from `.symlinks/plugins/path_provider_ios/ios`)
+
+SPEC REPOS:
+  trunk:
+    - EZLog
+
+EXTERNAL SOURCES:
+  ezlog_flutter:
+    :path: ".symlinks/plugins/ezlog_flutter/ios"
+  Flutter:
+    :path: Flutter
+  path_provider_ios:
+    :path: ".symlinks/plugins/path_provider_ios/ios"
+
+SPEC CHECKSUMS:
+  EZLog: 8a97abddcf78db9d281d2591ac051142e0ff2d7a
+  ezlog_flutter: ba611ec031f652a0ca1e87e6bbe8c262bf88a198
+  Flutter: 50d75fe2f02b26cc09d224853bb45737f8b3214a
+  path_provider_ios: 14f3d2fd28c4fdb42f44e0f751d12861c43cee02
+
+PODFILE CHECKSUM: b13414d87395f00cffa4410db337c2a57c089154
+
+COCOAPODS: 1.11.3
