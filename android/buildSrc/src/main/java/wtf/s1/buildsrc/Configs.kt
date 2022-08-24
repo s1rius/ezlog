@@ -9,7 +9,7 @@ object Versions {
     const val minSdkVersion = 21
     const val targetSdkVersion = 31
     const val versionCode = 1
-    const val libVersion = "0.1.4"
+    const val libVersion = "0.1.5"
 }
 
 object Plugins {

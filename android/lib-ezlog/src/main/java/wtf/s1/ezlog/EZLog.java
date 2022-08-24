@@ -2,12 +2,12 @@ package wtf.s1.ezlog;
 
 import org.jetbrains.annotations.NotNull;
 
-public class EZLog {
+import java.util.concurrent.CopyOnWriteArrayList;
 
+public class EZLog {
     static {
         System.loadLibrary("ezlog");
     }
-
     public static final int VERBOSE = 5;
     public static final int DEBUG = 4;
     public static final int INFO = 3;
@@ -68,8 +68,8 @@ public class EZLog {
         flush(logName);
     }
 
-    public static void _registerCallback(Callback callback) {
-        registerCallback(callback);
+    private static void _registerCallback(Callback callback) {
+        addCallback(callback);
     }
 
     public static void _requestLogFilesForDate(String logName, String date) {
@@ -95,6 +95,35 @@ public class EZLog {
 
     public static void _log(String logName, int level, String target, String logContent) {
         log(logName, level, target, logContent);
+    }
+
+    static CopyOnWriteArrayList<Callback> callbacks = new CopyOnWriteArrayList<>();
+    volatile static boolean isRegister = false;
+    public static synchronized void addCallback(@NotNull Callback callback) {
+        if (!isRegister) {
+            isRegister = true;
+            registerCallback(new Callback() {
+                @Override
+                public void onLogsFetchSuccess(String logName, String date, String[] logs) {
+                    for (Callback next : callbacks) {
+                        next.onLogsFetchSuccess(logName, date, logs);
+                    }
+                }
+
+                @Override
+                public void onLogsFetchFail(String logName, String date, String err) {
+                    for (Callback next : callbacks) {
+                        next.onLogsFetchFail(logName, date, err);
+                    }
+                }
+            });
+        }
+        callbacks.add(callback);
+    }
+
+    public static void removeCallback(@NotNull Callback callback) {
+        callbacks.remove(callback);
+        // when callbacks size = 0, need unregister native callback.
     }
 
     /**
