@@ -69,11 +69,19 @@ public func ezlogInitWithTrace() {
     ezlog_init(true)
 }
 
-public func ezlogFlushAll() {
+public func flushAll() {
     ezlog_flush_all()
 }
 
-public func ezlogRequestLogs(logName: String, date: String) {
+public func log(logName: String, level: Level, tag: String, msg: String) {
+    ezlog_log(logName, UInt8(level.rawValue), tag, msg)
+}
+
+public func flush(logName: String) {
+    ezlog_flush(logName)
+}
+
+public func requestLogsForDate(logName: String, date: String) {
     ezlog_request_log_files_for_date(logName, date)
 }
 
@@ -84,9 +92,8 @@ private class WrapClosure<T> {
     }
 }
 
-public func ezlogRegisterCallback(success: @escaping (String, String, [String]) -> Void,
-                                  fail: @escaping (String, String, String) -> Void) {
-    
+public func wrapCallback(success: @escaping (String, String, [String]) -> Void,
+                         fail: @escaping (String, String, String) -> Void) -> Callback {
     let successWrapper = WrapClosure(closure: success)
     let successPoint =  Unmanaged.passRetained(successWrapper).toOpaque()
     let success: @convention(c)(UnsafeMutableRawPointer,
@@ -125,9 +132,12 @@ public func ezlogRegisterCallback(success: @escaping (String, String, [String]) 
         let failWrapper: WrapClosure<(String, String, String) -> Void> = Unmanaged.fromOpaque(f).takeRetainedValue()
         failWrapper.closure(String(cString: logName), String(cString: date), String(cString: err))
     }
-    
-    let callback = Callback(successPoint: successPoint, onLogsFetchSuccess: success, failPoint: failPoint, onLogsFetchFail: fail)
-    ezlog_register_callback(callback)
+    return Callback(successPoint: successPoint, onLogsFetchSuccess: success, failPoint: failPoint, onLogsFetchFail: fail)
+}
+
+public func ezlogRegisterCallback(success: @escaping (String, String, [String]) -> Void,
+                                  fail: @escaping (String, String, String) -> Void) {
+    ezlog_register_callback(wrapCallback(success: success, fail: fail))
 }
 
 /// The log level.
@@ -259,7 +269,62 @@ public struct EZLogConfig {
         self.cipherKey = cipherKey ?? []
         self.cipherNonce = cipherNonce ?? []
     }
-    
-    
-    
+}
+
+extension NSLock {
+
+    @discardableResult
+    func with<T>(_ block: () throws -> T) rethrows -> T {
+        lock()
+        defer { unlock() }
+        return try block()
+    }
+}
+
+public class EZCallback {
+    let successClosure: (String, String, [String]) -> Void
+    let failClosure: (String, String, String) -> Void
+    public init(success: @escaping (String, String, [String]) -> Void,
+                fail: @escaping (String, String, String) -> Void) {
+        successClosure = success;
+        failClosure = fail;
+    }
+}
+
+var callbacks = Array<EZCallback>()
+let callbackLock = NSLock()
+
+let internalCallback: Callback = wrapCallback {name, date, logs in
+    callbackLock.withLock {
+        for callback in callbacks {
+            callback.successClosure(name, date, logs)
+        }
+    }
+} fail: { name, date, err in
+    callbackLock.withLock {
+        for callback in callbacks {
+            callback.failClosure(name, date, err)
+        }
+    }
+}
+
+public func addCallback(callback: EZCallback) {
+    callbackLock.withLock {
+        callbacks.append(callback)
+    }
+}
+
+public func removeCallback(callback: EZCallback) {
+    callbackLock.withLock {
+        removeCallbackNoLock(callback: callback)
+    }
+}
+
+public func removeCallbackNoLock(callback: EZCallback) {
+    for (index,item) in callbacks.enumerated() {
+        if item === callback {
+            callbacks.remove(at: index)
+            break;
+        }
+    }
 }
