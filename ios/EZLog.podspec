@@ -9,7 +9,7 @@
 Pod::Spec.new do |s|
   s.name             = 'EZLog'
   s.version          = '0.1.4'
-  s.summary          = 'A high efficiency Cross-platform Logging Library.'
+  s.summary          = 'A high efficiency cross-platform Logging Library.'
   s.swift_version = '5.6'
 
   s.description      = <<-DESC

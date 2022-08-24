@@ -56,7 +56,7 @@ struct DemoApp: App {
             pthread_setname_np("ezlog-callback")
             logger.debug(String(format: "background log %@", Thread.current.name!))
             sleep(3)
-            ezlogRequestLogs(logName: "demo", date: "2022_06_18")
+            requestLogsForDate(logName: "demo", date: "2022_06_18")
             logger.debug("log fetched")
         }
     }
