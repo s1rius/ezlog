@@ -68,7 +68,7 @@ public class EZLog {
         flush(logName);
     }
 
-    private static void _registerCallback(Callback callback) {
+    public static void _registerCallback(EZLogCallback callback) {
         addCallback(callback);
     }
 
@@ -97,31 +97,33 @@ public class EZLog {
         log(logName, level, target, logContent);
     }
 
-    static CopyOnWriteArrayList<Callback> callbacks = new CopyOnWriteArrayList<>();
+    static CopyOnWriteArrayList<EZLogCallback> callbacks = new CopyOnWriteArrayList<>();
     volatile static boolean isRegister = false;
-    public static synchronized void addCallback(@NotNull Callback callback) {
+    static EZLogCallback internalCallback = null;
+    public static synchronized void addCallback(@NotNull EZLogCallback callback) {
         if (!isRegister) {
             isRegister = true;
-            registerCallback(new Callback() {
+            internalCallback = new EZLogCallback() {
                 @Override
-                public void onLogsFetchSuccess(String logName, String date, String[] logs) {
-                    for (Callback next : callbacks) {
-                        next.onLogsFetchSuccess(logName, date, logs);
+                public void onSuccess(String logName, String date, String[] logs) {
+                    for (EZLogCallback next : callbacks) {
+                        next.onSuccess(logName, date, logs);
                     }
                 }
 
                 @Override
-                public void onLogsFetchFail(String logName, String date, String err) {
-                    for (Callback next : callbacks) {
-                        next.onLogsFetchFail(logName, date, err);
+                public void onFail(String logName, String date, String err) {
+                    for (EZLogCallback next : callbacks) {
+                        next.onFail(logName, date, err);
                     }
                 }
-            });
+            };
+            registerCallback(internalCallback);
         }
         callbacks.add(callback);
     }
 
-    public static void removeCallback(@NotNull Callback callback) {
+    public static void removeCallback(@NotNull EZLogCallback callback) {
         callbacks.remove(callback);
         // when callbacks size = 0, need unregister native callback.
     }
@@ -180,7 +182,7 @@ public class EZLog {
     /**
      * @param callback log fetch callback
      */
-    private static native void registerCallback(Callback callback);
+    private static native void registerCallback(EZLogCallback callback);
 
     /**
      *

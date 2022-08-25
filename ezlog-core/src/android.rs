@@ -22,7 +22,7 @@ static EVENT_LISTENER: EventPrinter = EventPrinter {};
 #[no_mangle]
 pub extern "system" fn JNI_OnLoad(vm: JavaVM, _: *mut c_void) -> jint {
     if let Ok(env) = vm.get_env() {
-        if let Some(c) = get_class(&env, "wtf/s1/ezlog/Callback") {
+        if let Some(c) = get_class(&env, "wtf/s1/ezlog/EZLogCallback") {
             CALL_BACK_CLASS
                 .set(c)
                 .map_err(|_| event!(ffi_call_err "find callback err"))
@@ -231,14 +231,14 @@ impl<'a> AndroidCallback<'a> {
             env,
             "wtf/s1/ezlog/EZLogCallback",
             "onFail",
-            "(Ljava/lang/String;)V",
+            "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
         )
         .unwrap();
         let success_method_id = get_method_id(
             env,
             "wtf/s1/ezlog/EZLogCallback",
             "onSuccess",
-            "(Ljava/lang/String;)V",
+            "(Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;)V",
         )
         .unwrap();
         Self {

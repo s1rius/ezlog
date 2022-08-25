@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
-echo "publish module lib-ezlog"
+echo "publish android"
 # config doc see 
 # https://github.com/vanniktech/gradle-maven-publish-plugin/blob/master/plugin/src/main/kotlin/com/vanniktech/maven/publish/MavenPublishBaseExtension.kt#L76
 
