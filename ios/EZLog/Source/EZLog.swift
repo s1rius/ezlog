@@ -137,7 +137,7 @@ public func wrapCallback(success: @escaping (String, String, [String]) -> Void,
 
 public func ezlogRegisterCallback(success: @escaping (String, String, [String]) -> Void,
                                   fail: @escaping (String, String, String) -> Void) {
-    ezlog_register_callback(wrapCallback(success: success, fail: fail))
+    addCallback(callback: EZCallback(success: success, fail: fail))
 }
 
 /// The log level.
@@ -293,6 +293,7 @@ public class EZCallback {
 
 var callbacks = Array<EZCallback>()
 let callbackLock = NSLock()
+var callbackRegister = false
 
 let internalCallback: Callback = wrapCallback {name, date, logs in
     callbackLock.withLock {
@@ -310,6 +311,10 @@ let internalCallback: Callback = wrapCallback {name, date, logs in
 
 public func addCallback(callback: EZCallback) {
     callbackLock.withLock {
+        if !callbackRegister {
+            callbackRegister = true
+            ezlog_register_callback(internalCallback)
+        }
         callbacks.append(callback)
     }
 }
