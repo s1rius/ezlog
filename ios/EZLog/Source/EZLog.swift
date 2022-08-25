@@ -296,13 +296,13 @@ let callbackLock = NSLock()
 var callbackRegister = false
 
 let internalCallback: Callback = wrapCallback {name, date, logs in
-    callbackLock.withLock {
+    callbackLock.with {
         for callback in callbacks {
             callback.successClosure(name, date, logs)
         }
     }
 } fail: { name, date, err in
-    callbackLock.withLock {
+    callbackLock.with {
         for callback in callbacks {
             callback.failClosure(name, date, err)
         }
@@ -310,7 +310,7 @@ let internalCallback: Callback = wrapCallback {name, date, logs in
 }
 
 public func addCallback(callback: EZCallback) {
-    callbackLock.withLock {
+    callbackLock.with {
         if !callbackRegister {
             callbackRegister = true
             ezlog_register_callback(internalCallback)
@@ -320,7 +320,7 @@ public func addCallback(callback: EZCallback) {
 }
 
 public func removeCallback(callback: EZCallback) {
-    callbackLock.withLock {
+    callbackLock.with {
         removeCallbackNoLock(callback: callback)
     }
 }
