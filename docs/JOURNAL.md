@@ -426,7 +426,8 @@ Flutter/RN/Compose/SwiftUI 等等的框架做 UI 交互。在这种场景下使�
 除了实现了 android，iOS 的跨平台，还有一些其他的使用场景。
 
 - [x] 兼容 Windows，满足桌面端的需求。
-- [ ] 实现 Dart 的 FFI，提供 Flutter SDK。
+- [x] 提供 Flutter MethodChannel SDK。
+- [ ] 提供 Flutter FFI SDK。
 - [ ] 给其他的库，游戏框架提供 log 插件，比如：[Bevy](https://github.com/bevyengine/bevy)，[Tauri](https://github.com/tauri-apps/tauri)。
 
 #### Tips

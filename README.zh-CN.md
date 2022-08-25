@@ -2,7 +2,7 @@
 EZLog灵感来自[Xlog](https://github.com/Tencent/mars)和[Loagan](https://github.com/Meituan-Dianping/Logan)，用[Rust](https://www.rust-lang.org/)重写。
 
 ## 特性
-- iOS, Android, MacOS 支持
+- 多平台支持 Flutter, iOS, Android, Windows, Linux, MacOS
 - 使用[mmap](https://man7.org/linux/man-pages/man2/mmap.2.html)做日志映射
 - [认证加密](https://en.wikipedia.org/wiki/Authenticated_encryption)
 - [zlib](https://en.wikipedia.org/wiki/Zlib)压缩
@@ -11,6 +11,11 @@ EZLog灵感来自[Xlog](https://github.com/Tencent/mars)和[Loagan](https://gith
 - 命令行解析工具
 
 ## 快速开始
+
+### Flutter
+
+见Flutter [README.md](./ezlog_flutter/README.md)
+
 ### iOS
 
 使用CocoaPods管理依赖
