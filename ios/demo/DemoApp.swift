@@ -18,11 +18,11 @@ struct DemoApp: App {
     
     public init() {
         pthread_setname_np("main")
-        #if DEBUG
+#if DEBUG
         ezlogInitWithTrace()
-        #else
+#else
         ezlogInit()
-        #endif
+#endif
         
         let dirPath = URL.documents.appendingPathComponent("ezlog").relativePath
         let config = EZLogConfig(level: Level.trace,
@@ -36,8 +36,9 @@ struct DemoApp: App {
                                  cipherKey: [UInt8]("a secret key!!!!".utf8),
                                  cipherNonce: [UInt8]("unique nonce".utf8))
         let logger = EZLogger(config: config)
-
-        ezlogRegisterCallback(success: {name, date, logs in
+        
+        
+        addCallback(callback: EZCallback( success: {name, date, logs in
             if !logs.isEmpty {
                 for log in logs {
                     print("name:" + name + " date:" + date + " log:" + log);
@@ -48,7 +49,7 @@ struct DemoApp: App {
             
         }, fail: {name, date, err in
             print("name:" + name + " date:" + date + " err:" + err);
-        })
+        }))
         
         logger.debug("first blood")
         
