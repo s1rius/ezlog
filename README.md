@@ -8,7 +8,7 @@ EZLog is a high efficiency Cross-platform logging library.
 it is inspired by [Xlog](https://github.com/Tencent/mars) and [Loagan](https://github.com/Meituan-Dianping/Logan), rewrite in [Rust](https://www.rust-lang.org/).
 
 ## Feature
-- iOS, Android, MacOS support.
+- multi platform: Flutter, Android, iOS, Windows, Linux, MacOS
 - map file into memory by [mmap](https://man7.org/linux/man-pages/man2/mmap.2.html).
 - [zlib](https://en.wikipedia.org/wiki/Zlib) compression.
 - [AEAD encryption](https://en.wikipedia.org/wiki/Authenticated_encryption).
@@ -17,6 +17,10 @@ it is inspired by [Xlog](https://github.com/Tencent/mars) and [Loagan](https://g
 - CLI paser support.
 
 ## Quick Start
+
+### Flutter
+
+see Flutter project [README.md](./ezlog_flutter/README.md)
 
 ### iOS
 
