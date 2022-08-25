@@ -4,7 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.os.Bundle
 import android.util.Log
-import wtf.s1.ezlog.Callback
+import wtf.s1.ezlog.EZLogCallback
 import wtf.s1.ezlog.EZLog
 import wtf.s1.ezlog.EZLogConfig
 import wtf.s1.ezlog.EZLogger
@@ -28,8 +28,8 @@ class DebugApp : Application() {
 
         EZLog.v("ezlog", "first blood")
 
-        EZLog._registerCallback(object : Callback {
-            override fun onLogsFetchSuccess(
+        EZLog._registerCallback(object : EZLogCallback {
+            override fun onSuccess(
                 logName: String?,
                 date: String?,
                 logs: Array<out String>?
@@ -42,7 +42,7 @@ class DebugApp : Application() {
                 }
             }
 
-            override fun onLogsFetchFail(logName: String?, date: String?, err: String?) {
+            override fun onFail(logName: String?, date: String?, err: String?) {
                 Log.i("ezlog", "$logName $date $err")
             }
         })
