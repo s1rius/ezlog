@@ -12,10 +12,10 @@ mod thread_name;
 
 #[cfg(target_os = "android")]
 #[allow(non_snake_case)]
-mod android;
+mod ffi_java;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 #[allow(non_snake_case)]
-mod ios;
+mod ffi_c;
 
 pub use self::config::EZLogConfig;
 pub use self::config::EZLogConfigBuilder;
