@@ -1,6 +1,6 @@
 
 [workspace]
-members = ["ezlogcli", "ezlog-core", "examples/android_preview", "examples/nest_log", "examples/hello_world", "test-compat"]
+members = ["ezlogcli", "ezlog-core", "examples/android_preview", "examples/nest_log", "examples/hello_world", "test-compat", "ui/src-tauri"]
 resolver = "2"
 
 # https://github.com/johnthagen/min-sized-rust
