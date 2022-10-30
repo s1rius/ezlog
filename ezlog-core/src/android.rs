@@ -7,7 +7,7 @@ use jni::{
     objects::{GlobalRef, JClass, JMethodID, JObject, JString, JValue},
     signature::Primitive,
     strings::JNIString,
-    sys::{jboolean, jbyteArray, jint, jobjectArray, JNI_VERSION_1_6},
+    sys::{jboolean, jbyteArray, jint, jobject, jobjectArray, jvalue, JNI_VERSION_1_6},
     JNIEnv, JavaVM,
 };
 use libc::c_void;
@@ -155,6 +155,11 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_flush(
     crate::flush(&log_name);
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_trim(_env: JNIEnv, _: JClass) {
+    crate::trim();
+}
+
 // todo thread safe
 #[no_mangle]
 pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_registerCallback(
@@ -194,11 +199,11 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_requestLogFilesForDate(
 ///
 /// Always returns `Some(method_id)`, panics if method not found.
 #[inline]
-fn get_method_id(env: &JNIEnv, class: &str, name: &str, sig: &str) -> Option<JMethodID<'static>> {
+fn get_method_id(env: &JNIEnv, class: &str, name: &str, sig: &str) -> Option<JMethodID> {
     let method_id = env
         .get_method_id(class, name, sig)
         // we need this line to erase lifetime in order to save underlying raw pointer in static
-        .map(|mid| mid.into_inner().into())
+        .map(|mid| mid.into())
         .unwrap_or_else(|_| {
             panic!(
                 "Method {} with signature {} of class {} not found",
@@ -219,13 +224,13 @@ fn get_class(env: &JNIEnv, class: &str) -> Option<GlobalRef> {
     env.new_global_ref(class).map_err(ffi_fail).ok()
 }
 
-struct AndroidCallback<'a> {
+struct AndroidCallback {
     callback: GlobalRef,
-    fail_method_id: JMethodID<'a>,
-    success_method_id: JMethodID<'a>,
+    fail_method_id: JMethodID,
+    success_method_id: JMethodID,
 }
 
-impl<'a> AndroidCallback<'a> {
+impl AndroidCallback {
     fn new(env: &JNIEnv, callback: GlobalRef) -> Self {
         let fail_method_id = get_method_id(
             env,
@@ -259,7 +264,7 @@ impl<'a> AndroidCallback<'a> {
                 Ok(env) => {
                     let name = env.new_string(name)?;
                     let date = env.new_string(date)?;
-                    let j_logs = vec_to_jobjectArray(
+                    let j_logs: jobject = vec_to_jobjectArray(
                         &env,
                         logs,
                         "java/lang/String",
@@ -267,12 +272,14 @@ impl<'a> AndroidCallback<'a> {
                         env.new_string("")?,
                     )?;
 
-                    let args: &[JValue] = &[name.into(), date.into(), j_logs.into()];
+                    let args: &[JValue] =
+                        &[name.into(), date.into(), JObject::from_raw(j_logs).into()];
+                    let args: Vec<jvalue> = args.iter().map(|v| v.to_jni()).collect();
                     env.call_method_unchecked(
                         &self.callback,
                         self.success_method_id,
-                        jni::signature::JavaType::Primitive(Primitive::Void),
-                        args,
+                        jni::signature::ReturnType::Primitive(Primitive::Void),
+                        &args,
                     )?;
                     Ok(())
                 }
@@ -296,13 +303,15 @@ impl<'a> AndroidCallback<'a> {
                     let err = env.new_string(err_msg)?;
 
                     let args: &[JValue] = &[name.into(), date.into(), err.into()];
+                    let args: Vec<jvalue> = args.iter().map(|v| v.to_jni()).collect();
 
                     env.call_method_unchecked(
                         &self.callback,
                         self.fail_method_id,
-                        jni::signature::JavaType::Primitive(Primitive::Void),
-                        args,
+                        jni::signature::ReturnType::Primitive(Primitive::Void),
+                        &args,
                     )?;
+
                     Ok(())
                 }
                 Err(e) => Err(e),
@@ -311,7 +320,7 @@ impl<'a> AndroidCallback<'a> {
     }
 }
 
-impl crate::EZLogCallback for AndroidCallback<'_> {
+impl crate::EZLogCallback for AndroidCallback {
     fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
         self.internal_fetch_success(name, date, logs)
             .unwrap_or_else(ffi_fail);
