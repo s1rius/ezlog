@@ -2,10 +2,10 @@ name: Build & Test
 
 on:
   push:
-    branches: 
+    branches:
       - master
   pull_request:
-    branches: 
+    branches:
       - master
 
 env:
@@ -20,6 +20,8 @@ jobs:
           - ubuntu-latest
           - windows-latest
           - macos-latest
+        components:
+          - clippy  
     runs-on: ${{ matrix.platform }}
 
     steps:
@@ -27,15 +29,49 @@ jobs:
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2022-07-11
+          toolchain: nightly-2022-08-10
           profile: minimal
-          components: clippy
+          components: ${{ matrix.components }}
           default: true
           override: true
+      - name: Install rust target
+        if: ${{ runner.os == 'Linux' }}
+        run: >
+          rustup target add
+          aarch64-linux-android
+          armv7-linux-androideabi
+      - name: Add Linux rust std
+        if: ${{ runner.os == 'Linux' }}
+        run: > 
+          rustup component add rust-src --toolchain nightly-2022-08-10-x86_64-unknown-linux-gnu
+      - name: Add macOS rust std 
+        if: ${{ runner.os == 'macOS' }}
+        run: >   
+          rustup component add rust-src --toolchain nightly-2022-08-10-x86_64-apple-darwin    
       - name: Build & Test - ezlog All Features
         run: cargo test --manifest-path ./ezlog-core/Cargo.toml --verbose --all-features --no-fail-fast
       - name: Build & Test - ezlog_cli
         run: cargo test --manifest-path ./ezlog-cli/Cargo.toml --verbose --no-default-features --no-fail-fast
+      - name: Install Android NDK
+        if: ${{ runner.os == 'Linux' }}
+        uses: nttld/setup-ndk@v1.2.0
+        with:
+          ndk-version: r25b
+      - name: Install cargo-ndk
+        if: ${{ runner.os == 'Linux' }}
+        run: cargo install cargo-ndk
+      - name: Build Android library
+        if: ${{ runner.os == 'Linux' }}
+        run: > 
+          cargo ndk 
+          -t armeabi-v7a 
+          -t arm64-v8a 
+          -o lib-ezlog/src/main/jniLibs build -Zbuild-std -p ezlog
+        env:
+          ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
+      - name: Build iOS library
+        if: ${{ runner.os == 'macOS' }}
+        run: cargo build -Z build-std -p ezlog --release --lib --target aarch64-apple-ios
       - name: Clippy Check
         uses: actions-rs/clippy-check@v1
         with:
