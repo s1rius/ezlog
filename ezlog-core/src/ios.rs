@@ -100,6 +100,11 @@ pub unsafe extern "C" fn ezlog_log(
     log(record)
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn ezlog_trim() {
+    crate::trim();
+}
+
 /// Register callback function for get logger's file path asynchronously
 #[no_mangle]
 pub unsafe extern "C" fn ezlog_register_callback(callback: Callback) {

@@ -68,6 +68,10 @@ public class EZLog {
         flush(logName);
     }
 
+    public static void _trim() {
+        trim();
+    }
+
     public static void _registerCallback(EZLogCallback callback) {
         addCallback(callback);
     }
@@ -190,4 +194,9 @@ public class EZLog {
      * @param date target log date
      */
     private static native void requestLogFilesForDate(String logName, String date);
+
+    /**
+     * trim log files
+     */
+    private static native void trim();
 }

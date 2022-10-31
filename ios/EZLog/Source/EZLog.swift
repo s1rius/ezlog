@@ -81,6 +81,10 @@ public func flush(logName: String) {
     ezlog_flush(logName)
 }
 
+public func trim() {
+    ezlog_trim()
+}
+
 public func requestLogsForDate(logName: String, date: String) {
     ezlog_request_log_files_for_date(logName, date)
 }

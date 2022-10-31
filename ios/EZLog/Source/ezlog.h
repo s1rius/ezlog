@@ -59,6 +59,11 @@ void ezlog_log(const char * _Nonnull c_log_name,
                const char * _Nonnull c_content);
 
 /**
+ * Trim out of date log files
+ */
+void ezlog_trim(void);
+
+/**
  * Register callback function for get logger's file path asynchronously
  */
 void ezlog_register_callback(struct Callback callback);

@@ -40,10 +40,12 @@ class DebugApp : Application() {
                         Log.i("ezlog", "check file exists ${File(log).exists()}")
                     }
                 }
+                EZLog._trim()
             }
 
             override fun onFail(logName: String?, date: String?, err: String?) {
                 Log.i("ezlog", "$logName $date $err")
+                EZLog._trim()
             }
         })
 
