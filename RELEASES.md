@@ -1,3 +1,6 @@
+Version 0.1.6 (2022-11-1)
+- support trim log files which are out of date 
+
 Version 0.1.5 (2022-08-25)
 
 - fix android jni method signature error
