@@ -59,6 +59,7 @@ struct DemoApp: App {
             sleep(3)
             requestLogsForDate(logName: "demo", date: "2022_06_18")
             logger.debug("log fetched")
+            ezlog_trim()
         }
     }
 }
