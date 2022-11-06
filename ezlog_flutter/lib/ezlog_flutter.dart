@@ -15,8 +15,13 @@ class EZLog {
     EZLogFlutterPlatform.instance.flushAll();
   }
 
-  static Future<List<Object?>?> requestLogFilesForDate(String name, String date) {
+  static Future<List<Object?>?> requestLogFilesForDate(
+      String name, String date) {
     return EZLogFlutterPlatform.instance.requestLogFilesForDate(name, date);
+  }
+
+  static void trim() {
+    EZLogFlutterPlatform.instance.trim();
   }
 }
 
@@ -87,7 +92,7 @@ extension LevelVal on Level {
 class EZLogger {
   String logName;
 
-  EZLogger.config(EZLogConfig config) : logName = config.logName {
+  EZLogger.createLog(EZLogConfig config) : logName = config.logName {
     EZLogFlutterPlatform.instance.createLogger(
         config.logName,
         config.maxLevel,
@@ -120,7 +125,11 @@ class EZLogger {
     EZLogFlutterPlatform.instance.log(logName, Level.error.id, tag, msg);
   }
 
-  void flush() {
+  void flush(String logName) {
     EZLogFlutterPlatform.instance.flush(logName);
+  }
+
+  void trim() {
+    EZLogFlutterPlatform.instance.trim();
   }
 }

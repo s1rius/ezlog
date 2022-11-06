@@ -58,4 +58,8 @@ abstract class EZLogFlutterPlatform extends PlatformInterface {
     throw UnimplementedError(
         'requestLogFilesForDate() has not been implemented.');
   }
+
+  void trim() {
+    throw UnimplementedError('trimAll() has not been implemented.');
+  }
 }

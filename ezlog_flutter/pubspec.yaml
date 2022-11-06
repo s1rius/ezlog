@@ -1,6 +1,6 @@
 name: ezlog_flutter
 description: EZLog Flutter plugin project. A cross-platform file logging library.
-version: 0.0.1
+version: 0.1.6
 homepage: https://github.com/s1rius/ezlog/ezlog_flutter
 
 environment:

@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ezlog_flutter/ezlog_flutter.dart';
 import 'package:ezlog_flutter/ezlog_flutter_platform_interface.dart';
 import 'package:ezlog_flutter/ezlog_flutter_method_channel.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -9,9 +8,6 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 class MockEZLogFlutterPlatform
     with MockPlatformInterfaceMixin
     implements EZLogFlutterPlatform {
-  @override
-  Future<String?> getPlatformVersion() => Future.value('42');
-
   @override
   void createLogger(
       String logName,
@@ -50,6 +46,11 @@ class MockEZLogFlutterPlatform
   @override
   void flushAll() {
     // TODO: implement flushAll
+  }
+
+  @override
+  void trim() {
+    // TODO: implement trimAll
   }
 }
 
