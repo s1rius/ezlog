@@ -26,7 +26,7 @@ public class EzlogFlutterPlugin implements FlutterPlugin, MethodCallHandler {
     /// This local reference serves to register the plugin with the Flutter Engine and unregister it
     /// when the Flutter Engine is detached from the Activity
     private MethodChannel channel;
-    private ResultHolder resultHolder = new ResultHolder();
+    private final ResultHolder resultHolder = new ResultHolder();
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
@@ -81,9 +81,11 @@ public class EzlogFlutterPlugin implements FlutterPlugin, MethodCallHandler {
             resultHolder.update(name, result);
             resultHolder.bind();
             EZLog._requestLogFilesForDate(name, date);
-        } else if (call.method.equals("flushAll")) {
+        } else if (call.method.equals("flush")) {
             EZLog.flush();
             result.success(null);
+        } else if (call.method.equals("trim")) {
+            EZLog._trim();
         } else {
             result.notImplemented();
         }

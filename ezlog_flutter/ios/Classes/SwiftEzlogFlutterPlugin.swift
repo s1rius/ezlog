@@ -98,6 +98,9 @@ public class SwiftEzlogFlutterPlugin: NSObject, FlutterPlugin {
             resultDict[logName] = result
             requestLogsForDate(logName:logName, date:date)
             break
+        case "trim":
+            trim()
+            break
         default:
             result(nil)
         }

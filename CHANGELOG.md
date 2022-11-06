@@ -1,16 +1,18 @@
-Version 0.1.6 (2022-11-1)
+# CHANGELOG
+
+## Version 0.1.6 (2022-11-1)
 - support trim log files which are out of date 
 
-Version 0.1.5 (2022-08-25)
+## Version 0.1.5 (2022-08-25)
 
 - fix android jni method signature error
 - support multi callbacks
 
-Version 0.1.4 (2022-07-25)
+## Version 0.1.4 (2022-07-25)
 
 - update android/iOS prebuild library
 
-Version 0.1.3 (2022-07-25)
+## Version 0.1.3 (2022-07-25)
 
 - ffi hook panic when init
 - downgrade ios support version to 13.0

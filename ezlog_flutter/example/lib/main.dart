@@ -32,7 +32,7 @@ class _MyAppState extends State<MyApp> {
     Directory appDocDir = await getApplicationSupportDirectory();
     String logDir = '${appDocDir.path}/ezlog';
 
-    var logger = EZLogger.config(
+    var logger = EZLogger.createLog(
         EZLogConfig.plaintext("main", Level.trace.id, logDir, 7));
     logger.d("init", "success");
 
@@ -43,6 +43,7 @@ class _MyAppState extends State<MyApp> {
         _logFiles = logs.join(",\n");
       });
     }
+    EZLog.trim();
   }
 
   @override
