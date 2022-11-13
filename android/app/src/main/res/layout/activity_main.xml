@@ -1,15 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
+<androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="wtf.s1.im.demo.wtf.s1.ezlog.demo.MainActivity">
+    android:gravity="center"
+    android:orientation="vertical">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Hello World!"
-        />
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/init"
+        android:layout_width="120dp"
+        android:layout_height="44dp"
+        android:layout_marginTop="12dp"
+        android:text="init" />
 
-</FrameLayout>
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/log"
+        android:layout_width="120dp"
+        android:layout_height="44dp"
+        android:layout_marginTop="12dp"
+        android:text="log" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/logs"
+        android:layout_width="120dp"
+        android:layout_height="44dp"
+        android:layout_marginTop="12dp"
+        android:text="logs" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/flush"
+        android:layout_width="120dp"
+        android:layout_height="44dp"
+        android:layout_marginTop="12dp"
+        android:text="flush" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/get_files"
+        android:layout_width="120dp"
+        android:layout_height="44dp"
+        android:layout_marginTop="12dp"
+        android:text="get files" />
+
+
+</androidx.appcompat.widget.LinearLayoutCompat>

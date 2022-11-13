@@ -37,12 +37,15 @@ android {
 
     defaultConfig {
         applicationId "wtf.s1.ezlog.demo"
-        minSdkVersion Versions.minSdkVersion
+        minSdkVersion 21 // todo
         targetSdkVersion Versions.targetSdkVersion
         versionCode 1
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "EMULATOR,LOW-BATTERY,SIMPLEPERF"
+        //testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "DEBUGGABLE,NOT-PROFILEABLE,EMULATOR,LOW-BATTERY"
+        testInstrumentationRunnerArguments["androidx.benchmark.profiling.mode"] = 'StackSamplingSimpleperf'
     }
 
     buildTypes {
@@ -55,6 +58,11 @@ android {
             signingConfig signingConfigs.release
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        benchmark {
+            signingConfig signingConfigs.release
+            matchingFallbacks = ['release']
+            debuggable false
         }
     }
     compileOptions {
@@ -69,8 +77,13 @@ android {
 dependencies {
     implementation Deps.Kotlin.ktxCore
     implementation Deps.AndroidX.appcompat
-    implementation('com.tencent.mars:mars-xlog:1.2.5')
-    implementation('com.dianping.android.sdk:logan:1.2.4')
+    implementation(Deps.logan)
+    implementation(Deps.xlog)
     implementation(project(":lib-ezlog"))
+    implementation(project(":benchmarkable"))
     // implementation "wtf.s1.ezlog:ezlog:0.1.1"
+
+    androidTestImplementation(Deps.AndroidX.espresso)
+    androidTestImplementation(Deps.AndroidX.testJunit)
+    androidTestImplementation(Deps.AndroidX.junit)
 }

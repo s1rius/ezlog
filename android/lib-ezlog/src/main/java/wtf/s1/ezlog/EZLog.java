@@ -4,7 +4,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public class EZLog {
+public final class EZLog {
     static {
         System.loadLibrary("ezlog");
     }
@@ -24,6 +24,8 @@ public class EZLog {
     public static final int CompressBest = 2;
 
     private static volatile EZLogger defaultLogger;
+
+    private EZLog() {}
 
     public static synchronized void initWith(@NotNull EZLogConfig config) {
         init(config.enableTrace);

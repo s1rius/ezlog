@@ -17,6 +17,7 @@ buildscript {
         classpath ClassPaths.kotlinPlugin
         classpath ClassPaths.vanniktechMavenPublishPlugin
         classpath ClassPaths.dokaa
+        classpath ClassPaths.benchmarkPlugin
     }
 }
 
