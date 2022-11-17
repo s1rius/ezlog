@@ -9,7 +9,7 @@ cargo build -Z build-std -p ezlog --release --lib --target x86_64-apple-ios --ve
 
 echo "\n"
 # echo "cbindgen"
-# cbindgen --config cbindgen.toml ../ezlog-core/src/ios.rs > ezlog/Source/ezlog.h
+# cbindgen --config cbindgen.toml ../ezlog-core/src/ios.rs > ezlog/Sources/ezlog.h
 
 mkdir -p ../target/fat-ios-sim/release
 rm -rf ../target/fat-ios-sim/release/libezlog.a
@@ -20,7 +20,7 @@ rm -rf framework/ezlog.xcframework
 
 xcodebuild -create-xcframework \
     -library ../target/aarch64-apple-ios/release/libezlog.a \
-    -headers EZLog/Source/ezlog.h \
+    -headers EZLog/Sources/ezlog.h \
     -library ../target/fat-ios-sim/release/libezlog.a \
-    -headers EZLog/Source/ezlog.h \
+    -headers EZLog/Sources/ezlog.h \
     -output framework/ezlog.xcframework

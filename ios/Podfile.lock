@@ -1,3 +1,18 @@
-PODFILE CHECKSUM: 536f8e2cd9082ae3a17330803b84dabc131ae06e
+PODS:
+  - Logan (1.2.7):
+    - Logan/mbedtls (= 1.2.7)
+  - Logan/mbedtls (1.2.7)
+
+DEPENDENCIES:
+  - Logan (~> 1.2.7)
+
+SPEC REPOS:
+  trunk:
+    - Logan
+
+SPEC CHECKSUMS:
+  Logan: d7e508f88d596b186e9cdcc0cf35b45c89bbc22f
+
+PODFILE CHECKSUM: b0d6f635dfe42a64aae58a146db3096d2e027e01
 
 COCOAPODS: 1.11.3
