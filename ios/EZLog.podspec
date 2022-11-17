@@ -23,6 +23,6 @@ Pod::Spec.new do |s|
 
   s.ios.deployment_target = '13.0'
 
-  s.source_files = 'ios/EZLog/Source/**/*'
+  s.source_files = 'ios/EZLog/Sources/**/*'
   s.ios.vendored_frameworks = 'ios/framework/ezlog.xcframework'
 end
