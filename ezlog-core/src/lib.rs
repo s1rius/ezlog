@@ -79,7 +79,7 @@ pub const V1_LOG_HEADER_SIZE: usize = 10;
 static mut LOG_MAP: MaybeUninit<HashMap<String, EZLogger>> = MaybeUninit::uninit();
 static LOG_MAP_INIT: Once = Once::new();
 
-static mut GLOABLE_CALLBACK: &dyn EZLogCallback = &NopCallback;
+static mut GLOBAL_CALLBACK: &dyn EZLogCallback = &NopCallback;
 static CALLBACK_INIT: Once = Once::new();
 
 type Result<T> = std::result::Result<T, LogError>;
@@ -373,7 +373,7 @@ fn invoke_fetch_callback(result: FetchResult) {
 
 pub(crate) fn callback() -> &'static dyn EZLogCallback {
     if CALLBACK_INIT.is_completed() {
-        unsafe { GLOABLE_CALLBACK }
+        unsafe { GLOBAL_CALLBACK }
     } else {
         static NOP: NopCallback = NopCallback;
         &NOP
@@ -417,7 +417,7 @@ where
     F: FnOnce() -> &'static dyn EZLogCallback,
 {
     CALLBACK_INIT.call_once(|| unsafe {
-        GLOABLE_CALLBACK = make_callback();
+        GLOBAL_CALLBACK = make_callback();
     });
 }
 
