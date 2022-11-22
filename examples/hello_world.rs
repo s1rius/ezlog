@@ -10,6 +10,7 @@ use ezlog::{
 };
 use log::{debug, error, info, trace, warn, LevelFilter};
 use log::{Metadata, Record};
+use rand::Rng;
 use time::OffsetDateTime;
 
 static LOGGER: SimpleLogger = SimpleLogger;
@@ -32,6 +33,10 @@ pub fn main() {
     info!("3. now have a log");
     warn!("4. test log to file");
     error!("5. log complete");
+
+    for i in 0..1000 {
+        trace!("{}{}", i, random_string(300));
+    }
 
     ezlog::flush(ezlog::DEFAULT_LOG_NAME);
     ezlog::request_log_files_for_date(ezlog::DEFAULT_LOG_NAME, "2022_06_19");
@@ -126,4 +131,17 @@ impl EZLogCallback for SimpleCallback {
     fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
         print!("{} {} {}", name, date, err);
     }
+}
+
+const S: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.:;!@#$%^&*()_+-";
+
+fn random_string(length: u32) -> String {
+    let mut owned_string: String = "".to_owned();
+    for _ in 0..length {
+        let mut chars = S.chars();
+        let index = rand::thread_rng().gen_range(0..S.len());
+        let c = chars.nth(index).unwrap();
+        owned_string.push(c);
+    }
+    return owned_string;
 }

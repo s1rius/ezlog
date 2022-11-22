@@ -1,9 +1,8 @@
-use std::{thread, time::Duration};
-
 use ezlog::{
     CipherKind, CompressKind, EZLogCallback, EZLogConfig, EZLogConfigBuilder, EZRecordBuilder,
     EventPrinter, DEFAULT_LOG_NAME,
 };
+use rand::Rng;
 
 static EVENT_LISTENER: EventPrinter = EventPrinter;
 
@@ -29,8 +28,13 @@ fn main() {
     ezlog::flush(ezlog::DEFAULT_LOG_NAME);
     ezlog::request_log_files_for_date(DEFAULT_LOG_NAME, "2022_07_11");
 
-    thread::sleep(Duration::from_secs(3));
-    ezlog::log(EZRecordBuilder::new().content("5678".to_string()).build());
+    for i in 0..10000 {
+        ezlog::log(
+            EZRecordBuilder::new()
+                .content(format!("{}{}", i, random_string(100)))
+                .build(),
+        );
+    }
     println!("\n end");
 }
 
@@ -58,4 +62,17 @@ impl EZLogCallback for SimpleCallback {
     fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
         print!("{} {} {}", name, date, err);
     }
+}
+
+const S: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.:;!@#$%^&*()_+-";
+
+fn random_string(length: u32) -> String {
+    let mut owned_string: String = "".to_owned();
+    for _ in 0..length {
+        let mut chars = S.chars();
+        let index = rand::thread_rng().gen_range(0..S.len());
+        let c = chars.nth(index).unwrap();
+        owned_string.push(c);
+    }
+    owned_string
 }

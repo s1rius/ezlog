@@ -21,6 +21,7 @@ time = { version = "0.3", default-features = false, features = ["formatting"] }
 
 [dev-dependencies]
 dirs = "4.0"
+rand = "0.8"
 
 [[example]]
 name = "hello_world"
