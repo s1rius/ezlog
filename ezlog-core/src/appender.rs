@@ -31,15 +31,13 @@ impl EZAppender {
         config: &EZLogConfig,
         time: OffsetDateTime,
     ) -> Result<Box<dyn AppenderInner>> {
-        if let Ok(inner) = MmapAppendInner::new(config, time).map_err(|e| {
+        let inner = MmapAppendInner::new(config, time).map_err(|e| {
             event!(mmap_err & e.to_string());
-        }) {
-            return Ok(Box::new(inner));
-        } else {
-            //todo mmap create error
+        });
+        match inner {
+            Ok(i) => Ok(Box::new(i)),
+            Err(_) => Ok(Box::new(ByteArrayAppenderInner::new(config, time)?)),
         }
-
-        Ok(Box::new(ByteArrayAppenderInner::new(config, time)?))
     }
 
     pub fn new(config: Rc<EZLogConfig>) -> Result<Self> {
@@ -48,20 +46,20 @@ impl EZAppender {
     }
 
     fn check_rolling(&mut self, buf_size: usize) -> Result<()> {
-        self.check_recreate_inner(OffsetDateTime::now_utc(), buf_size)
+        self.check_rolling_inner(OffsetDateTime::now_utc(), buf_size)
     }
 
-    fn check_recreate_inner(&mut self, time: OffsetDateTime, buf_size: usize) -> Result<()> {
+    fn check_rolling_inner(&mut self, time: OffsetDateTime, buf_size: usize) -> Result<()> {
         if self.inner.is_overtime(time) {
             self.inner = Self::create_inner_by_time(&self.config, time)?;
         }
 
         if self.inner.is_oversize(buf_size) {
-            // drop current inner, then rename the log file
+            // drop current inner, and rename the log file
+            let file_path = self.inner.file_path().to_owned();
             self.inner = Box::new(NopInner::empty());
 
-            rename_current_file(self.inner.file_path())?;
-
+            rename_current_file(&file_path)?;
             self.inner = Self::create_inner_by_time(&self.config, time)?;
         }
         Ok(())
@@ -304,14 +302,21 @@ impl Drop for ByteArrayAppenderInner {
 
 pub fn rename_current_file(file_path: &PathBuf) -> Result<()> {
     let mut count = 1;
+    if !file_path.is_file() {
+        return Err(errors::LogError::IoError(io::Error::new(
+            ErrorKind::InvalidData,
+            "current file is not valid!",
+        )));
+    }
     loop {
-        if let Some(ext) = file_path.extension() {
-            let new_ext = format!("{}.{}", count, ext.to_str().unwrap_or("mmap"));
-            let new_path = file_path.with_extension(new_ext);
-            if !new_path.exists() {
-                std::fs::rename(file_path, &new_path)?;
-                return Ok(());
-            }
+        let ext = file_path
+            .extension()
+            .map_or("mmap", |ext| ext.to_str().unwrap_or("mmap"));
+        let new_ext = format!("{}.{}", count, ext);
+        let new_path = file_path.with_extension(new_ext);
+        if !new_path.exists() {
+            std::fs::rename(file_path, &new_path)?;
+            return Ok(());
         }
         count += 1;
     }
