@@ -267,11 +267,13 @@ fn init_callback_channel() -> Sender<FetchResult> {
     let (fetch_sender, fetch_receiver) = crossbeam_channel::unbounded::<FetchResult>();
     match thread::Builder::new()
         .name("ezlog_callback".to_string())
-        .spawn(move || match fetch_receiver.recv() {
-            Ok(result) => {
-                invoke_fetch_callback(result);
+        .spawn(move || loop {
+            match fetch_receiver.recv() {
+                Ok(result) => {
+                    invoke_fetch_callback(result);
+                }
+                Err(e) => event!(ffi_call_err & e.to_string()),
             }
-            Err(e) => event!(ffi_call_err & e.to_string()),
         }) {
         Ok(_) => {
             event!(init "init callback success");

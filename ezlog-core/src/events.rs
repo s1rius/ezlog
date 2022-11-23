@@ -160,12 +160,13 @@ macro_rules! println_with_time {
         crate::events::android_print(format_args!($($arg)*));
     }};
 }
+pub(crate) use println_with_time;
 
 #[cfg(all(target_os = "android", feature = "log"))]
 static ANDROID_LOGGER: once_cell::sync::OnceCell<AndroidLogger> = once_cell::sync::OnceCell::new();
 
 #[cfg(all(target_os = "android", feature = "log"))]
-fn android_print(record: std::fmt::Arguments) {
+pub(crate) fn android_print(record: std::fmt::Arguments) {
     use android_logger::Config;
     use log::{Log, RecordBuilder};
 

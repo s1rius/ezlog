@@ -10,6 +10,7 @@ import wtf.s1.ezlog.benchmarkable.LogController
 import wtf.s1.ezlog.benchmarkable.AppEZLog
 import wtf.s1.ezlog.benchmarkable.ezlogDemoConfig
 import java.io.File
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
@@ -36,41 +37,43 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<View>(R.id.get_files).setOnClickListener {
-            callback()
+            registerCallback()
             requestLog()
         }
 
-        // logController = LogController(AppEZLog(ezlogDemoConfig(this)))
+        logController = LogController(AppEZLog(ezlogDemoConfig(this)))
     }
 
-    private fun callback() {
-        EZLog._registerCallback(object : EZLogCallback {
-            override fun onSuccess(
-                logName: String?,
-                date: String?,
-                logs: Array<out String>?
-            ) {
-                Log.i("ezlog", "$logName $date ${logs.contentToString()}")
-                logs?.let {
-                    logs.getOrNull(0)?.let { log ->
-                        Log.i("ezlog", "check file exists ${File(log).exists()}")
-                    }
-                }
-                EZLog._trim()
-            }
+    private fun registerCallback() {
+        EZLog._registerCallback(callback)
+    }
 
-            override fun onFail(logName: String?, date: String?, err: String?) {
-                Log.i("ezlog", "$logName $date $err")
-                EZLog._trim()
+    private val callback = object: EZLogCallback {
+        override fun onSuccess(
+            logName: String?,
+            date: String?,
+            logs: Array<out String>?
+        ) {
+            Log.i("ezlog", "$logName $date ${logs.contentToString()}")
+            logs?.let {
+                logs.getOrNull(0)?.let { log ->
+                    Log.i("ezlog", "check file exists ${File(log).exists()}")
+                }
             }
-        })
+            EZLog._trim()
+        }
+
+        override fun onFail(logName: String?, date: String?, err: String?) {
+            Log.i("ezlog", "$logName $date $err")
+            EZLog._trim()
+        }
     }
 
     private fun requestLog() {
         Thread({
             EZLog.v("ChildThread", "run on background")
             Thread.sleep(1000)
-            EZLog._requestLogFilesForDate("demo", "2022_06_19")
+            EZLog._requestLogFilesForDate("demo", Date())
         }, "background_log").start()
     }
 }

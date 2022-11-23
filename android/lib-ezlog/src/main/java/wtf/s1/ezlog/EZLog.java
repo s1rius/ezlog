@@ -1,13 +1,20 @@
 package wtf.s1.ezlog;
 
+import android.annotation.SuppressLint;
+
 import org.jetbrains.annotations.NotNull;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public final class EZLog {
     static {
         System.loadLibrary("ezlog");
     }
+
     public static final int VERBOSE = 5;
     public static final int DEBUG = 4;
     public static final int INFO = 3;
@@ -25,7 +32,8 @@ public final class EZLog {
 
     private static volatile EZLogger defaultLogger;
 
-    private EZLog() {}
+    private EZLog() {
+    }
 
     public static synchronized void initWith(@NotNull EZLogConfig config) {
         init(config.enableTrace);
@@ -36,27 +44,31 @@ public final class EZLog {
         init(enableTrace);
     }
 
-    public static void v (String tag, String msg) {
+    public static void v(String tag, String msg) {
         if (defaultLogger != null) {
             defaultLogger.v(tag, msg);
         }
     }
-    public static void d (String tag, String msg) {
+
+    public static void d(String tag, String msg) {
         if (defaultLogger != null) {
             defaultLogger.d(tag, msg);
         }
     }
-    public static void i (String tag, String msg) {
+
+    public static void i(String tag, String msg) {
         if (defaultLogger != null) {
             defaultLogger.i(tag, msg);
         }
     }
-    public static void w (String tag, String msg) {
+
+    public static void w(String tag, String msg) {
         if (defaultLogger != null) {
             defaultLogger.w(tag, msg);
         }
     }
-    public static void e (String tag, String msg) {
+
+    public static void e(String tag, String msg) {
         if (defaultLogger != null) {
             defaultLogger.e(tag, msg);
         }
@@ -82,8 +94,15 @@ public final class EZLog {
         requestLogFilesForDate(logName, date);
     }
 
+    public static void _requestLogFilesForDate(String logName, Date date) {
+        final SimpleDateFormat formatter = new SimpleDateFormat("yyyy_MM_dd", Locale.getDefault());
+        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+        requestLogFilesForDate(logName, formatter.format(date));
+    }
+
     /**
      * create log from java
+     *
      * @param config log config
      */
     public synchronized static void _createLogger(@NotNull EZLogConfig config) {
@@ -106,6 +125,7 @@ public final class EZLog {
     static CopyOnWriteArrayList<EZLogCallback> callbacks = new CopyOnWriteArrayList<>();
     volatile static boolean isRegister = false;
     static EZLogCallback internalCallback = null;
+
     public static synchronized void addCallback(@NotNull EZLogCallback callback) {
         if (!isRegister) {
             isRegister = true;
@@ -126,7 +146,9 @@ public final class EZLog {
             };
             registerCallback(internalCallback);
         }
-        callbacks.add(callback);
+        if (!callbacks.contains(callback)) {
+            callbacks.add(callback);
+        }
     }
 
     public static void removeCallback(@NotNull EZLogCallback callback) {
@@ -180,7 +202,6 @@ public final class EZLog {
     private static native void flushAll();
 
     /**
-     *
      * @param logName flush logger's name
      */
     private static native void flush(String logName);
@@ -191,9 +212,8 @@ public final class EZLog {
     private static native void registerCallback(EZLogCallback callback);
 
     /**
-     *
      * @param logName target log name
-     * @param date target log date
+     * @param date    target log date
      */
     private static native void requestLogFilesForDate(String logName, String date);
 
