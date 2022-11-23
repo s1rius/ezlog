@@ -37,14 +37,13 @@ android {
 
     defaultConfig {
         applicationId "wtf.s1.ezlog.demo"
-        minSdkVersion 21 // todo
+        minSdkVersion Versions.minSdkVersion
         targetSdkVersion Versions.targetSdkVersion
         versionCode 1
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "EMULATOR,LOW-BATTERY,SIMPLEPERF"
-        //testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "DEBUGGABLE,NOT-PROFILEABLE,EMULATOR,LOW-BATTERY"
         testInstrumentationRunnerArguments["androidx.benchmark.profiling.mode"] = 'StackSamplingSimpleperf'
     }
 

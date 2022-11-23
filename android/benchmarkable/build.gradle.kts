@@ -1,3 +1,5 @@
+import wtf.s1.buildsrc.*
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
@@ -5,11 +7,11 @@ plugins {
 
 android {
     namespace = "wtf.s1.ezlog.benchmarkable"
-    compileSdk = 32
+    compileSdk = Versions.compileVersion
 
     defaultConfig {
-        minSdk = 21
-        targetSdk = 32
+        minSdk = Versions.minSdkVersion
+        targetSdk = Versions.targetSdkVersion
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
