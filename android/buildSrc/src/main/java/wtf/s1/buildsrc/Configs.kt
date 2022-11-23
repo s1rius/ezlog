@@ -7,7 +7,8 @@ object Versions {
     const val gradlePlugin = "7.1.2"
     const val lifecycle = "2.2.0"
     const val minSdkVersion = 21
-    const val targetSdkVersion = 31
+    const val targetSdkVersion = 33
+    const val compileVersion = 33
     const val versionCode = 1
     const val libVersion = "0.1.6"
     const val benchmarkVersion = "1.1.0"
