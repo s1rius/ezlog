@@ -8,7 +8,7 @@ use jni::{
     signature::Primitive,
     strings::JNIString,
     sys::{jboolean, jbyteArray, jint, jobject, jobjectArray, jvalue, JNI_VERSION_1_6},
-    JNIEnv, JavaVM,
+    JNIEnv, JavaVM, AttachGuard,
 };
 use libc::c_void;
 use once_cell::sync::OnceCell;
@@ -271,7 +271,6 @@ impl AndroidCallback {
                         |x| env.new_string(x),
                         env.new_string("")?,
                     )?;
-
                     let args: &[JValue] =
                         &[name.into(), date.into(), JObject::from_raw(j_logs).into()];
                     let args: Vec<jvalue> = args.iter().map(|v| v.to_jni()).collect();
@@ -333,24 +332,9 @@ impl crate::EZLogCallback for AndroidCallback {
 }
 
 #[inline]
-unsafe fn get_env<'a>() -> Result<JNIEnv<'a>, jni::errors::Error> {
+unsafe fn get_env<'a>() -> Result<AttachGuard<'a>, jni::errors::Error> {
     if let Some(jvm) = JVM.get() {
-        match jvm.get_env() {
-            Ok(_env) => {
-                if jvm.threads_attached() == 0 {
-                    return jvm.attach_current_thread_permanently();
-                }
-            }
-            Err(err) => match err {
-                jni::errors::Error::JniCall(e) => match e {
-                    jni::errors::JniError::ThreadDetached => {
-                        return jvm.attach_current_thread_permanently();
-                    }
-                    _e => return Err(jni::errors::Error::JniCall(_e)),
-                },
-                _e => return Err(_e),
-            },
-        }
+        return jvm.attach_current_thread();
     }
     Err(jni::errors::Error::JniCall(JniError::Unknown))
 }

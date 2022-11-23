@@ -5,6 +5,7 @@ import com.dianping.logan.Logan
 import com.dianping.logan.LoganConfig
 import com.tencent.mars.xlog.Log
 import com.tencent.mars.xlog.Xlog
+import wtf.s1.ezlog.EZLog
 import wtf.s1.ezlog.EZLogConfig
 import wtf.s1.ezlog.EZLogger
 import java.io.File
@@ -32,6 +33,7 @@ class AppEZLog(private val config: EZLogConfig): AppLog() {
     lateinit var log: EZLogger
 
     override fun init() {
+        EZLog.initNoDefault(BuildConfig.DEBUG)
         log = EZLogger(config)
     }
 
