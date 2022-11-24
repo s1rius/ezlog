@@ -109,7 +109,7 @@ open app level `build.gradle`, add `ezlog`
 
 ```groovy
 dependencies {
-    implementation "wtf.s1.ezlog:ezlog:0.1.6"
+    implementation "wtf.s1.ezlog:ezlog:0.1.7"
 }
 ```
 

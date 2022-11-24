@@ -1,5 +1,5 @@
 PODS:
-  - EZLog (0.1.6)
+  - EZLog (0.1.7)
   - ezlog_flutter (0.0.1):
     - EZLog (~> 0.1)
     - Flutter
