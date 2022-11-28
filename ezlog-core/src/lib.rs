@@ -166,7 +166,7 @@ fn init_log_channel() -> Sender<EZMsg> {
                             event!(
                                 record_filter_out & record.t_id(),
                                 &format!(
-                                    "current level{}, max level{}",
+                                    "current level {}, max level {}",
                                     &record.level, &log.config.level
                                 )
                             );

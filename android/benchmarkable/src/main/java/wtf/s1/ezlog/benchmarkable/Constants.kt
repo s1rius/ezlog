@@ -12,9 +12,9 @@ fun ezlogDir(context: Context): String {
 
 fun ezlogDemoConfig(context: Context): EZLogConfig {
     return EZLogConfig.Builder("demo", ezlogDir(context))
-        .compress(EZLog.CompressZlib)
-        .compressLevel(EZLog.CompressFast)
-        .cipher(EZLog.Aes128Gcm)
+        .compress(EZLog.Compress.ZLIB)
+        .compressLevel(EZLog.CompressLevel.BEST)
+        .cipher(EZLog.Cipher.AES128GCM)
         .cipherKey("a secret key!!!!".toByteArray())
         .cipherNonce("unique nonce".toByteArray())
         .keepDays(10)

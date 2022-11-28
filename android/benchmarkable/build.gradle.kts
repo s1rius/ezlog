@@ -37,9 +37,10 @@ android {
 
 dependencies {
     api(project(":lib-ezlog"))
-    api(wtf.s1.buildsrc.Deps.logan)
-    api(wtf.s1.buildsrc.Deps.xlog)
+    //api(Deps.ezlogOnline)
+    api(Deps.logan)
+    api(Deps.xlog)
 
-    androidTestImplementation(wtf.s1.buildsrc.Deps.AndroidX.testJunit)
-    androidTestImplementation(wtf.s1.buildsrc.Deps.AndroidX.espresso)
+    androidTestImplementation(Deps.AndroidX.testJunit)
+    androidTestImplementation(Deps.AndroidX.espresso)
 }

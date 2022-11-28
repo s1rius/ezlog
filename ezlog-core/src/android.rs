@@ -37,7 +37,7 @@ pub extern "system" fn JNI_OnLoad(vm: JavaVM, _: *mut c_void) -> jint {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_init(
+pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeInit(
     _: JNIEnv,
     _: JClass,
     j_enable_trace: jboolean,
@@ -50,7 +50,7 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_init(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_createLogger(
+pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeCreateLogger(
     env: JNIEnv,
     _jclass: JClass,
     j_log_name: JString,
@@ -100,7 +100,7 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_createLogger(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_log(
+pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeLog(
     env: JNIEnv,
     _jclass: JClass,
     j_log_name: JString,
@@ -138,12 +138,12 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_log(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_flushAll(_: JNIEnv, _: JClass) {
+pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeFlushAll(_: JNIEnv, _: JClass) {
     crate::flush_all();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_flush(
+pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeFlush(
     env: JNIEnv,
     _: JClass,
     j_log_name: JString,
@@ -156,13 +156,13 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_flush(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_trim(_env: JNIEnv, _: JClass) {
+pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeTrim(_env: JNIEnv, _: JClass) {
     crate::trim();
 }
 
 // todo thread safe
 #[no_mangle]
-pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_registerCallback(
+pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeRegisterCallback(
     env: JNIEnv,
     _jclass: JClass,
     j_callback: JObject,
@@ -176,7 +176,7 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_registerCallback(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_requestLogFilesForDate(
+pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeRequestLogFilesForDate(
     env: JNIEnv,
     _: JClass,
     j_log_name: JString,
