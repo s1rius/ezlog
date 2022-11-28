@@ -48,12 +48,9 @@ class MainActivity : AppCompatActivity() {
         EZLog._registerCallback(callback)
     }
 
-    private val callback = object: EZLogCallback {
-        override fun onSuccess(
-            logName: String?,
-            date: String?,
-            logs: Array<out String>?
-        ) {
+    private val callback = object : EZLogCallback {
+
+        override fun onSuccess(logName: String?, date: String?, logs: Array<String?>?) {
             Log.i("ezlog", "$logName $date ${logs.contentToString()}")
             logs?.let {
                 logs.getOrNull(0)?.let { log ->
@@ -72,7 +69,6 @@ class MainActivity : AppCompatActivity() {
     private fun requestLog() {
         Thread({
             EZLog.v("ChildThread", "run on background")
-            Thread.sleep(1000)
             EZLog._requestLogFilesForDate("demo", Date())
         }, "background_log").start()
     }

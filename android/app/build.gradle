@@ -78,9 +78,9 @@ dependencies {
     implementation Deps.AndroidX.appcompat
     implementation(Deps.logan)
     implementation(Deps.xlog)
-    implementation(project(":lib-ezlog"))
     implementation(project(":benchmarkable"))
-    // implementation "wtf.s1.ezlog:ezlog:0.1.1"
+    // implementation(Deps.ezlogOnline)
+    implementation(project(":lib-ezlog"))
 
     androidTestImplementation(Deps.AndroidX.espresso)
     androidTestImplementation(Deps.AndroidX.testJunit)

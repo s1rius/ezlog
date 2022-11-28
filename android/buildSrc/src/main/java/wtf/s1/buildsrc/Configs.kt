@@ -61,6 +61,7 @@ object Deps {
         const val espresso =  "androidx.test.espresso:espresso-core:${Versions.espressoCoreVersion}"
     }
 
+    val ezlogOnline = "wtf.s1.ezlog:ezlog:${Versions.libVersion}"
     val xlog = "com.tencent.mars:mars-xlog:1.2.5"
     val logan = "com.dianping.android.sdk:logan:1.2.4"
 }
