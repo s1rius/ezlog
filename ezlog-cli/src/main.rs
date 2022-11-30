@@ -47,11 +47,19 @@ struct Cli {
     /// Sets a JSON config file contains the configuration of the logger.
     ///
     /// {
-    ///     "crypto_key": "an example very very secret key.",
-    ///     "crypto_nonce": "unique nonce"
+    ///     "key": "an example very very secret key.",
+    ///     "nonce": "unique nonce"
     /// }
     #[clap(short, long, value_parser, value_name = "FILE")]
     config: Option<PathBuf>,
+
+    /// Decrypt key
+    #[clap(short, long, value_parser)]
+    key: Option<String>,
+
+    /// Decrypt nonce
+    #[clap(short, long, value_parser)]
+    nonce: Option<String>,
 
     /// Turn debugging information on
     #[clap(short, long, action)]
@@ -60,8 +68,8 @@ struct Cli {
 
 #[derive(Serialize, Deserialize)]
 struct Config {
-    crypto_key: String,
-    crypto_nonce: String,
+    key: String,
+    nonce: String,
 }
 
 pub fn main() {
@@ -69,6 +77,8 @@ pub fn main() {
 
     if cli.debug {
         println!("debug enable");
+        println!();
+        println!("{:?}", cli);
     }
 
     let input = some_or_return!(cli.input.as_deref(), println!("-i input file must set"));
@@ -92,11 +102,12 @@ pub fn main() {
     );
 
     if cli.debug {
+        println!();
         println!("header parse {:?}", &header);
     }
 
-    let mut crypto_key: Vec<u8> = Vec::new();
-    let mut crypto_nonce: Vec<u8> = Vec::new();
+    let mut key: Vec<u8> = Vec::new();
+    let mut nonce: Vec<u8> = Vec::new();
 
     if let Some(config_path) = cli.config.as_deref() {
         if let Ok(config_file) = OpenOptions::new().read(true).open(config_path) {
@@ -109,13 +120,13 @@ pub fn main() {
                     serde_json::from_str(&json),
                     println!("parse config json error")
                 );
-                crypto_key = config.crypto_key.as_bytes().to_vec();
-                crypto_nonce = config.crypto_nonce.as_bytes().to_vec();
+                key = config.key.as_bytes().to_vec();
+                nonce = config.nonce.as_bytes().to_vec();
 
                 if cli.debug {
                     println!(
                         "config read \n    key={} \n    nonce={}",
-                        &config.crypto_key, &config.crypto_nonce
+                        &config.key, &config.nonce
                     );
                 }
             }
@@ -124,10 +135,18 @@ pub fn main() {
         }
     }
 
+    if key.is_empty() {
+        key = cli.key.map_or(vec![], |k| k.as_bytes().to_vec())
+    }
+
+    if nonce.is_empty() {
+        nonce = cli.nonce.map_or(vec![], |n| n.as_bytes().to_vec())
+    }
+
     let config = EZLogConfigBuilder::new()
         .from_header(&header)
-        .cipher_key(crypto_key)
-        .cipher_nonce(crypto_nonce)
+        .cipher_key(key)
+        .cipher_nonce(nonce)
         .build();
 
     let compression = EZLogger::create_compress(&config);
