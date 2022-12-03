@@ -178,7 +178,7 @@ object EZLog {
     }
 
     @JvmStatic
-    fun log(logName: String, level: Int, target: String, logContent: String) {
+    fun log(logName: String, level: Int, target: String?, logContent: String?) {
         nativeLog(logName, level, target, logContent)
     }
 
@@ -258,7 +258,7 @@ object EZLog {
      * @param target     log target
      * @param logContent log message
      */
-    private external fun nativeLog(logName: String, level: Int, target: String, logContent: String)
+    private external fun nativeLog(logName: String, level: Int, target: String?, logContent: String?)
 
     /**
      * native flush all logger, sync content to file
