@@ -1,5 +1,5 @@
 use std::{
-    cmp,
+    cmp, fmt,
     fs::{self, File, OpenOptions},
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
@@ -11,9 +11,9 @@ use time::{format_description, Date, Duration, OffsetDateTime};
 #[allow(unused_imports)]
 use crate::EZLogger;
 use crate::{
-    appender::rename_current_file, errors::LogError, event, CipherKind, CompressKind,
-    CompressLevel, Header, Level, Version, DEFAULT_LOG_FILE_SUFFIX, DEFAULT_LOG_NAME,
-    DEFAULT_MAX_LOG_SIZE, MIN_LOG_SIZE,
+    appender::rename_current_file, errors::LogError, event, logger::Header, CipherKind,
+    CompressKind, CompressLevel, Version, DEFAULT_LOG_FILE_SUFFIX, DEFAULT_LOG_NAME,
+    DEFAULT_MAX_LOG_SIZE, LOG_LEVEL_NAMES, MIN_LOG_SIZE,
 };
 
 pub const DATE_FORMAT: &str = "[year]_[month]_[day]";
@@ -342,6 +342,146 @@ pub(crate) fn parse_date_from_str(date_str: &str, case: &str) -> crate::Result<D
     let date = Date::parse(date_str, &format)
         .map_err(|_e| crate::errors::LogError::Parse(format!("{} {} {}", case, date_str, _e)))?;
     Ok(date)
+}
+
+/// Log level, used to filter log records
+#[repr(usize)]
+#[derive(Copy, Eq, Debug)]
+pub enum Level {
+    /// The "error" level.
+    ///
+    /// Designates very serious errors.
+    // This way these line up with the discriminants for LevelFilter below
+    // This works because Rust treats field-less enums the same way as C does:
+    // https://doc.rust-lang.org/reference/items/enumerations.html#custom-discriminant-values-for-field-less-enumerations
+    Error = 1,
+    /// The "warn" level.
+    ///
+    /// Designates hazardous situations.
+    Warn,
+    /// The "info" level.
+    ///
+    /// Designates useful information.
+    Info,
+    /// The "debug" level.
+    ///
+    /// Designates lower priority information.
+    Debug,
+    /// The "trace" level.
+    ///
+    /// Designates very low priority, often extremely verbose, information.
+    Trace,
+}
+
+impl Level {
+    pub fn from_usize(u: usize) -> Option<Level> {
+        match u {
+            1 => Some(Level::Error),
+            2 => Some(Level::Warn),
+            3 => Some(Level::Info),
+            4 => Some(Level::Debug),
+            5 => Some(Level::Trace),
+            _ => None,
+        }
+    }
+
+    /// Returns the most verbose logging level.
+    #[inline]
+    pub fn max() -> Level {
+        Level::Trace
+    }
+
+    /// Returns the string representation of the `Level`.
+    ///
+    /// This returns the same string as the `fmt::Display` implementation.
+    pub fn as_str(&self) -> &'static str {
+        LOG_LEVEL_NAMES[*self as usize]
+    }
+
+    /// Iterate through all supported logging levels.
+    ///
+    /// The order of iteration is from more severe to less severe log messages.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use log::Level;
+    ///
+    /// let mut levels = Level::iter();
+    ///
+    /// assert_eq!(Some(Level::Error), levels.next());
+    /// assert_eq!(Some(Level::Trace), levels.last());
+    /// ```
+    pub fn iter() -> impl Iterator<Item = Self> {
+        (1..6).map(|i| Self::from_usize(i).unwrap_or(Level::Error))
+    }
+}
+
+impl Clone for Level {
+    #[inline]
+    fn clone(&self) -> Level {
+        *self
+    }
+}
+
+impl PartialEq for Level {
+    #[inline]
+    fn eq(&self, other: &Level) -> bool {
+        *self as usize == *other as usize
+    }
+}
+
+impl PartialOrd for Level {
+    #[inline]
+    fn partial_cmp(&self, other: &Level) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+
+    #[inline]
+    fn lt(&self, other: &Level) -> bool {
+        (*self as usize) < *other as usize
+    }
+
+    #[inline]
+    fn le(&self, other: &Level) -> bool {
+        *self as usize <= *other as usize
+    }
+
+    #[inline]
+    fn gt(&self, other: &Level) -> bool {
+        *self as usize > *other as usize
+    }
+
+    #[inline]
+    fn ge(&self, other: &Level) -> bool {
+        *self as usize >= *other as usize
+    }
+}
+
+impl Ord for Level {
+    #[inline]
+    fn cmp(&self, other: &Level) -> cmp::Ordering {
+        (*self as usize).cmp(&(*other as usize))
+    }
+}
+
+#[cfg(feature = "log")]
+impl From<log::Level> for Level {
+    fn from(log_level: log::Level) -> Self {
+        match log_level {
+            log::Level::Error => Level::Error,
+            log::Level::Warn => Level::Warn,
+            log::Level::Info => Level::Info,
+            log::Level::Debug => Level::Debug,
+            log::Level::Trace => Level::Trace,
+        }
+    }
+}
+
+impl fmt::Display for Level {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.pad(self.as_str())
+    }
 }
 
 #[cfg(test)]

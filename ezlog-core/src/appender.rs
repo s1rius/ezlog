@@ -6,7 +6,7 @@ use std::{
 };
 use time::OffsetDateTime;
 
-use crate::*;
+use crate::{logger::Header, *};
 
 pub trait AppenderInner: Write {
     fn is_oversize(&self, buf_size: usize) -> bool;
@@ -361,7 +361,7 @@ impl Write for NopInner {
 #[cfg(test)]
 mod tests {
 
-    use std::fs::{File, OpenOptions};
+    use std::fs::{self, File, OpenOptions};
     use std::io::{BufReader, Seek, SeekFrom};
 
     use crate::config::EZLogConfigBuilder;

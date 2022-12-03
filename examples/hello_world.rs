@@ -4,9 +4,11 @@ use std::io::{BufReader, BufWriter, Cursor, Read};
 use std::thread;
 use std::time::Duration;
 
+use ezlog::EZLogger;
+use ezlog::Level;
 use ezlog::{
-    create_log, CipherKind, CompressKind, EZLogCallback, EZLogConfig, EZLogConfigBuilder, EZLogger,
-    EZRecord, EventPrinter, Header,
+    create_log, CipherKind, CompressKind, EZLogCallback, EZLogConfig, EZLogConfigBuilder, EZRecord,
+    EventPrinter, Header,
 };
 use log::{debug, error, info, trace, warn, LevelFilter};
 use log::{Metadata, Record};
@@ -50,7 +52,7 @@ fn get_config() -> EZLogConfig {
     let key = b"an example very very secret key.";
     let nonce = b"unique nonce";
     EZLogConfigBuilder::new()
-        .level(ezlog::Level::Trace)
+        .level(Level::Trace)
         .dir_path(
             dirs::download_dir()
                 .unwrap()
