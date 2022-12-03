@@ -8,3 +8,5 @@ popd
 pushd android
 sh b_android.sh
 popd
+
+cargo clippy --workspace --all-features

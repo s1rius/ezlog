@@ -1,5 +1,5 @@
 use std::fs::OpenOptions;
-use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom};
+use std::io::{BufReader, BufWriter, Cursor, Read};
 
 use std::thread;
 use std::time::Duration;
@@ -34,7 +34,7 @@ pub fn main() {
     warn!("4. test log to file");
     error!("5. log complete");
 
-    for i in 0..1000 {
+    for i in 0..100 {
         trace!("{}{}", i, random_string(300));
     }
 
@@ -52,7 +52,7 @@ fn get_config() -> EZLogConfig {
     EZLogConfigBuilder::new()
         .level(ezlog::Level::Trace)
         .dir_path(
-            dirs::cache_dir()
+            dirs::download_dir()
                 .unwrap()
                 .into_os_string()
                 .into_string()
@@ -84,9 +84,6 @@ fn read_log_file_rewrite() {
     br.read_to_end(&mut buffer).unwrap();
 
     let mut cursor = Cursor::new(buffer);
-    cursor
-        .seek(SeekFrom::Start(Header::fixed_size() as u64))
-        .unwrap();
 
     let plaintext_log_path = path.with_extension("ez.log");
     let plaintext_log = OpenOptions::new()
@@ -100,9 +97,16 @@ fn read_log_file_rewrite() {
 
     let mut compression = EZLogger::create_compress(&log_config);
     let mut cryptor = EZLogger::create_cryptor(&log_config).unwrap();
-
-    EZLogger::decode_body_and_write(&mut cursor, &mut writer, &mut compression, &mut cryptor)
-        .unwrap();
+    let header = Header::decode(&mut cursor).unwrap();
+    println!("{:?}", &header);
+    EZLogger::decode_body_and_write(
+        &mut cursor,
+        &mut writer,
+        &header.version(),
+        &mut compression,
+        &mut cryptor,
+    )
+    .unwrap();
 }
 
 struct SimpleLogger;
