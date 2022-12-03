@@ -8,7 +8,7 @@ use jni::{
     signature::Primitive,
     strings::JNIString,
     sys::{jboolean, jbyteArray, jint, jobject, jobjectArray, jvalue, JNI_VERSION_1_6},
-    JNIEnv, JavaVM, AttachGuard,
+    AttachGuard, JNIEnv, JavaVM,
 };
 use libc::c_void;
 use once_cell::sync::OnceCell;

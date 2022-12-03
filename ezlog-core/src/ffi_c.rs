@@ -1,6 +1,8 @@
 use libc::c_void;
 
+use crate::config::Level;
 use crate::events::EventPrinter;
+use crate::recorder::EZRecordBuilder;
 use crate::*;
 use core::slice;
 use libc::c_char;

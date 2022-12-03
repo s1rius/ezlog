@@ -8,6 +8,8 @@ mod config;
 mod crypto;
 mod errors;
 mod events;
+mod logger;
+mod recorder;
 mod thread_name;
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -19,45 +21,34 @@ mod ffi_java;
 
 pub use self::config::EZLogConfig;
 pub use self::config::EZLogConfigBuilder;
+pub use self::config::Level;
 pub use self::events::Event;
 pub use self::events::EventPrinter;
+pub use self::logger::EZLogger;
+pub use self::logger::Header;
+pub use self::recorder::EZRecord;
+pub use self::recorder::EZRecordBuilder;
 
-use appender::EZAppender;
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use compress::ZlibCodec;
 use crossbeam_channel::{Sender, TrySendError};
-use crypto::{Aes128Gcm, Aes256Gcm};
 use errors::LogError;
-#[cfg(feature = "decode")]
-use integer_encoding::VarIntReader;
-use integer_encoding::VarIntWriter;
 use memmap2::MmapMut;
 use once_cell::sync::OnceCell;
 
 use std::error::Error;
 use std::path::PathBuf;
 use std::{
-    cmp,
-    collections::{hash_map::DefaultHasher, HashMap},
-    fmt, fs,
-    hash::{Hash, Hasher},
+    collections::HashMap,
+    hash::Hash,
     io::{self, Cursor, Read, Write},
     mem::MaybeUninit,
     ptr,
-    rc::Rc,
     sync::Once,
     thread,
 };
-use time::format_description::well_known::Rfc3339;
-use time::Date;
 use time::{Duration, OffsetDateTime};
 
 #[cfg(feature = "backtrace")]
 use backtrace::Backtrace;
-#[cfg(feature = "log")]
-use log::Record;
-#[cfg(feature = "decode")]
-use std::io::BufRead;
 
 /// A [EZLogger] default name. current is "default".
 pub const DEFAULT_LOG_NAME: &str = "default";
@@ -158,19 +149,20 @@ fn init_log_channel() -> Sender<EZMsg> {
                         };
                     }
                     EZMsg::Record(record) => {
-                        let log = match get_map().get_mut(&record.log_name) {
+                        let log = match get_map().get_mut(&record.log_name().to_owned()) {
                             Some(l) => l,
                             None => {
                                 event!(unknown_err & record.t_id(), "logger not found");
                                 continue;
                             }
                         };
-                        if log.config.level < record.level {
+                        if log.config.level < record.level() {
                             event!(
                                 record_filter_out & record.t_id(),
                                 &format!(
                                     "current level {}, max level {}",
-                                    &record.level, &log.config.level
+                                    &record.level(),
+                                    &log.config.level
                                 )
                             );
                             continue;
@@ -471,316 +463,6 @@ pub struct FetchResult {
 }
 
 /// The Logger struct to implement the Log encode.
-pub struct EZLogger {
-    config: Rc<EZLogConfig>,
-    appender: Box<dyn Write>,
-    compression: Option<Box<dyn Compress>>,
-    cryptor: Option<Box<dyn Cryptor>>,
-}
-
-impl EZLogger {
-    pub fn new(config: EZLogConfig) -> Result<Self> {
-        let rc_conf = Rc::new(config);
-        let appender = Box::new(EZAppender::new(Rc::clone(&rc_conf))?);
-        let compression = EZLogger::create_compress(&rc_conf);
-        let cryptor = EZLogger::create_cryptor(&rc_conf)?;
-
-        Ok(Self {
-            config: Rc::clone(&rc_conf),
-            appender,
-            compression,
-            cryptor,
-        })
-    }
-
-    pub fn create_cryptor(config: &EZLogConfig) -> Result<Option<Box<dyn Cryptor>>> {
-        if let Some(key) = &config.cipher_key {
-            if let Some(nonce) = &config.cipher_nonce {
-                match config.cipher {
-                    CipherKind::AES128GCM => {
-                        let encryptor = Aes128Gcm::new(key, nonce)?;
-                        Ok(Some(Box::new(encryptor)))
-                    }
-                    CipherKind::AES256GCM => {
-                        let encryptor = Aes256Gcm::new(key, nonce)?;
-                        Ok(Some(Box::new(encryptor)))
-                    }
-                    CipherKind::NONE => Ok(None),
-                    CipherKind::UNKNOWN => Ok(None),
-                }
-            } else {
-                Ok(None)
-            }
-        } else {
-            Ok(None)
-        }
-    }
-
-    pub fn create_compress(config: &EZLogConfig) -> Option<Box<dyn Compress>> {
-        match config.compress {
-            CompressKind::ZLIB => Some(Box::new(ZlibCodec::new(&config.compress_level))),
-            CompressKind::NONE => None,
-            CompressKind::UNKNOWN => None,
-        }
-    }
-
-    fn append(&mut self, record: &EZRecord) -> Result<()> {
-        let mut e: Option<LogError> = None;
-        if record.content.len() > self.config.max_size as usize / 2 {
-            record.trunks(&self.config).iter().for_each(|record| {
-                match self.encode_as_block(record) {
-                    Ok(buf) => match self.appender.write_all(&buf) {
-                        Ok(_) => {}
-                        Err(err) => e = Some(LogError::IoError(err)),
-                    },
-                    Err(err) => {
-                        e = Some(err);
-                    }
-                }
-            })
-        } else {
-            let buf = self.encode_as_block(record)?;
-            self.appender.write_all(&buf)?;
-        }
-        if let Some(err) = e {
-            Err(err)
-        } else {
-            Ok(())
-        }
-    }
-
-    #[inline]
-    fn encode(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
-        let mut buf = self.format(record);
-        if let Some(encryptor) = &self.cryptor {
-            event!(encrypt_start & record.t_id());
-            buf = encryptor.encrypt(&buf)?;
-            event!(encrypt_end & record.t_id());
-        }
-        if let Some(compression) = &self.compression {
-            event!(compress_start & record.t_id());
-            buf = compression.compress(&buf).map_err(LogError::Compress)?;
-            event!(compress_end & record.t_id());
-        }
-        Ok(buf)
-    }
-
-    ///
-    #[inline]
-    pub fn encode_as_block(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
-        let buf = self.encode(record)?;
-        Self::encode_content(buf)
-    }
-
-    #[inline]
-    pub(crate) fn encode_content(mut buf: Vec<u8>) -> Result<Vec<u8>> {
-        let mut chunk: Vec<u8> = Vec::new();
-        chunk.push(RECORD_SIGNATURE_START);
-        let size = buf.len();
-        let mut size_chunk = Self::create_size_chunk(size)?;
-        chunk.append(&mut size_chunk);
-        chunk.append(&mut buf);
-        chunk.push(RECORD_SIGNATURE_END);
-        Ok(chunk)
-    }
-
-    #[inline]
-    pub(crate) fn create_size_chunk(size: usize) -> Result<Vec<u8>> {
-        let mut chunk: Vec<u8> = Vec::new();
-        chunk.write_varint(size)?;
-        Ok(chunk)
-    }
-
-    #[inline]
-    #[cfg(feature = "decode")]
-    pub fn decode_record(&mut self, reader: &mut dyn BufRead) -> Result<Vec<u8>> {
-        Self::decode_record_from_read(
-            reader,
-            &self.config.version,
-            &self.compression,
-            &self.cryptor,
-        )
-    }
-
-    #[inline]
-    #[cfg(feature = "decode")]
-    pub fn decode_body_and_write(
-        reader: &mut dyn BufRead,
-        writer: &mut dyn Write,
-        version: &Version,
-        compression: &Option<Box<dyn Compress>>,
-        cryptor: &Option<Box<dyn Cryptor>>,
-    ) -> io::Result<()> {
-        loop {
-            match Self::decode_record_from_read(reader, version, compression, cryptor) {
-                Ok(buf) => {
-                    if buf.is_empty() {
-                        break;
-                    }
-                    writer.write_all(&buf)?;
-                }
-                Err(e) => {
-                    match e {
-                        LogError::IoError(err) => {
-                            if err.kind() == io::ErrorKind::UnexpectedEof {
-                                break;
-                            }
-                        }
-                        LogError::IllegalArgument(_) => break,
-                        _ => continue,
-                    }
-                }
-            }
-        }
-        writer.flush()
-    }
-
-    #[cfg(feature = "decode")]
-    pub(crate) fn decode_record_from_read(
-        reader: &mut dyn BufRead,
-        version: &Version,
-        compression: &Option<Box<dyn Compress>>,
-        cryptor: &Option<Box<dyn Cryptor>>,
-    ) -> Result<Vec<u8>> {
-        let chunk = Self::decode_record_to_content(reader, version)?;
-        Self::decode_record_content(&chunk, compression, cryptor)
-    }
-
-    #[inline]
-    #[cfg(feature = "decode")]
-    pub(crate) fn decode_record_to_content(
-        reader: &mut dyn BufRead,
-        version: &Version,
-    ) -> Result<Vec<u8>> {
-        let mut buf = Vec::new();
-        let nums = reader.read_until(RECORD_SIGNATURE_START, &mut buf)?;
-        if nums == 0 {
-            return Err(LogError::IllegalArgument(
-                "has no record start signature".to_string(),
-            ));
-        }
-        let content_size: usize = Self::decode_record_size(reader, version)?;
-        let mut chunk = vec![0u8; content_size];
-        reader.read_exact(&mut chunk)?;
-        let end_sign = reader.read_u8()?;
-        if RECORD_SIGNATURE_END != end_sign {
-            return Err(LogError::Parse("record end sign error".to_string()));
-        }
-        Ok(chunk)
-    }
-
-    #[inline]
-    #[cfg(feature = "decode")]
-    pub(crate) fn decode_record_size(
-        mut reader: &mut dyn BufRead,
-        version: &Version,
-    ) -> Result<usize> {
-        match version {
-            Version::V1 => {
-                let size_of_size = reader.read_u8()?;
-                let content_size: usize = match size_of_size {
-                    1 => reader.read_u8()? as usize,
-                    2 => reader.read_u16::<BigEndian>()? as usize,
-                    _ => reader.read_u32::<BigEndian>()? as usize,
-                };
-                Ok(content_size)
-            }
-            Version::V2 => {
-                let size: usize = reader.read_varint()?;
-                Ok(size)
-            }
-            Version::UNKNOWN => Err(LogError::IllegalArgument(format!(
-                "unknow version {:?}",
-                version
-            ))),
-        }
-    }
-
-    #[inline]
-    #[cfg(feature = "decode")]
-    pub fn decode_record_content(
-        chunk: &[u8],
-        compression: &Option<Box<dyn Compress>>,
-        cryptor: &Option<Box<dyn Cryptor>>,
-    ) -> Result<Vec<u8>> {
-        let mut buf = chunk.to_vec();
-
-        if let Some(decompression) = compression {
-            buf = decompression.decompress(&buf)?;
-        }
-
-        if let Some(decryptor) = cryptor {
-            buf = decryptor.decrypt(&buf)?;
-        }
-        Ok(buf)
-    }
-
-    fn format(&self, record: &EZRecord) -> Vec<u8> {
-        let time = record
-            .time
-            .format(&Rfc3339)
-            .unwrap_or_else(|_| "unknown".to_string());
-        format!(
-            "\n{} {} {} [{}:{}] {}",
-            time,
-            record.level(),
-            record.target(),
-            record.thread_name(),
-            record.thread_id(),
-            record.content()
-        )
-        .into_bytes()
-    }
-
-    fn flush(&mut self) -> std::result::Result<(), io::Error> {
-        self.appender.flush()
-    }
-
-    fn trim(&self) {
-        match fs::read_dir(&self.config.dir_path) {
-            Ok(dir) => {
-                for file in dir {
-                    match file {
-                        Ok(file) => {
-                            if let Some(name) = file.file_name().to_str() {
-                                match self.config.is_file_out_of_date(name) {
-                                    Ok(out_of_date) => {
-                                        if out_of_date {
-                                            fs::remove_file(file.path()).unwrap_or_else(|e| {
-                                                event!(
-                                                    trim_logger_err
-                                                        & format!("trim: remove file err: {}", e)
-                                                )
-                                            });
-                                        }
-                                    }
-                                    Err(e) => {
-                                        event!(
-                                            trim_logger_err
-                                                & format!(
-                                                    "trim: judge file out of date error: {}",
-                                                    e
-                                                )
-                                        )
-                                    }
-                                }
-                            };
-                        }
-                        Err(e) => {
-                            event!(trim_logger_err & format!("trim: traversal file error: {}", e))
-                        }
-                    }
-                }
-            }
-            Err(e) => event!(trim_logger_err & format!("trim: read dir error: {}", e)),
-        }
-    }
-
-    pub fn query_log_files_for_date(&self, date: Date) -> Vec<PathBuf> {
-        self.config.query_log_files_for_date(date)
-    }
-}
-
 /// Compress function abstract
 pub trait Compression {
     fn compress(&self, data: &[u8]) -> std::io::Result<Vec<u8>>;
@@ -959,456 +641,6 @@ impl From<CompressLevel> for u8 {
     }
 }
 
-/// EZLog file Header
-///
-/// every log file starts with a header,
-/// which is used to describe the version, log length, compress type, cipher kind and so on.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Header {
-    /// version code
-    version: Version,
-    /// unused flag
-    flag: u8,
-    /// current log file write position
-    recorder_position: u32,
-    /// compress type
-    compress: CompressKind,
-    /// cipher kind
-    cipher: CipherKind,
-}
-
-impl Default for Header {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Header {
-    pub fn new() -> Self {
-        Header {
-            version: Version::V1,
-            flag: 0,
-            recorder_position: Header::fixed_size() as u32,
-            compress: CompressKind::ZLIB,
-            cipher: CipherKind::AES128GCM,
-        }
-    }
-
-    pub fn create(config: &EZLogConfig) -> Self {
-        Header {
-            version: config.version,
-            flag: 0,
-            recorder_position: Header::fixed_size() as u32,
-            compress: config.compress,
-            cipher: config.cipher,
-        }
-    }
-
-    pub fn fixed_size() -> usize {
-        V1_LOG_HEADER_SIZE
-    }
-
-    pub fn encode(&self, writer: &mut dyn Write) -> std::result::Result<(), io::Error> {
-        writer.write_all(crate::FILE_SIGNATURE)?;
-        writer.write_u8(self.version.into())?;
-        writer.write_u8(self.flag)?;
-        writer.write_u32::<BigEndian>(self.recorder_position)?;
-        writer.write_u8(self.compress.into())?;
-        writer.write_u8(self.cipher.into())
-    }
-
-    pub fn decode(reader: &mut dyn Read) -> std::result::Result<Self, errors::LogError> {
-        let mut signature = [0u8; 2];
-        reader.read_exact(&mut signature)?;
-        let version = reader.read_u8()?;
-        let flag = reader.read_u8()?;
-        let mut recorder_size = reader.read_u32::<BigEndian>()?;
-        if recorder_size < Header::fixed_size() as u32 {
-            recorder_size = Header::fixed_size() as u32;
-        }
-
-        let compress = reader.read_u8()?;
-        let cipher = reader.read_u8()?;
-        Ok(Header {
-            version: Version::from(version),
-            flag,
-            recorder_position: recorder_size,
-            compress: CompressKind::from(compress),
-            cipher: CipherKind::from(cipher),
-        })
-    }
-
-    pub fn is_valid(&self, config: &EZLogConfig) -> bool {
-        self.version == config.version
-            && self.compress == config.compress
-            && self.cipher == config.cipher
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.version == Version::UNKNOWN && self.recorder_position <= Header::fixed_size() as u32
-    }
-
-    pub fn version(&self) -> &Version {
-        &self.version
-    }
-}
-
-/// Single Log record
-#[derive(Debug, Clone)]
-pub struct EZRecord {
-    id: u64,
-    log_name: String,
-    level: Level,
-    target: String,
-    time: OffsetDateTime,
-    thread_id: usize,
-    thread_name: String,
-    content: String,
-}
-
-impl EZRecord {
-    #[inline]
-    pub fn builder() -> EZRecordBuilder {
-        EZRecordBuilder::new()
-    }
-
-    #[inline]
-    pub fn level(&self) -> Level {
-        self.level
-    }
-
-    #[inline]
-    pub fn target(&self) -> &str {
-        self.target.as_str()
-    }
-
-    #[inline]
-    pub fn timestamp(&self) -> i64 {
-        self.time.unix_timestamp()
-    }
-
-    #[inline]
-    pub fn thread_id(&self) -> usize {
-        self.thread_id
-    }
-
-    #[inline]
-    pub fn thread_name(&self) -> &str {
-        self.thread_name.as_str()
-    }
-
-    #[inline]
-    pub fn content(&self) -> &str {
-        self.content.as_str()
-    }
-
-    #[inline]
-    pub fn to_builder(&self) -> EZRecordBuilder {
-        EZRecordBuilder {
-            record: EZRecord {
-                id: self.id,
-                log_name: self.log_name.clone(),
-                level: self.level,
-                target: self.target.clone(),
-                time: self.time,
-                thread_id: self.thread_id,
-                thread_name: self.thread_name.clone(),
-                content: self.content.clone(),
-            },
-        }
-    }
-
-    #[inline]
-    pub fn to_trunk_builder(&self) -> EZRecordBuilder {
-        EZRecordBuilder {
-            record: EZRecord {
-                id: 0,
-                log_name: self.log_name.clone(),
-                level: self.level,
-                target: self.target.clone(),
-                time: self.time,
-                thread_id: self.thread_id,
-                thread_name: self.thread_name.clone(),
-                content: "".into(),
-            },
-        }
-    }
-
-    #[cfg(feature = "log")]
-    pub fn from(r: &Record) -> Self {
-        let t = thread::current();
-        let t_id = thread_id::get();
-        let t_name = t.name().unwrap_or_default();
-        EZRecordBuilder::new()
-            .log_name(DEFAULT_LOG_NAME.to_string())
-            .level(r.metadata().level().into())
-            .target(r.target().to_string())
-            .time(OffsetDateTime::now_utc())
-            .thread_id(t_id)
-            .thread_name(t_name.to_string())
-            .content(format!("{}", r.args()))
-            .build()
-    }
-
-    pub fn t_id(&self) -> String {
-        format!("{}_{}", self.log_name, &self.id)
-    }
-
-    /// get EZRecord unique id
-    pub fn id(&self) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        self.content.hash(&mut hasher);
-        self.time.hash(&mut hasher);
-        hasher.finish()
-    }
-
-    pub fn trunks(&self, config: &EZLogConfig) -> Vec<EZRecord> {
-        let mut trunks: Vec<EZRecord> = Vec::new();
-        let mut split_content: Vec<char> = Vec::new();
-        let mut size = 0;
-        let chars = self.content.chars();
-        chars.for_each(|c| {
-            size += c.len_utf8();
-            if size > config.max_size as usize / 2 {
-                let ez = self
-                    .to_trunk_builder()
-                    .content(split_content.iter().collect::<String>())
-                    .build();
-                trunks.push(ez);
-                split_content.clear();
-                size = c.len_utf8();
-                split_content.push(c)
-            } else {
-                split_content.push(c);
-            }
-        });
-        if !split_content.is_empty() {
-            let ez = self
-                .to_trunk_builder()
-                .content(String::from_iter(&split_content))
-                .build();
-            trunks.push(ez);
-        }
-        trunks
-    }
-}
-
-/// [EZRecord]'s builder
-#[derive(Debug)]
-pub struct EZRecordBuilder {
-    record: EZRecord,
-}
-
-impl EZRecordBuilder {
-    pub fn new() -> EZRecordBuilder {
-        EZRecordBuilder::default()
-    }
-
-    pub fn level(&mut self, level: Level) -> &mut Self {
-        self.record.level = level;
-        self
-    }
-
-    pub fn target(&mut self, target: String) -> &mut Self {
-        self.record.target = target;
-        self
-    }
-
-    pub fn timestamp(&mut self, timestamp: i64) -> &mut Self {
-        let time = OffsetDateTime::from_unix_timestamp(timestamp)
-            .unwrap_or_else(|_| OffsetDateTime::now_utc());
-        self.record.time = time;
-        self
-    }
-
-    pub fn time(&mut self, time: OffsetDateTime) -> &mut Self {
-        self.record.time = time;
-        self
-    }
-
-    pub fn thread_id(&mut self, thread_id: usize) -> &mut Self {
-        self.record.thread_id = thread_id;
-        self
-    }
-
-    pub fn thread_name(&mut self, thread_name: String) -> &mut Self {
-        self.record.thread_name = thread_name;
-        self
-    }
-
-    pub fn content(&mut self, content: String) -> &mut Self {
-        self.record.content = content;
-        self
-    }
-
-    pub fn log_name(&mut self, name: String) -> &mut Self {
-        self.record.log_name = name;
-        self
-    }
-
-    pub fn build(&mut self) -> EZRecord {
-        self.record.id = self.record.id();
-        self.record.clone()
-    }
-}
-
-impl Default for EZRecordBuilder {
-    fn default() -> Self {
-        EZRecordBuilder {
-            record: EZRecord {
-                id: 0,
-                log_name: DEFAULT_LOG_NAME.to_string(),
-                level: Level::Info,
-                target: "".to_string(),
-                time: OffsetDateTime::now_utc(),
-                thread_id: thread_id::get(),
-                thread_name: thread::current().name().unwrap_or("unknown").to_string(),
-                content: "".to_string(),
-            },
-        }
-    }
-}
-
-/// Log level, used to filter log records
-#[repr(usize)]
-#[derive(Copy, Eq, Debug)]
-pub enum Level {
-    /// The "error" level.
-    ///
-    /// Designates very serious errors.
-    // This way these line up with the discriminants for LevelFilter below
-    // This works because Rust treats field-less enums the same way as C does:
-    // https://doc.rust-lang.org/reference/items/enumerations.html#custom-discriminant-values-for-field-less-enumerations
-    Error = 1,
-    /// The "warn" level.
-    ///
-    /// Designates hazardous situations.
-    Warn,
-    /// The "info" level.
-    ///
-    /// Designates useful information.
-    Info,
-    /// The "debug" level.
-    ///
-    /// Designates lower priority information.
-    Debug,
-    /// The "trace" level.
-    ///
-    /// Designates very low priority, often extremely verbose, information.
-    Trace,
-}
-
-impl Level {
-    pub fn from_usize(u: usize) -> Option<Level> {
-        match u {
-            1 => Some(Level::Error),
-            2 => Some(Level::Warn),
-            3 => Some(Level::Info),
-            4 => Some(Level::Debug),
-            5 => Some(Level::Trace),
-            _ => None,
-        }
-    }
-
-    /// Returns the most verbose logging level.
-    #[inline]
-    pub fn max() -> Level {
-        Level::Trace
-    }
-
-    /// Returns the string representation of the `Level`.
-    ///
-    /// This returns the same string as the `fmt::Display` implementation.
-    pub fn as_str(&self) -> &'static str {
-        LOG_LEVEL_NAMES[*self as usize]
-    }
-
-    /// Iterate through all supported logging levels.
-    ///
-    /// The order of iteration is from more severe to less severe log messages.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use log::Level;
-    ///
-    /// let mut levels = Level::iter();
-    ///
-    /// assert_eq!(Some(Level::Error), levels.next());
-    /// assert_eq!(Some(Level::Trace), levels.last());
-    /// ```
-    pub fn iter() -> impl Iterator<Item = Self> {
-        (1..6).map(|i| Self::from_usize(i).unwrap_or(Level::Error))
-    }
-}
-
-impl Clone for Level {
-    #[inline]
-    fn clone(&self) -> Level {
-        *self
-    }
-}
-
-impl PartialEq for Level {
-    #[inline]
-    fn eq(&self, other: &Level) -> bool {
-        *self as usize == *other as usize
-    }
-}
-
-impl PartialOrd for Level {
-    #[inline]
-    fn partial_cmp(&self, other: &Level) -> Option<cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-
-    #[inline]
-    fn lt(&self, other: &Level) -> bool {
-        (*self as usize) < *other as usize
-    }
-
-    #[inline]
-    fn le(&self, other: &Level) -> bool {
-        *self as usize <= *other as usize
-    }
-
-    #[inline]
-    fn gt(&self, other: &Level) -> bool {
-        *self as usize > *other as usize
-    }
-
-    #[inline]
-    fn ge(&self, other: &Level) -> bool {
-        *self as usize >= *other as usize
-    }
-}
-
-impl Ord for Level {
-    #[inline]
-    fn cmp(&self, other: &Level) -> cmp::Ordering {
-        (*self as usize).cmp(&(*other as usize))
-    }
-}
-
-#[cfg(feature = "log")]
-impl From<log::Level> for Level {
-    fn from(log_level: log::Level) -> Self {
-        match log_level {
-            log::Level::Error => Level::Error,
-            log::Level::Warn => Level::Warn,
-            log::Level::Info => Level::Info,
-            log::Level::Debug => Level::Debug,
-            log::Level::Trace => Level::Trace,
-        }
-    }
-}
-
-impl fmt::Display for Level {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.pad(self.as_str())
-    }
-}
-
 pub(crate) fn next_date(time: OffsetDateTime) -> OffsetDateTime {
     time.date().midnight().assume_utc() + Duration::days(1)
 }
@@ -1437,10 +669,11 @@ mod tests {
     use aes_gcm::{Aes256Gcm, Nonce}; // Or `Aes128Gcm`
     use flate2::{bufread::ZlibDecoder, write::ZlibEncoder, Compression};
 
+    use crate::logger::Header;
+    use crate::recorder::EZRecordBuilder;
     use crate::EZLogger;
     use crate::{
-        config::EZLogConfigBuilder, EZLogConfig, EZRecordBuilder, Header, RECORD_SIGNATURE_END,
-        RECORD_SIGNATURE_START,
+        config::EZLogConfigBuilder, EZLogConfig, RECORD_SIGNATURE_END, RECORD_SIGNATURE_START,
     };
 
     fn create_config() -> EZLogConfig {
@@ -1545,8 +778,8 @@ mod tests {
         let record = EZRecordBuilder::new().content("深圳".into()).build();
         let trunks = record.trunks(&config);
         assert_eq!(trunks.len(), 2);
-        assert_eq!(trunks[0].content, "深");
-        assert_eq!(trunks[1].content, "圳");
+        assert_eq!(trunks[0].content(), "深");
+        assert_eq!(trunks[1].content(), "圳");
     }
 
     #[cfg(feature = "decode")]
@@ -1565,7 +798,6 @@ mod tests {
         use crate::EZLogger;
         use std::fs::{self, OpenOptions};
         use std::io::BufReader;
-        use std::thread;
         use time::OffsetDateTime;
 
         let config = create_all_feature_config();
