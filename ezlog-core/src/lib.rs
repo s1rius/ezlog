@@ -10,12 +10,12 @@ mod errors;
 mod events;
 mod thread_name;
 
-#[cfg(target_os = "android")]
-#[allow(non_snake_case)]
-mod ffi_java;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 #[allow(non_snake_case)]
 mod ffi_c;
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)]
+mod ffi_java;
 
 pub use self::config::EZLogConfig;
 pub use self::config::EZLogConfigBuilder;
@@ -28,6 +28,9 @@ use compress::ZlibCodec;
 use crossbeam_channel::{Sender, TrySendError};
 use crypto::{Aes128Gcm, Aes256Gcm};
 use errors::LogError;
+#[cfg(feature = "decode")]
+use integer_encoding::VarIntReader;
+use integer_encoding::VarIntWriter;
 use memmap2::MmapMut;
 use once_cell::sync::OnceCell;
 
@@ -51,10 +54,10 @@ use time::{Duration, OffsetDateTime};
 
 #[cfg(feature = "backtrace")]
 use backtrace::Backtrace;
-#[cfg(feature = "decode")]
-use io::BufRead;
 #[cfg(feature = "log")]
 use log::Record;
+#[cfg(feature = "decode")]
+use std::io::BufRead;
 
 /// A [EZLogger] default name. current is "default".
 pub const DEFAULT_LOG_NAME: &str = "default";
@@ -546,6 +549,7 @@ impl EZLogger {
         }
     }
 
+    #[inline]
     fn encode(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
         let mut buf = self.format(record);
         if let Some(encryptor) = &self.cryptor {
@@ -562,52 +566,53 @@ impl EZLogger {
     }
 
     ///
+    #[inline]
     pub fn encode_as_block(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
+        let buf = self.encode(record)?;
+        Self::encode_content(buf)
+    }
+
+    #[inline]
+    pub(crate) fn encode_content(mut buf: Vec<u8>) -> Result<Vec<u8>> {
         let mut chunk: Vec<u8> = Vec::new();
         chunk.push(RECORD_SIGNATURE_START);
-        let mut buf = self.encode(record)?;
         let size = buf.len();
-        let mut size_chunk = EZLogger::create_size_chunk(size)?;
+        let mut size_chunk = Self::create_size_chunk(size)?;
         chunk.append(&mut size_chunk);
         chunk.append(&mut buf);
         chunk.push(RECORD_SIGNATURE_END);
         Ok(chunk)
     }
 
-    fn create_size_chunk(size: usize) -> Result<Vec<u8>> {
+    #[inline]
+    pub(crate) fn create_size_chunk(size: usize) -> Result<Vec<u8>> {
         let mut chunk: Vec<u8> = Vec::new();
-        match size {
-            size if size < (u8::MAX as usize) => {
-                chunk.write_u8(1)?;
-                chunk.write_u8(size as u8)?;
-            }
-            size if size >= (u8::MAX as usize) && size < (u32::MAX as usize) => {
-                chunk.write_u8(2)?;
-                chunk.write_u16::<BigEndian>(size as u16)?;
-            }
-            size if size >= (u32::MAX as usize) => {
-                chunk.write_u8(4)?;
-                chunk.write_u32::<BigEndian>(size as u32)?;
-            }
-            _ => {}
-        };
+        chunk.write_varint(size)?;
         Ok(chunk)
     }
 
+    #[inline]
     #[cfg(feature = "decode")]
     pub fn decode_record(&mut self, reader: &mut dyn BufRead) -> Result<Vec<u8>> {
-        EZLogger::decode_record_from_read(reader, &self.compression, &self.cryptor)
+        Self::decode_record_from_read(
+            reader,
+            &self.config.version,
+            &self.compression,
+            &self.cryptor,
+        )
     }
 
+    #[inline]
     #[cfg(feature = "decode")]
     pub fn decode_body_and_write(
         reader: &mut dyn BufRead,
         writer: &mut dyn Write,
+        version: &Version,
         compression: &Option<Box<dyn Compress>>,
         cryptor: &Option<Box<dyn Cryptor>>,
     ) -> io::Result<()> {
         loop {
-            match EZLogger::decode_record_from_read(reader, compression, cryptor) {
+            match Self::decode_record_from_read(reader, version, compression, cryptor) {
                 Ok(buf) => {
                     if buf.is_empty() {
                         break;
@@ -615,15 +620,15 @@ impl EZLogger {
                     writer.write_all(&buf)?;
                 }
                 Err(e) => {
-                    if let LogError::IoError(err) = e {
-                        if err.kind() == io::ErrorKind::UnexpectedEof {
-                            break;
+                    match e {
+                        LogError::IoError(err) => {
+                            if err.kind() == io::ErrorKind::UnexpectedEof {
+                                break;
+                            }
                         }
-                        println!("decode log error {err:?}");
-                    } else {
-                        println!("decode log error {e:?}");
+                        LogError::IllegalArgument(_) => break,
+                        _ => continue,
                     }
-                    continue;
                 }
             }
         }
@@ -631,32 +636,67 @@ impl EZLogger {
     }
 
     #[cfg(feature = "decode")]
-    pub fn decode_record_from_read(
+    pub(crate) fn decode_record_from_read(
         reader: &mut dyn BufRead,
+        version: &Version,
         compression: &Option<Box<dyn Compress>>,
         cryptor: &Option<Box<dyn Cryptor>>,
+    ) -> Result<Vec<u8>> {
+        let chunk = Self::decode_record_to_content(reader, version)?;
+        Self::decode_record_content(&chunk, compression, cryptor)
+    }
+
+    #[inline]
+    #[cfg(feature = "decode")]
+    pub(crate) fn decode_record_to_content(
+        reader: &mut dyn BufRead,
+        version: &Version,
     ) -> Result<Vec<u8>> {
         let mut buf = Vec::new();
         let nums = reader.read_until(RECORD_SIGNATURE_START, &mut buf)?;
         if nums == 0 {
-            return Ok(buf);
+            return Err(LogError::IllegalArgument(
+                "has no record start signature".to_string(),
+            ));
         }
-
-        let size_of_size = reader.read_u8()?;
-        let content_size: usize = match size_of_size {
-            1 => reader.read_u8()? as usize,
-            2 => reader.read_u16::<BigEndian>()? as usize,
-            _ => reader.read_u32::<BigEndian>()? as usize,
-        };
+        let content_size: usize = Self::decode_record_size(reader, version)?;
         let mut chunk = vec![0u8; content_size];
         reader.read_exact(&mut chunk)?;
         let end_sign = reader.read_u8()?;
         if RECORD_SIGNATURE_END != end_sign {
             return Err(LogError::Parse("record end sign error".to_string()));
         }
-        EZLogger::decode_record_content(&chunk, compression, cryptor)
+        Ok(chunk)
     }
 
+    #[inline]
+    #[cfg(feature = "decode")]
+    pub(crate) fn decode_record_size(
+        mut reader: &mut dyn BufRead,
+        version: &Version,
+    ) -> Result<usize> {
+        match version {
+            Version::V1 => {
+                let size_of_size = reader.read_u8()?;
+                let content_size: usize = match size_of_size {
+                    1 => reader.read_u8()? as usize,
+                    2 => reader.read_u16::<BigEndian>()? as usize,
+                    _ => reader.read_u32::<BigEndian>()? as usize,
+                };
+                Ok(content_size)
+            }
+            Version::V2 => {
+                let size: usize = reader.read_varint()?;
+                Ok(size)
+            }
+            Version::UNKNOWN => Err(LogError::IllegalArgument(format!(
+                "unknow version {:?}",
+                version
+            ))),
+        }
+    }
+
+    #[inline]
     #[cfg(feature = "decode")]
     pub fn decode_record_content(
         chunk: &[u8],
@@ -777,6 +817,7 @@ pub trait Cryptor: Encryptor + Decryptor {}
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
 pub enum Version {
     V1,
+    V2,
     UNKNOWN,
 }
 
@@ -784,6 +825,7 @@ impl From<u8> for Version {
     fn from(v: u8) -> Self {
         match v {
             1 => Version::V1,
+            2 => Version::V2,
             _ => Version::UNKNOWN,
         }
     }
@@ -793,6 +835,7 @@ impl From<Version> for u8 {
     fn from(v: Version) -> Self {
         match v {
             Version::V1 => 1,
+            Version::V2 => 2,
             Version::UNKNOWN => 0,
         }
     }
@@ -1003,6 +1046,10 @@ impl Header {
 
     pub fn is_empty(&self) -> bool {
         self.version == Version::UNKNOWN && self.recorder_position <= Header::fixed_size() as u32
+    }
+
+    pub fn version(&self) -> &Version {
+        &self.version
     }
 }
 
@@ -1383,13 +1430,14 @@ fn hook_panic() {
 
 #[cfg(test)]
 mod tests {
-    use std::io::{Read, Write};
+    use std::io::{Cursor, Read, Write};
 
     use aead::KeyInit;
     use aes_gcm::aead::Aead;
     use aes_gcm::{Aes256Gcm, Nonce}; // Or `Aes128Gcm`
     use flate2::{bufread::ZlibDecoder, write::ZlibEncoder, Compression};
 
+    use crate::EZLogger;
     use crate::{
         config::EZLogConfigBuilder, EZLogConfig, EZRecordBuilder, Header, RECORD_SIGNATURE_END,
         RECORD_SIGNATURE_START,
@@ -1482,6 +1530,15 @@ mod tests {
         create_config();
     }
 
+    #[cfg(feature = "decode")]
+    #[test]
+    fn test_record_len() {
+        let chunk = EZLogger::create_size_chunk(1000).unwrap();
+        let mut cursor = Cursor::new(chunk);
+        let size = EZLogger::decode_record_size(&mut cursor, &crate::Version::V2).unwrap();
+        assert_eq!(1000, size)
+    }
+
     #[test]
     fn test_record_truncks() {
         let config = EZLogConfigBuilder::new().max_size(6).build();
@@ -1494,16 +1551,28 @@ mod tests {
 
     #[cfg(feature = "decode")]
     #[test]
-    fn teset_encode_decode() {
+    fn teset_encode_decode_trunk() {
+        let vec = "hello world".as_bytes();
+        let encode = EZLogger::encode_content(vec.to_owned()).unwrap();
+        let mut cursor = Cursor::new(encode);
+        let decode = EZLogger::decode_record_to_content(&mut cursor, &crate::Version::V2).unwrap();
+        assert_eq!(vec, decode)
+    }
+
+    #[cfg(feature = "decode")]
+    #[test]
+    fn teset_encode_decode_file() {
         use crate::EZLogger;
         use std::fs::{self, OpenOptions};
-        use std::io::{BufReader, Seek, SeekFrom};
+        use std::io::BufReader;
+        use std::thread;
         use time::OffsetDateTime;
 
         let config = create_all_feature_config();
-        let mut logger = EZLogger::new(config).unwrap();
+        fs::remove_dir_all(&config.dir_path).unwrap_or_default();
+        let mut logger = EZLogger::new(config.clone()).unwrap();
 
-        for i in 0..1000 {
+        for i in 0..1 {
             logger
                 .append(
                     &EZRecordBuilder::default()
@@ -1512,12 +1581,9 @@ mod tests {
                 )
                 .unwrap();
         }
-
         logger.flush().unwrap();
 
-        let config = create_all_feature_config();
-        let (path, _mmap) = config.create_mmap_file(OffsetDateTime::now_utc()).unwrap();
-
+        let (path, _mmap) = &config.create_mmap_file(OffsetDateTime::now_utc()).unwrap();
         let origin_log = OpenOptions::new()
             .read(true)
             .write(true)
@@ -1526,13 +1592,10 @@ mod tests {
             .unwrap();
 
         let mut reader = BufReader::new(origin_log);
-        reader
-            .seek(SeekFrom::Start(Header::fixed_size() as u64))
-            .unwrap();
-
-        let decode = logger.decode_record(&mut reader).unwrap();
-        println!("{}", String::from_utf8(decode).unwrap());
-
-        fs::remove_dir_all(&config.dir_path).unwrap();
+        let mut header = Header::decode(&mut reader).unwrap();
+        header.recorder_position = Header::fixed_size().try_into().unwrap();
+        assert_eq!(header, Header::create(&logger.config));
+        logger.decode_record(&mut reader).unwrap();
+        fs::remove_dir_all(&config.dir_path).unwrap_or_default();
     }
 }

@@ -160,6 +160,7 @@ pub fn main() {
     EZLogger::decode_body_and_write(
         &mut buf_reader,
         &mut plain_text_write,
+        &config.version,
         &compression,
         &decryptor,
     )

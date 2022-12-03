@@ -235,7 +235,7 @@ impl EZLogConfigBuilder {
         EZLogConfigBuilder {
             config: EZLogConfig {
                 level: Level::Trace,
-                version: Version::V1,
+                version: Version::V2,
                 dir_path: "".to_string(),
                 name: DEFAULT_LOG_NAME.to_string(),
                 file_suffix: DEFAULT_LOG_FILE_SUFFIX.to_string(),
