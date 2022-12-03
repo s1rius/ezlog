@@ -17,23 +17,23 @@ class EZLogger(config: EZLogConfig) {
         createLogger(config)
     }
 
-    fun v(tag: String, msg: String) {
+    fun v(tag: String?, msg: String?) {
         log(loggerName, VERBOSE, tag, msg)
     }
 
-    fun d(tag: String, msg: String) {
+    fun d(tag: String?, msg: String?) {
         log(loggerName, DEBUG, tag, msg)
     }
 
-    fun i(tag: String, msg: String) {
+    fun i(tag: String?, msg: String?) {
         log(loggerName, INFO, tag, msg)
     }
 
-    fun w(tag: String, msg: String) {
+    fun w(tag: String?, msg: String?) {
         log(loggerName, WARN, tag, msg)
     }
 
-    fun e(tag: String, msg: String) {
+    fun e(tag: String?, msg: String?) {
         log(loggerName, ERROR, tag, msg)
     }
 
