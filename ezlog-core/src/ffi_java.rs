@@ -1,3 +1,6 @@
+use crate::errors::LogError;
+use crate::errors::LogError::*;
+use crate::events::Event::{self, *};
 use crate::{
     event, events::EventPrinter, set_boxed_callback, set_event_listener, thread_name, CipherKind,
     CompressKind, CompressLevel, EZLogConfigBuilder, EZRecordBuilder, Level,
@@ -25,13 +28,19 @@ pub extern "system" fn JNI_OnLoad(vm: JavaVM, _: *mut c_void) -> jint {
         if let Some(c) = get_class(&env, "wtf/s1/ezlog/EZLogCallback") {
             CALL_BACK_CLASS
                 .set(c)
-                .map_err(|_| event!(ffi_call_err "find callback err"))
+                .map_err(|_| {
+                    event!(
+                        Event::FFiError,
+                        "find callback err",
+                        &FFi("wtf/s1/ezlog/EZLogCallback".into())
+                    )
+                })
                 .unwrap_or(());
         }
     }
 
     JVM.set(vm)
-        .map_err(|_| event!(ffi_call_err "set jvm error"))
+        .map_err(|_| event!(Event::FFiError, "set jvm error"))
         .unwrap_or(());
     JNI_VERSION_1_6
 }
@@ -92,7 +101,11 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeCreateLogger(
         .build();
 
     if !config.is_valid() {
-        event!(ffi_call_err & format!("create logger config error {config:?}"));
+        event!(
+            CreateLoggerError,
+            "create logger config error",
+            &LogError::IllegalArgument(format!("{:?}", config))
+        );
         return;
     }
 
@@ -171,7 +184,11 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeRegisterCallback(
         Ok(gloableCallback) => {
             set_boxed_callback(Box::new(AndroidCallback::new(&env, gloableCallback)));
         }
-        Err(e) => event!(ffi_call_err & format!("register callback error: {}", e)),
+        Err(e) => event!(
+            Event::FFiError,
+            "register callback error",
+            &LogError::FFi(format!("{:?}", e))
+        ),
     }
 }
 
@@ -200,16 +217,12 @@ pub unsafe extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeRequestLogFilesForDate(
 /// Always returns `Some(method_id)`, panics if method not found.
 #[inline]
 fn get_method_id(env: &JNIEnv, class: &str, name: &str, sig: &str) -> Option<JMethodID> {
-    let method_id = env
-        .get_method_id(class, name, sig)
-        // we need this line to erase lifetime in order to save underlying raw pointer in static
-        .map(|mid| mid.into())
-        .unwrap_or_else(|_| {
-            panic!(
-                "Method {} with signature {} of class {} not found",
-                name, sig, class
-            )
-        });
+    let method_id = env.get_method_id(class, name, sig).unwrap_or_else(|_| {
+        panic!(
+            "Method {} with signature {} of class {} not found",
+            name, sig, class
+        )
+    });
     Some(method_id)
 }
 
@@ -221,7 +234,9 @@ fn get_class(env: &JNIEnv, class: &str) -> Option<GlobalRef> {
     let class = env
         .find_class(class)
         .unwrap_or_else(|_| panic!("Class {} not found", class));
-    env.new_global_ref(class).map_err(ffi_fail).ok()
+    env.new_global_ref(class)
+        .map_err(|e| event!(Event::FFiError, "java get class", &e.into()))
+        .ok()
 }
 
 struct AndroidCallback {
@@ -238,14 +253,14 @@ impl AndroidCallback {
             "onFail",
             "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
         )
-        .unwrap();
+        .unwrap_or_else(|| panic!("EZLogCallback#onFail JNI Signture not match"));
         let success_method_id = get_method_id(
             env,
             "wtf/s1/ezlog/EZLogCallback",
             "onSuccess",
             "(Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;)V",
         )
-        .unwrap();
+        .unwrap_or_else(|| panic!("EZLogCallback#onSuccess JNI Signture not match"));
         Self {
             callback,
             fail_method_id,
@@ -322,12 +337,12 @@ impl AndroidCallback {
 impl crate::EZLogCallback for AndroidCallback {
     fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
         self.internal_fetch_success(name, date, logs)
-            .unwrap_or_else(ffi_fail);
+            .unwrap_or_else(|e| event!(Event::FFiError, "on fetch success", &e.into()));
     }
 
     fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
         self.internal_fetch_fail(name, date, err)
-            .unwrap_or_else(ffi_fail);
+            .unwrap_or_else(|e| event!(Event::FFiError, "on fetch fail", &e.into()));
     }
 }
 
@@ -359,10 +374,3 @@ where
     }
     Ok(jobjArray)
 }
-
-#[inline]
-fn ffi_fail(e: jni::errors::Error) {
-    event!(ffi_call_err & e.to_string());
-}
-
-mod tests {}

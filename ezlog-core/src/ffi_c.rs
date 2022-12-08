@@ -180,12 +180,13 @@ impl Callback {
 impl EZLogCallback for Callback {
     fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
         self.success(name, date, logs)
-            .unwrap_or_else(|e| event!(ffi_call_err & format!("ffi: {}", e)));
+            .unwrap_or_else(|e| event!(Event::FFiError, "fetch success nul", &e.into()));
     }
 
     fn on_fetch_fail(&self, name: &str, date: &str, err_msg: &str) {
-        self.fail(name, date, err_msg)
-            .unwrap_or_else(|e| event!(ffi_call_err & format!("ffi: {}", e)));
+        self.fail(name, date, err_msg).unwrap_or_else(|e| {
+            events::event!(Event::FFiError, "fetch fail nul", &e.into());
+        });
     }
 }
 

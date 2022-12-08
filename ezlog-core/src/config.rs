@@ -8,10 +8,11 @@ use std::{
 use memmap2::{MmapMut, MmapOptions};
 use time::{format_description, Date, Duration, OffsetDateTime};
 
+use crate::events::Event::{self};
 #[allow(unused_imports)]
 use crate::EZLogger;
 use crate::{
-    appender::rename_current_file, errors::LogError, event, logger::Header, CipherKind,
+    appender::rename_current_file, errors::LogError, events::event, logger::Header, CipherKind,
     CompressKind, CompressLevel, Version, DEFAULT_LOG_FILE_SUFFIX, DEFAULT_LOG_NAME,
     DEFAULT_MAX_LOG_SIZE, LOG_LEVEL_NAMES, MIN_LOG_SIZE,
 };
@@ -73,10 +74,10 @@ pub struct EZLogConfig {
 
 impl EZLogConfig {
     pub(crate) fn now_file_name(&self, now: OffsetDateTime) -> crate::Result<String> {
-        let format = format_description::parse(DATE_FORMAT).map_err(|_e| {
+        let format = format_description::parse(DATE_FORMAT).map_err(|e| {
             crate::errors::LogError::Parse(format!(
                 "Unable to create a formatter; this is a bug in EZLogConfig#now_file_name: {}",
-                _e
+                e
             ))
         })?;
         let date = now.format(&format).map_err(|_| {
@@ -195,13 +196,15 @@ impl EZLogConfig {
                         }
                         Err(e) => {
                             event!(
-                                query_log_files_err & format!("query: traversal file error: {}", e)
+                                Event::RequestLogError,
+                                "get dir entry in dir",
+                                &e.into()
                             );
                         }
                     }
                 }
             }
-            Err(e) => event!(query_log_files_err & format!("query: dir error: {}", e)),
+            Err(e) => event!(Event::RequestLogError, "read dir", &e.into()),
         }
         logs
     }
