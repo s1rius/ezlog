@@ -6,7 +6,7 @@ use std::{
 };
 use time::OffsetDateTime;
 
-use crate::{logger::Header, *};
+use crate::{events::event, logger::Header, *};
 
 pub trait AppenderInner: Write {
     fn is_oversize(&self, buf_size: usize) -> bool;
@@ -31,12 +31,17 @@ impl EZAppender {
         config: &EZLogConfig,
         time: OffsetDateTime,
     ) -> Result<Box<dyn AppenderInner>> {
-        let inner = MmapAppendInner::new(config, time).map_err(|e| {
-            event!(mmap_err & e.to_string());
-        });
+        event!(Event::MapFile);
+        let inner = MmapAppendInner::new(config, time);
         match inner {
-            Ok(i) => Ok(Box::new(i)),
-            Err(_) => Ok(Box::new(ByteArrayAppenderInner::new(config, time)?)),
+            Ok(i) => {
+                event!(Event::MapFileEnd);
+                Ok(Box::new(i))
+            }
+            Err(e) => {
+                event!(Event::MapFileError, "mmap appender new", &e);
+                Ok(Box::new(ByteArrayAppenderInner::new(config, time)?))
+            }
         }
     }
 
@@ -50,17 +55,20 @@ impl EZAppender {
     }
 
     fn check_rolling_inner(&mut self, time: OffsetDateTime, buf_size: usize) -> Result<()> {
-        if self.inner.is_overtime(time) {
-            self.inner = Self::create_inner_by_time(&self.config, time)?;
-        }
-
-        if self.inner.is_oversize(buf_size) {
+        if self.inner.is_overtime(time) || self.inner.is_oversize(buf_size) {
             // drop current inner, and rename the log file
             let file_path = self.inner.file_path().to_owned();
             self.inner = Box::new(NopInner::empty());
 
-            rename_current_file(&file_path)?;
-            self.inner = Self::create_inner_by_time(&self.config, time)?;
+            rename_current_file(&file_path).map_err(|e| {
+                event!(Event::RotateFileError, "rename file error", &e);
+                e
+            })?;
+            self.inner = Self::create_inner_by_time(&self.config, time).map_err(|e| {
+                event!(Event::RotateFileError, "create inner by time", &e);
+                e
+            })?;
+            event!(Event::RotateFile)
         }
         Ok(())
     }

@@ -22,7 +22,9 @@ mod ffi_java;
 pub use self::config::EZLogConfig;
 pub use self::config::EZLogConfigBuilder;
 pub use self::config::Level;
-pub use self::events::Event;
+pub(crate) use self::events::event;
+use self::events::Event;
+pub use self::events::EventListener;
 pub use self::events::EventPrinter;
 pub use self::logger::EZLogger;
 pub use self::logger::Header;
@@ -111,7 +113,7 @@ pub fn init() {
     hook_panic();
 }
 
-pub fn init_with_event(event: &'static dyn Event) {
+pub fn init_with_event(event: &'static dyn EventListener) {
     set_event_listener(event);
     init();
 }
@@ -120,11 +122,13 @@ pub fn init_with_event(event: &'static dyn Event) {
 ///
 /// manual trim the log files in disk. delete logs which are out of date.
 pub fn trim() {
-    post_msg(EZMsg::Trim());
+    if post_msg(EZMsg::Trim()) {
+        event!(Event::Trim)
+    }
 }
 
-/// Set global [Event] listener
-pub fn set_event_listener(event: &'static dyn Event) {
+/// Set global [EventListener]
+pub fn set_event_listener(event: &'static dyn EventListener) {
     events::set_event_listener(event);
 }
 
@@ -141,10 +145,10 @@ fn init_log_channel() -> Sender<EZMsg> {
                             Ok(log) => {
                                 let map = get_map();
                                 map.insert(log.config.name.clone(), log);
-                                event!(create_logger_end & name);
+                                event!(Event::CreateLoggerEnd, &name);
                             }
                             Err(e) => {
-                                event!(create_logger_fail & name, &e.to_string());
+                                event!(Event::CreateLoggerError, &name, &e);
                             }
                         };
                     }
@@ -152,13 +156,17 @@ fn init_log_channel() -> Sender<EZMsg> {
                         let log = match get_map().get_mut(&record.log_name().to_owned()) {
                             Some(l) => l,
                             None => {
-                                event!(unknown_err & record.t_id(), "logger not found");
+                                event!(
+                                    Event::RecordError,
+                                    &record.t_id(),
+                                    &LogError::IllegalArgument("no logger found".into())
+                                );
                                 continue;
                             }
                         };
                         if log.config.level < record.level() {
                             event!(
-                                record_filter_out & record.t_id(),
+                                Event::RecordFilterOut,
                                 &format!(
                                     "current level {}, max level {}",
                                     &record.level(),
@@ -169,17 +177,21 @@ fn init_log_channel() -> Sender<EZMsg> {
                         }
                         match log.append(&record) {
                             Ok(_) => {
-                                event!(record_end & record.t_id());
+                                event!(Event::RecordEnd, &record.t_id());
                             }
                             Err(err) => match err {
                                 LogError::Compress(err) => {
-                                    event!(compress_fail & record.t_id(), &err.to_string());
+                                    event!(Event::CompressError, &record.t_id(), &err.into());
                                 }
                                 LogError::Crypto(err) => {
-                                    event!(encrypt_fail & record.t_id(), &err.to_string())
+                                    event!(
+                                        Event::EncryptError,
+                                        &record.t_id(),
+                                        &LogError::Crypto(err)
+                                    )
                                 }
                                 _ => {
-                                    event!(unknown_err & record.t_id(), &err.to_string())
+                                    event!(Event::RecordError, &record.t_id(), &err)
                                 }
                             },
                         }
@@ -188,36 +200,45 @@ fn init_log_channel() -> Sender<EZMsg> {
                         let log = match get_map().get_mut(&name) {
                             Some(l) => l,
                             None => {
-                                event!(internal_err & name);
+                                event!(
+                                    Event::FlushError,
+                                    &name,
+                                    &LogError::IllegalArgument("no logger found".into())
+                                );
                                 continue;
                             }
                         };
                         log.appender.flush().ok();
-                        event!(flush_end & name);
+                        event!(Event::FlushEnd, &name);
                     }
                     EZMsg::FlushAll() => {
                         get_map().values_mut().for_each(|item| {
                             item.flush().ok();
                         });
-                        event!(flush_all_end);
+                        event!(Event::FlushEnd);
                     }
                     EZMsg::Trim() => {
                         get_map().values().for_each(|logger| logger.trim());
+                        event!(Event::TrimEnd)
                     }
                     EZMsg::FetchLog(task) => {
                         let logger = match get_map().get_mut(&task.name) {
                             Some(l) => l,
                             None => {
                                 event!(
-                                    ffi_call_err
-                                        & format!("logger not found on fetch logs {}", task.name)
+                                    Event::RequestLog,
+                                    "fetchLog",
+                                    &LogError::IllegalArgument(format!(
+                                        "no logger found {}",
+                                        task.name
+                                    ))
                                 );
                                 continue;
                             }
                         };
                         match config::parse_date_from_str(
                             &task.date,
-                            "date format error in get_log_files_for_date",
+                            "date format error in fetch logs",
                         ) {
                             Ok(date) => {
                                 let logs = logger.query_log_files_for_date(date);
@@ -244,15 +265,15 @@ fn init_log_channel() -> Sender<EZMsg> {
                     }
                 },
                 Err(err) => {
-                    event!(internal_err & err.to_string());
+                    event!(Event::ChannelError, "log channel rec", &err.into());
                 }
             }
         }) {
         Ok(_) => {
-            event!(init "init ezlog success");
+            event!(Event::Init);
         }
         Err(e) => {
-            event!(init & format!("init ezlog error {}", e));
+            event!(Event::InitError, &format!("init ezlog error {}", e));
         }
     }
     sender
@@ -266,15 +287,16 @@ fn init_callback_channel() -> Sender<FetchResult> {
             match fetch_receiver.recv() {
                 Ok(result) => {
                     invoke_fetch_callback(result);
+                    event!(Event::RequestLogEnd)
                 }
-                Err(e) => event!(ffi_call_err & e.to_string()),
+                Err(e) => event!(Event::FFiError, "init callback channel", &e.into()),
             }
         }) {
         Ok(_) => {
-            event!(init "init callback success");
+            event!(Event::Init, "init callback success");
         }
         Err(e) => {
-            event!(init & format!("init callback err {}", e));
+            event!(Event::InitError, "init callback err", &e.into());
         }
     }
     fetch_sender
@@ -285,7 +307,7 @@ pub fn create_log(config: EZLogConfig) {
     let name = config.name.clone();
     let msg = EZMsg::CreateLogger(config);
     if post_msg(msg) {
-        event!(create_logger & name);
+        event!(Event::CreateLogger, &name);
     }
 }
 
@@ -294,7 +316,7 @@ pub fn log(record: EZRecord) {
     let tid = record.t_id();
     let msg = EZMsg::Record(record);
     if post_msg(msg) {
-        event!(record & tid);
+        event!(Event::Record, &tid);
     }
 }
 
@@ -302,7 +324,7 @@ pub fn log(record: EZRecord) {
 pub fn flush(log_name: &str) {
     let msg = EZMsg::ForceFlush(log_name.to_string());
     if post_msg(msg) {
-        event!(flush log_name)
+        event!(Event::Flush, log_name)
     }
 }
 
@@ -310,7 +332,7 @@ pub fn flush(log_name: &str) {
 pub fn flush_all() {
     let msg = EZMsg::FlushAll();
     if post_msg(msg) {
-        event!(flush_all)
+        event!(Event::Flush)
     }
 }
 
@@ -336,16 +358,17 @@ fn post_msg(msg: EZMsg) -> bool {
 }
 
 #[inline]
-fn report_channel_send_err<T>(err: TrySendError<T>) {
-    event!(internal_err & err.to_string());
+pub(crate) fn report_channel_send_err<T>(err: TrySendError<T>) {
+    event!(Event::ChannelError, "channel send err", &err.into());
 }
 
 #[inline]
-fn ffi_err_handle<T>(err: T)
+pub(crate) fn ffi_err_handle<T>(err: T)
 where
     T: Error,
 {
-    event!(ffi_call_err & err.to_string());
+    let e = LogError::unknown(&format!("{:?}", err));
+    event!(Event::FFiError, "ffi error handle", &e);
 }
 
 fn invoke_fetch_callback(result: FetchResult) {
@@ -649,14 +672,14 @@ pub(crate) fn next_date(time: OffsetDateTime) -> OffsetDateTime {
 fn hook_panic() {
     std::panic::set_hook(Box::new(|p| {
         let bt = Backtrace::new();
-        event!(panic & format!("ezlog: \n {p:?} \n{bt:?} \n"));
+        event!(Event::Panic, &format!("ezlog: \n {p:?} \n{bt:?} \n"));
     }));
 }
 
 #[cfg(not(feature = "backtrace"))]
 fn hook_panic() {
     std::panic::set_hook(Box::new(|p| {
-        event!(panic & format!("ezlog: \n {p:?}"));
+        event!(Event::Panic, &format!("ezlog: \n {p:?}"));
     }));
 }
 

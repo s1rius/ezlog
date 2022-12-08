@@ -1,5 +1,6 @@
-use std::io;
+use std::{ffi::NulError, io};
 
+use crossbeam_channel::{RecvError, TrySendError};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -14,11 +15,46 @@ pub enum LogError {
     Compress(#[source] io::Error),
     #[error("illegal argument {0}")]
     IllegalArgument(String),
+    #[error("ffi error: {0}")]
+    FFi(String),
+    #[error("unknown error: {0}")]
+    Unknown(String),
+}
+
+impl LogError {
+    pub fn unknown(error: &str) -> Self {
+        LogError::Unknown(error.into())
+    }
 }
 
 impl From<io::Error> for LogError {
     fn from(err: io::Error) -> LogError {
         LogError::IoError(err)
+    }
+}
+
+impl From<NulError> for LogError {
+    fn from(e: NulError) -> Self {
+        LogError::FFi(format!("{:?}", e))
+    }
+}
+
+#[cfg(target_os = "android")]
+impl From<jni::errors::Error> for LogError {
+    fn from(e: jni::errors::Error) -> Self {
+        LogError::FFi(format!("{:?}", e))
+    }
+}
+
+impl From<RecvError> for LogError {
+    fn from(e: RecvError) -> Self {
+        LogError::Unknown(format!("{:?}", e))
+    }
+}
+
+impl<T> From<TrySendError<T>> for LogError {
+    fn from(_: TrySendError<T>) -> Self {
+        todo!()
     }
 }
 

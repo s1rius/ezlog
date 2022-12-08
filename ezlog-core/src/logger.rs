@@ -1,12 +1,13 @@
 use byteorder::{BigEndian, WriteBytesExt};
 use integer_encoding::VarIntWriter;
+#[cfg(feature = "decode")]
+use std::io::BufRead;
 use std::io::Read;
 use std::path::PathBuf;
 use std::{fs, io};
 use std::{io::Write, rc::Rc};
-#[cfg(feature = "decode")]
-use std::io::BufRead;
 
+use crate::events::Event::{self};
 use crate::Version;
 use crate::{
     appender::EZAppender,
@@ -18,10 +19,10 @@ use crate::{
 };
 use crate::{errors, event, V1_LOG_HEADER_SIZE};
 use byteorder::ReadBytesExt;
-use time::format_description::well_known::Rfc3339;
-use time::Date;
 #[cfg(feature = "decode")]
 use integer_encoding::VarIntReader;
+use time::format_description::well_known::Rfc3339;
+use time::Date;
 
 type Result<T> = std::result::Result<T, LogError>;
 
@@ -107,14 +108,14 @@ impl EZLogger {
     fn encode(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
         let mut buf = self.format(record);
         if let Some(encryptor) = &self.cryptor {
-            event!(encrypt_start & record.t_id());
+            event!(Event::Encrypt, &record.t_id());
             buf = encryptor.encrypt(&buf)?;
-            event!(encrypt_end & record.t_id());
+            event!(Event::EncryptEnd, &record.t_id());
         }
         if let Some(compression) = &self.compression {
-            event!(compress_start & record.t_id());
+            event!(Event::Compress, &record.t_id());
             buf = compression.compress(&buf).map_err(LogError::Compress)?;
-            event!(compress_end & record.t_id());
+            event!(Event::CompressEnd, &record.t_id());
         }
         Ok(buf)
     }
@@ -300,31 +301,34 @@ impl EZLogger {
                                         if out_of_date {
                                             fs::remove_file(file.path()).unwrap_or_else(|e| {
                                                 event!(
-                                                    trim_logger_err
-                                                        & format!("trim: remove file err: {}", e)
+                                                    Event::TrimError,
+                                                    "remove file err",
+                                                    &e.into()
                                                 )
                                             });
                                         }
                                     }
                                     Err(e) => {
                                         event!(
-                                            trim_logger_err
-                                                & format!(
-                                                    "trim: judge file out of date error: {}",
-                                                    e
-                                                )
+                                            Event::TrimError,
+                                            "judge file out of date error",
+                                            &e
                                         )
                                     }
                                 }
                             };
                         }
                         Err(e) => {
-                            event!(trim_logger_err & format!("trim: traversal file error: {}", e))
+                            event!(
+                                Event::TrimError,
+                                "traversal file error",
+                                &e.into()
+                            )
                         }
                     }
                 }
             }
-            Err(e) => event!(trim_logger_err & format!("trim: read dir error: {}", e)),
+            Err(e) => event!(Event::TrimError, "read dir error", &e.into()),
         }
     }
 

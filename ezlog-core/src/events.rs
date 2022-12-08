@@ -1,43 +1,83 @@
 /// # EZLog Event Listener
-///
-/// [eventlisteners are good](https://publicobject.com/2022/05/01/eventlisteners-are-good/)
+///[eventlisteners are good](https://publicobject.com/2022/05/01/eventlisteners-are-good/)
 ///
 /// Jesse said
-/// > defining an event listener to make your systems observable. It’s a lot of power in a simple pattern.
 ///
+/// defining an event listener to make your systems observable.
+/// It’s a lot of power in a simple pattern.
 ///
-#[allow(unused_variables)]
-pub trait Event {
-    fn init(&self, info: &str) {}
-    fn init_err(&self, err: &str) {}
-    fn create_logger(&self, id: &str) {}
-    fn create_logger_end(&self, id: &str) {}
-    fn create_logger_err(&self, id: &str, err: &str) {}
-    fn mmap_err(&self, err: &str) {}
-    fn record(&self, id: &str) {}
-    fn record_end(&self, id: &str) {}
-    fn compress(&self, id: &str) {}
-    fn compress_end(&self, id: &str) {}
-    fn compress_err(&self, id: &str, err: &str) {}
-    fn encrypt(&self, id: &str) {}
-    fn encrypt_end(&self, id: &str) {}
-    fn encrypt_err(&self, id: &str, err: &str) {}
-    fn unknown_err(&self, id: &str, err: &str) {}
-    fn flush(&self, id: &str) {}
-    fn flush_end(&self, id: &str) {}
-    fn flush_all(&self) {}
-    fn flush_all_end(&self) {}
-    fn internal_err(&self, err: &str) {}
-    fn record_filter_out(&self, id: &str, info: &str) {}
-    fn panic(&self, info: &str) {}
+#[derive(Debug)]
+pub enum Event {
+    Init,
+    InitError,
+    CreateLogger,
+    CreateLoggerError,
+    CreateLoggerEnd,
+    Record,
+    RecordError,
+    RecordEnd,
+    RecordFilterOut,
+    Compress,
+    CompressError,
+    CompressEnd,
+    Encrypt,
+    EncryptError,
+    EncryptEnd,
+    Flush,
+    FlushError,
+    FlushEnd,
+    RequestLog,
+    RequestLogError,
+    RequestLogEnd,
+    MapFile,
+    MapFileError,
+    MapFileEnd,
+    RotateFile,
+    RotateFileError,
+    Trim,
+    TrimError,
+    TrimEnd,
+    FFiError,
+    ChannelError,
+    Panic,
+}
+
+/// Every important log case make an event.
+/// if you care about what's things going on, just register an event listener.
+macro_rules! event {
+    ($t:expr) => {
+        crate::events::call_event($t, "ok")
+    };
+    ($t:expr, $info: expr) => {
+        crate::events::call_event($t, $info)
+    };
+    ($t:expr, $info:expr, $err:expr) => {
+        crate::events::call_event_error($t, $info, $err)
+    };
+}
+pub(crate) use event;
+
+pub trait EventListener {
+    fn on_event(&self, event: Event, desc: &str);
+    fn on_error_event(&self, event: Event, desc: &str, err: &LogError);
+}
+
+#[inline]
+pub(crate) fn call_event(event: Event, desc: &str) {
+    listener().on_event(event, desc);
+}
+
+#[inline]
+pub(crate) fn call_event_error(event: Event, desc: &str, err: &LogError) {
+    listener().on_error_event(event, desc, err)
 }
 
 use std::sync::Once;
 
-pub static mut EVENT_LISTENER: &dyn Event = &NopEvent;
+pub static mut EVENT_LISTENER: &dyn EventListener = &NopEvent;
 static EVENT_INIT: Once = Once::new();
 
-pub fn listener() -> &'static dyn Event {
+pub fn listener() -> &'static dyn EventListener {
     if EVENT_INIT.is_completed() {
         unsafe { EVENT_LISTENER }
     } else {
@@ -46,91 +86,10 @@ pub fn listener() -> &'static dyn Event {
     }
 }
 
-pub fn set_event_listener(event: &'static dyn Event) {
+pub fn set_event_listener(event: &'static dyn EventListener) {
     EVENT_INIT.call_once(|| unsafe {
         EVENT_LISTENER = event;
     })
-}
-
-/// Every important log case make an event.
-/// if you care about what's things going on, just register an event listener.
-#[macro_export]
-macro_rules! event {
-    (init $e:expr) => {
-        $crate::events::listener().init($e)
-    };
-    (init_err $e:expr) => {
-        $crate::events::listener().init_err($e);
-    };
-    (create_logger $log_name:expr) => {
-        $crate::events::listener().create_logger($log_name);
-    };
-    (create_logger_end $log_name:expr) => {
-        $crate::events::listener().create_logger_end($log_name);
-    };
-    (create_logger_fail $log_name:expr, $err:expr) => {
-        $crate::events::listener().create_logger_err($log_name, $err);
-    };
-    (mmap_err $err:expr) => {
-        $crate::events::listener().mmap_err($err);
-    };
-    (record $record_id:expr) => {
-        $crate::events::listener().record($record_id);
-    };
-    (compress_start $record_id:expr) => {
-        $crate::events::listener().compress($record_id);
-    };
-    (compress_end $record_id:expr) => {
-        $crate::events::listener().compress_end($record_id);
-    };
-    (compress_fail $record_id:expr, $e:expr) => {
-        $crate::events::listener().compress_err($record_id, $e);
-    };
-    (encrypt_start $record_id:expr) => {
-        $crate::events::listener().encrypt($record_id);
-    };
-    (encrypt_end $record_id:expr) => {
-        $crate::events::listener().encrypt_end($record_id);
-    };
-    (encrypt_fail $record_id:expr, $e:expr) => {
-        $crate::events::listener().encrypt_err($record_id, $e)
-    };
-    (record_end $record_id:expr) => {
-        $crate::events::listener().record_end($record_id);
-    };
-    (record_filter_out $record_id:expr, $info:expr) => {
-        $crate::events::listener().record_filter_out($record_id, $info);
-    };
-    (unknown_err $record_id:expr, $e:expr) => {
-        $crate::events::listener().unknown_err($record_id, $e)
-    };
-    (internal_err $e:expr) => {
-        $crate::events::listener().internal_err($e)
-    };
-    (flush $log_name:expr) => {
-        $crate::events::listener().flush($log_name)
-    };
-    (flush_end $log_name:expr) => {
-        $crate::events::listener().flush_end($log_name);
-    };
-    (flush_all) => {
-        $crate::events::listener().flush_all()
-    };
-    (flush_all_end) => {
-        $crate::events::listener().flush_all_end();
-    };
-    (trim_logger_err $e:expr) => {
-        $crate::events::listener().internal_err($e)
-    };
-    (query_log_files_err $e:expr) => {
-        $crate::events::listener().internal_err($e)
-    };
-    (ffi_call_err $e:expr) => {
-        $crate::events::listener().internal_err($e)
-    };
-    (panic $e:expr) => {
-        $crate::events::listener().panic($e)
-    };
 }
 
 #[cfg(any(
@@ -160,6 +119,7 @@ macro_rules! println_with_time {
         crate::events::android_print(format_args!($($arg)*));
     }};
 }
+use crate::errors::LogError;
 pub(crate) use println_with_time;
 
 #[cfg(all(target_os = "android", feature = "log"))]
@@ -184,88 +144,22 @@ pub(crate) fn android_print(record: std::fmt::Arguments) {
 }
 
 struct NopEvent;
-impl Event for NopEvent {}
+impl EventListener for NopEvent {
+    fn on_event(&self, _event: Event, _desc: &str) {}
 
-/// Default [Event] implementation, print every event in console
+    fn on_error_event(&self, _event: Event, _desc: &str, _err: &LogError) {}
+}
+
+/// Default [EventListener] implementation, print every event in console
 pub struct EventPrinter;
 impl EventPrinter {}
 
 #[allow(unused_variables)]
-impl Event for EventPrinter {
-    fn init(&self, info: &str) {
-        println_with_time!("{}, {}", "init", info);
+impl EventListener for EventPrinter {
+    fn on_event(&self, event: Event, desc: &str) {
+        println_with_time!("{:?}, {}", event, desc);
     }
-    fn init_err(&self, err: &str) {
-        println_with_time!("{}, {}", "init err", err);
-    }
-    fn create_logger(&self, id: &str) {
-        println_with_time!("{}, {}", "create logger", id)
-    }
-    fn create_logger_end(&self, id: &str) {
-        println_with_time!("{}, {}", "create logger end", id)
-    }
-    fn create_logger_err(&self, id: &str, err: &str) {
-        println_with_time!("{}, {}, {}", "create logger err", id, err)
-    }
-    fn mmap_err(&self, err: &str) {
-        println_with_time!("{}, {}", "mmap create err", err)
-    }
-    fn record(&self, id: &str) {
-        println_with_time!("{}, {}", id, "record")
-    }
-    fn record_end(&self, id: &str) {
-        println_with_time!("{}, {}", id, "record end")
-    }
-    fn compress(&self, id: &str) {
-        println_with_time!("{}, {}", id, "compress")
-    }
-    fn compress_end(&self, id: &str) {
-        println_with_time!("{}, {}", id, "compress end")
-    }
-    fn compress_err(&self, id: &str, err: &str) {
-        println_with_time!("{}, {}, {}", id, "compress end", err)
-    }
-    fn encrypt(&self, id: &str) {
-        println_with_time!("{} encrypt ", id)
-    }
-    fn encrypt_end(&self, id: &str) {
-        println_with_time!("{} encrypt end ", id)
-    }
-    fn encrypt_err(&self, id: &str, err: &str) {
-        println_with_time!("{} encrypt err {}", id, err)
-    }
-    fn unknown_err(&self, id: &str, err: &str) {
-        println_with_time!("{} unknown err {}", id, err)
-    }
-    fn flush(&self, id: &str) {
-        println_with_time!("{} flush", id)
-    }
-    fn flush_end(&self, id: &str) {
-        println_with_time!("{} flush end", id)
-    }
-    fn flush_all(&self) {
-        println_with_time!("flush all")
-    }
-    fn flush_all_end(&self) {
-        println_with_time!("flush all end")
-    }
-    fn internal_err(&self, err: &str) {
-        println_with_time!("interanl err {}", err)
-    }
-    fn record_filter_out(&self, id: &str, info: &str) {
-        println_with_time!("{} log filter , {}", id, info)
-    }
-
-    fn panic(&self, info: &str) {
-        println_with_time!("panic {}", info)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    #[test]
-    fn test_print_with_time() {
-        println_with_time!("{}", "no");
+    fn on_error_event(&self, event: Event, desc: &str, err: &LogError) {
+        println_with_time!("{:?}, {}, {:?}", event, desc, &err);
     }
 }
