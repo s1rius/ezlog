@@ -98,7 +98,7 @@ mod tests {
             let cname = HSTRING::from("test 1234567890123456");
             let w_result = HRESULT(Threading::SetThreadDescription(
                 Threading::GetCurrentThread(),
-                PCWSTR::from(&cname).as_ptr(),
+                HSTRING::from(&cname.to_os_string()).as_ptr(),
             ));
             assert!(w_result.is_ok());
             assert_eq!(get_name(), "test 1234567890123456".to_string());
