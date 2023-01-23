@@ -36,7 +36,7 @@ integer-encoding = "3.0"
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.20.0"
-android_logger = "0.11"
+android_logger = "0.12"
 
 [target.'cfg(windows)'.dependencies]
 windows = "0.43"
