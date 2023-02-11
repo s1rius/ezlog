@@ -4,11 +4,11 @@ use integer_encoding::VarIntWriter;
 use std::io::BufRead;
 use std::io::Read;
 use std::path::PathBuf;
+
 use std::{fs, io};
 use std::{io::Write, rc::Rc};
 
 use crate::events::Event::{self};
-use crate::Version;
 use crate::{
     appender::EZAppender,
     compress::ZlibCodec,
@@ -18,11 +18,12 @@ use crate::{
     RECORD_SIGNATURE_START,
 };
 use crate::{errors, event, V1_LOG_HEADER_SIZE};
+use crate::{Version, V2_LOG_HEADER_SIZE};
 use byteorder::ReadBytesExt;
 #[cfg(feature = "decode")]
 use integer_encoding::VarIntReader;
 use time::format_description::well_known::Rfc3339;
-use time::Date;
+use time::{Date, OffsetDateTime};
 
 type Result<T> = std::result::Result<T, LogError>;
 
@@ -370,6 +371,8 @@ pub struct Header {
     pub(crate) compress: CompressKind,
     /// cipher kind
     pub(crate) cipher: CipherKind,
+    /// timestamp
+    pub(crate) timestamp: OffsetDateTime,
 }
 
 impl Default for Header {
@@ -381,11 +384,12 @@ impl Default for Header {
 impl Header {
     pub fn new() -> Self {
         Header {
-            version: Version::V1,
+            version: Version::V2,
             flag: 0,
-            recorder_position: Header::fixed_size() as u32,
+            recorder_position: V2_LOG_HEADER_SIZE as u32,
             compress: CompressKind::ZLIB,
             cipher: CipherKind::AES128GCM,
+            timestamp: OffsetDateTime::now_utc(),
         }
     }
 
@@ -393,17 +397,42 @@ impl Header {
         Header {
             version: config.version,
             flag: 0,
-            recorder_position: Header::fixed_size() as u32,
+            recorder_position: Header::length_compat(&config.version) as u32,
             compress: config.compress,
             cipher: config.cipher,
+            timestamp: OffsetDateTime::now_utc(),
         }
     }
 
-    pub fn fixed_size() -> usize {
-        V1_LOG_HEADER_SIZE
+    pub fn max_length() -> usize {
+        V2_LOG_HEADER_SIZE
+    }
+
+    #[inline]
+    pub fn length_compat(version: &Version) -> usize {
+        match version {
+            Version::V1 => V1_LOG_HEADER_SIZE,
+            Version::V2 => V2_LOG_HEADER_SIZE,
+            Version::UNKNOWN => 0,
+        }
+    }
+
+    pub fn length(&self) -> usize {
+        Self::length_compat(&self.version)
     }
 
     pub fn encode(&self, writer: &mut dyn Write) -> std::result::Result<(), io::Error> {
+        match self.version {
+            Version::V1 => self.encode_v1(writer),
+            Version::V2 => self.encode_v2(writer),
+            Version::UNKNOWN => Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "unknown version",
+            )),
+        }
+    }
+
+    pub fn encode_v1(&self, writer: &mut dyn Write) -> std::result::Result<(), io::Error> {
         writer.write_all(crate::FILE_SIGNATURE)?;
         writer.write_u8(self.version.into())?;
         writer.write_u8(self.flag)?;
@@ -412,24 +441,36 @@ impl Header {
         writer.write_u8(self.cipher.into())
     }
 
+    pub fn encode_v2(&self, writer: &mut dyn Write) -> std::result::Result<(), io::Error> {
+        self.encode_v1(writer)?;
+        writer.write_i64::<BigEndian>(self.timestamp.unix_timestamp())
+    }
+
     pub fn decode(reader: &mut dyn Read) -> std::result::Result<Self, errors::LogError> {
         let mut signature = [0u8; 2];
         reader.read_exact(&mut signature)?;
-        let version = reader.read_u8()?;
+        let version = Version::from(reader.read_u8()?);
         let flag = reader.read_u8()?;
         let mut recorder_size = reader.read_u32::<BigEndian>()?;
-        if recorder_size < Header::fixed_size() as u32 {
-            recorder_size = Header::fixed_size() as u32;
+        if recorder_size < Header::length_compat(&version) as u32 {
+            recorder_size = Header::length_compat(&version) as u32;
         }
 
         let compress = reader.read_u8()?;
         let cipher = reader.read_u8()?;
+        let timestamp = if version == Version::V2 {
+            reader.read_i64::<BigEndian>()?
+        } else {
+            OffsetDateTime::now_utc().unix_timestamp()
+        };
         Ok(Header {
-            version: Version::from(version),
+            version,
             flag,
             recorder_position: recorder_size,
             compress: CompressKind::from(compress),
             cipher: CipherKind::from(cipher),
+            timestamp: OffsetDateTime::from_unix_timestamp(timestamp)
+                .unwrap_or_else(|_| OffsetDateTime::now_utc()),
         })
     }
 
@@ -440,7 +481,11 @@ impl Header {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.version == Version::UNKNOWN && self.recorder_position <= Header::fixed_size() as u32
+        self.version == Version::UNKNOWN || self.recorder_position <= self.length() as u32
+    }
+
+    pub fn has_record(&self) -> bool {
+        self.recorder_position > self.length() as u32
     }
 
     pub fn version(&self) -> &Version {

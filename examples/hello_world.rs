@@ -72,14 +72,8 @@ fn get_config() -> EZLogConfig {
 #[allow(dead_code)]
 fn read_log_file_rewrite() {
     let log_config = get_config();
-    let (path, _mmap) = log_config
-        .create_mmap_file(OffsetDateTime::now_utc())
-        .unwrap();
-    let file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(&path)
-        .unwrap();
+    let (file, path, _mmap) = log_config.create_mmap_file().unwrap();
+
     let mut br = BufReader::new(&file);
 
     let mut buffer = Vec::new();

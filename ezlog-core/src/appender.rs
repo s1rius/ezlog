@@ -9,11 +9,17 @@ use time::OffsetDateTime;
 use crate::{events::event, logger::Header, *};
 
 pub trait AppenderInner: Write {
+    /// check have enough space to write record
     fn is_oversize(&self, buf_size: usize) -> bool;
 
+    /// appender is overtime
     fn is_overtime(&self, time: OffsetDateTime) -> bool;
 
+    /// write to the file's path
     fn file_path(&self) -> &PathBuf;
+
+    /// get the header
+    fn header(&self) -> &Header;
 }
 
 /// # Appender 的实现
@@ -24,15 +30,8 @@ pub struct EZAppender {
 
 impl EZAppender {
     pub fn create_inner(config: &EZLogConfig) -> Result<Box<dyn AppenderInner>> {
-        Self::create_inner_by_time(config, OffsetDateTime::now_utc())
-    }
-
-    pub fn create_inner_by_time(
-        config: &EZLogConfig,
-        time: OffsetDateTime,
-    ) -> Result<Box<dyn AppenderInner>> {
         event!(Event::MapFile);
-        let inner = MmapAppendInner::new(config, time);
+        let inner = MmapAppendInner::new(config);
         match inner {
             Ok(i) => {
                 event!(Event::MapFileEnd);
@@ -40,7 +39,7 @@ impl EZAppender {
             }
             Err(e) => {
                 event!(Event::MapFileError, "mmap appender new", &e);
-                Ok(Box::new(ByteArrayAppenderInner::new(config, time)?))
+                Ok(Box::new(ByteArrayAppenderInner::new(config)?))
             }
         }
     }
@@ -51,26 +50,50 @@ impl EZAppender {
     }
 
     fn check_rolling(&mut self, buf_size: usize) -> Result<()> {
-        self.check_rolling_inner(OffsetDateTime::now_utc(), buf_size)
-    }
-
-    fn check_rolling_inner(&mut self, time: OffsetDateTime, buf_size: usize) -> Result<()> {
-        if self.inner.is_overtime(time) || self.inner.is_oversize(buf_size) {
+        let now = OffsetDateTime::now_utc();
+        if self.inner.is_overtime(now) || self.inner.is_oversize(buf_size) {
             // drop current inner, and rename the log file
             let file_path = self.inner.file_path().to_owned();
+            let header_time = self.inner.header().timestamp;
             self.inner = Box::new(NopInner::empty());
 
-            rename_current_file(&file_path).map_err(|e| {
-                event!(Event::RotateFileError, "rename file error", &e);
-                e
-            })?;
-            self.inner = Self::create_inner_by_time(&self.config, time).map_err(|e| {
+            EZAppender::rename_current_file(&self.config, &file_path, header_time).map_err(
+                |e| {
+                    event!(Event::RotateFileError, "rename file error", &e);
+                    e
+                },
+            )?;
+            self.inner = Self::create_inner(&self.config).map_err(|e| {
                 event!(Event::RotateFileError, "create inner by time", &e);
                 e
             })?;
             event!(Event::RotateFile)
         }
         Ok(())
+    }
+
+    pub fn rename_current_file(
+        config: &EZLogConfig,
+        file_path: &PathBuf,
+        time: OffsetDateTime,
+    ) -> Result<()> {
+        let mut count = 1;
+        if !file_path.is_file() {
+            return Err(errors::LogError::IoError(io::Error::new(
+                ErrorKind::InvalidData,
+                "current file is not valid!",
+            )));
+        }
+
+        loop {
+            let new_name = config.file_name_with_date(time, count)?;
+            let new_path = file_path.with_file_name(new_name);
+            if !new_path.exists() {
+                std::fs::rename(file_path, &new_path)?;
+                return Ok(());
+            }
+            count += 1;
+        }
     }
 }
 
@@ -98,22 +121,31 @@ pub(crate) struct MmapAppendInner {
 }
 
 impl MmapAppendInner {
-    pub(crate) fn new(config: &EZLogConfig, time: OffsetDateTime) -> Result<Self> {
-        let (mut file_path, mut mmap) = config.create_mmap_file(time)?;
+    pub(crate) fn new(config: &EZLogConfig) -> Result<Self> {
+        let (mut file, mut file_path, mut mmap) = config.create_mmap_file()?;
+
+        if file.metadata()?.len() < Header::max_length() as u64 {
+            EZAppender::rename_current_file(config, &file_path, OffsetDateTime::now_utc())?;
+            (file, file_path, mmap) = config.create_mmap_file()?;
+        }
+
         let mmap_header = &mut mmap
-            .get(0..Header::fixed_size())
+            .get(0..Header::max_length())
             .ok_or_else(|| io::Error::new(ErrorKind::InvalidData, "mmap get header vec error"))?;
         let mut c = Cursor::new(mmap_header);
         let mut header = Header::decode(&mut c).unwrap_or_else(|_| Header::new());
-        let next_date = next_date(time);
+        let rotate_time = rotate_time(header.timestamp);
 
         let mut write_header = false;
         if header.is_empty() {
             header = Header::create(config);
             write_header = true;
-        } else if !header.is_empty() && !header.is_valid(config) {
-            rename_current_file(&file_path)?;
-            (file_path, mmap) = config.create_mmap_file(time)?;
+        } else if !header.is_valid(config)
+            || file.metadata()?.len() != config.max_size
+            || OffsetDateTime::now_utc() > rotate_time
+        {
+            EZAppender::rename_current_file(config, &file_path, header.timestamp)?;
+            (_, file_path, mmap) = config.create_mmap_file()?;
             header = Header::create(config);
             write_header = true;
         }
@@ -122,7 +154,7 @@ impl MmapAppendInner {
             header,
             file_path,
             mmap,
-            next_date: next_date.unix_timestamp(),
+            next_date: rotate_time.unix_timestamp(),
         };
         if write_header {
             inner.write_header()?;
@@ -131,7 +163,7 @@ impl MmapAppendInner {
     }
 
     fn write_header(&mut self) -> std::result::Result<(), std::io::Error> {
-        let mmap_header = self.mmap.get_mut(0..Header::fixed_size()).ok_or_else(|| {
+        let mmap_header = self.mmap.get_mut(0..self.header.length()).ok_or_else(|| {
             io::Error::new(ErrorKind::InvalidData, "mmap write header vec get error")
         })?;
 
@@ -184,6 +216,10 @@ impl AppenderInner for MmapAppendInner {
     fn file_path(&self) -> &PathBuf {
         &self.file_path
     }
+
+    fn header(&self) -> &Header {
+        &self.header
+    }
 }
 
 impl Drop for MmapAppendInner {
@@ -196,30 +232,35 @@ struct ByteArrayAppenderInner {
     header: Header,
     file_path: PathBuf,
     byte_array: Vec<u8>,
-    next_date: i64,
+    rotate_time: i64,
 }
 
 impl ByteArrayAppenderInner {
-    pub(crate) fn new(config: &EZLogConfig, time: OffsetDateTime) -> Result<Self> {
-        let (mut _file, mut file_path) = config.create_log_file(time)?;
+    pub(crate) fn new(config: &EZLogConfig) -> Result<Self> {
+        let (mut file, mut file_path) = config.create_log_file()?;
+        if file.metadata()?.len() < config.max_size as u64 {
+            EZAppender::rename_current_file(config, &file_path, OffsetDateTime::now_utc())?;
+            (file, file_path) = config.create_log_file()?;
+        }
         let mut byte_array = vec![0u8; config.max_size as usize];
-        BufReader::new(&_file).read_exact(&mut byte_array)?;
+        BufReader::new(&file).read_exact(&mut byte_array)?;
 
-        let mut c = Cursor::new(byte_array.get(0..Header::fixed_size()).ok_or_else(|| {
+        let mut c = Cursor::new(byte_array.get(0..Header::max_length()).ok_or_else(|| {
             io::Error::new(ErrorKind::InvalidData, "byte array get header vec error")
         })?);
         let mut header = Header::decode(&mut c).unwrap_or_else(|_| Header::new());
-        let next_date = next_date(time);
+        let rotate_time = rotate_time(header.timestamp);
 
         let mut write_header = false;
         if header.is_empty() {
             header = Header::create(config);
             write_header = true;
-        } else if (!header.is_empty() && !header.is_valid(config))
-            || _file.metadata()?.len() != config.max_size as u64
+        } else if !header.is_valid(config)
+            || file.metadata()?.len() != config.max_size as u64
+            || OffsetDateTime::now_utc() > rotate_time
         {
-            rename_current_file(&file_path)?;
-            (_file, file_path) = config.create_log_file(time)?;
+            EZAppender::rename_current_file(config, &file_path, header.timestamp)?;
+            (_, file_path) = config.create_log_file()?;
             header = Header::create(config);
             write_header = true;
         }
@@ -228,7 +269,7 @@ impl ByteArrayAppenderInner {
             header,
             file_path,
             byte_array,
-            next_date: next_date.unix_timestamp(),
+            rotate_time: rotate_time.unix_timestamp(),
         };
         if write_header {
             inner.write_header()?;
@@ -239,7 +280,7 @@ impl ByteArrayAppenderInner {
     fn write_header(&mut self) -> std::result::Result<(), std::io::Error> {
         let header = self
             .byte_array
-            .get_mut(0..Header::fixed_size())
+            .get_mut(0..self.header.length())
             .ok_or_else(|| {
                 io::Error::new(
                     ErrorKind::InvalidData,
@@ -294,11 +335,15 @@ impl AppenderInner for ByteArrayAppenderInner {
     }
 
     fn is_overtime(&self, time: OffsetDateTime) -> bool {
-        time.unix_timestamp() > self.next_date
+        time.unix_timestamp() > self.rotate_time
     }
 
     fn file_path(&self) -> &PathBuf {
         &self.file_path
+    }
+
+    fn header(&self) -> &Header {
+        &self.header
     }
 }
 
@@ -308,36 +353,16 @@ impl Drop for ByteArrayAppenderInner {
     }
 }
 
-pub fn rename_current_file(file_path: &PathBuf) -> Result<()> {
-    let mut count = 1;
-    if !file_path.is_file() {
-        return Err(errors::LogError::IoError(io::Error::new(
-            ErrorKind::InvalidData,
-            "current file is not valid!",
-        )));
-    }
-    loop {
-        let ext = file_path
-            .extension()
-            .map_or("mmap", |ext| ext.to_str().unwrap_or("mmap"));
-        let new_ext = format!("{}.{}", count, ext);
-        let new_path = file_path.with_extension(new_ext);
-        if !new_path.exists() {
-            std::fs::rename(file_path, &new_path)?;
-            return Ok(());
-        }
-        count += 1;
-    }
-}
-
 struct NopInner {
     file_path: PathBuf,
+    header: Header,
 }
 
 impl NopInner {
     pub(crate) fn empty() -> Self {
         NopInner {
             file_path: PathBuf::new(),
+            header: Header::new(),
         }
     }
 }
@@ -353,6 +378,10 @@ impl AppenderInner for NopInner {
 
     fn file_path(&self) -> &PathBuf {
         &self.file_path
+    }
+
+    fn header(&self) -> &Header {
+        &self.header
     }
 }
 
@@ -400,6 +429,7 @@ mod tests {
 
     #[test]
     fn test_appender_inner_rolling() {
+        let max_size: usize = 1024;
         let config = EZLogConfigBuilder::new()
             .name("test".to_string())
             .dir_path(
@@ -412,13 +442,15 @@ mod tests {
             .duration(Duration::days(1))
             .name(String::from("test"))
             .file_suffix(String::from("mmap"))
-            .max_size(1024)
+            .max_size(max_size.try_into().unwrap())
             .build();
 
-        let inner = MmapAppendInner::new(&config, OffsetDateTime::now_utc()).unwrap();
-        assert!(inner.is_oversize(1015));
-        assert!(!inner.is_oversize(1014));
-        assert!(inner.is_overtime(time::OffsetDateTime::now_utc() + Duration::days(1)));
+        let inner = MmapAppendInner::new(&config).unwrap();
+        assert!(inner.is_oversize(max_size - inner.header.length() + 1));
+        assert!(!inner.is_oversize(max_size - inner.header.length()));
+        assert!(inner.is_overtime(
+            time::OffsetDateTime::now_utc() + Duration::days(1) + Duration::seconds(1)
+        ));
         assert!(!inner.is_overtime(
             time::OffsetDateTime::now_utc()
                 .date()
@@ -430,17 +462,13 @@ mod tests {
         drop(inner);
         fs::remove_file(file_path).unwrap();
 
-        let inner = ByteArrayAppenderInner::new(&config, OffsetDateTime::now_utc()).unwrap();
-        assert!(inner.is_oversize(1015));
-        assert!(!inner.is_oversize(1014));
-        assert!(inner.is_overtime(time::OffsetDateTime::now_utc() + Duration::days(1)));
-        assert!(!inner.is_overtime(
-            time::OffsetDateTime::now_utc()
-                .date()
-                .midnight()
-                .assume_utc()
-                + Duration::hours(23)
+        let inner = ByteArrayAppenderInner::new(&config).unwrap();
+        assert!(inner.is_oversize(max_size - inner.header.length() + 1));
+        assert!(!inner.is_oversize(max_size - inner.header.length()));
+        assert!(inner.is_overtime(
+            time::OffsetDateTime::now_utc() + Duration::days(1) + Duration::seconds(1)
         ));
+        assert!(!inner.is_overtime(time::OffsetDateTime::now_utc() + Duration::hours(23)));
         file_path = inner.file_path().to_owned();
         drop(inner);
         fs::remove_file(file_path).unwrap();
@@ -473,7 +501,7 @@ mod tests {
             .build();
 
         let config = Rc::new(c);
-        let mut appender = MmapAppendInner::new(&config, OffsetDateTime::now_utc()).unwrap();
+        let mut appender = MmapAppendInner::new(&config).unwrap();
         appender.write(buf).unwrap();
         appender.flush().unwrap();
 
@@ -481,7 +509,9 @@ mod tests {
         let file = current_file(&appender.file_path()).unwrap();
         let mut reader: BufReader<File> = BufReader::new(file);
         reader
-            .seek(SeekFrom::Start(Header::fixed_size() as u64))
+            .seek(SeekFrom::Start(
+                Header::length_compat(&config.version) as u64
+            ))
             .unwrap();
         reader.read(&mut read_buf).unwrap();
 
@@ -503,7 +533,7 @@ mod tests {
             .max_size(1024)
             .build();
 
-        let mut appender = ByteArrayAppenderInner::new(&c, OffsetDateTime::now_utc()).unwrap();
+        let mut appender = ByteArrayAppenderInner::new(&c).unwrap();
         appender.write(buf).unwrap();
         appender.flush().unwrap();
 
@@ -513,7 +543,9 @@ mod tests {
         let file = current_file(&log_path).unwrap();
         let mut reader = BufReader::new(file);
         reader
-            .seek(SeekFrom::Start(Header::fixed_size() as u64))
+            .seek(SeekFrom::Start(
+                Header::length_compat(&config.version) as u64
+            ))
             .unwrap();
         reader.read_exact(&mut read_buf).unwrap();
         assert_eq!(read_buf, buf);
