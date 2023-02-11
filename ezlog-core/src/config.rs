@@ -8,13 +8,13 @@ use std::{
 use memmap2::{MmapMut, MmapOptions};
 use time::{format_description, Date, Duration, OffsetDateTime};
 
-use crate::events::Event::{self};
+use crate::events::Event;
 #[allow(unused_imports)]
 use crate::EZLogger;
 use crate::{
-    appender::rename_current_file, errors::LogError, events::event, logger::Header, CipherKind,
-    CompressKind, CompressLevel, Version, DEFAULT_LOG_FILE_SUFFIX, DEFAULT_LOG_NAME,
-    DEFAULT_MAX_LOG_SIZE, LOG_LEVEL_NAMES, MIN_LOG_SIZE,
+    errors::LogError, events::event, logger::Header, CipherKind, CompressKind, CompressLevel,
+    Version, DEFAULT_LOG_FILE_SUFFIX, DEFAULT_LOG_NAME, DEFAULT_MAX_LOG_SIZE, LOG_LEVEL_NAMES,
+    MIN_LOG_SIZE,
 };
 
 pub const DATE_FORMAT: &str = "[year]_[month]_[day]";
@@ -24,83 +24,93 @@ pub const DATE_FORMAT: &str = "[year]_[month]_[day]";
 pub struct EZLogConfig {
     /// max log level
     ///
-    /// log等级
+    /// if record level is less than this, it will be ignored
     pub level: Level,
     /// EZLog version
     ///
-    /// 版本号
+    /// logger version, default is [Version::V2]
     pub version: Version,
     /// Log file dir path
     ///
-    /// 文件夹目录
+    /// all log files will be saved in this dir
     pub dir_path: String,
     /// Log name to identify the [EZLogger]
     ///
-    /// logger的名字
+    /// log file name will be `log_name` + `file_suffix`
     pub name: String,
     /// Log file suffix
     ///
-    /// 文件的后缀名
+    /// file suffix, default is [DEFAULT_LOG_FILE_SUFFIX]
     pub file_suffix: String,
     /// Log file expired after duration
     ///
-    /// 文件缓存的时间
+    /// the duration after which the log file will be trimmed
     pub duration: Duration,
     /// The maxium size of log file
     ///
-    /// 日志文件的最大大小
+    /// if log file size is greater than this, logger will rotate the log file
     pub max_size: u64,
     /// Log content compress kind.
     ///
-    // 压缩方式
+    // compress kind, default is [CompressKind::NONE]
     pub compress: CompressKind,
     /// Log content compress level.
     ///
-    /// 压缩等级
+    /// compress level, default is [CompressLevel::Default]
     pub compress_level: CompressLevel,
     /// Log content cipher kind.
     ///
-    /// 加密方式
+    /// cipher kind, default is [CipherKind::NONE]
     pub cipher: CipherKind,
     /// Log content cipher key.
     ///
-    /// 加密的密钥
+    /// cipher key, default is `None`
     pub cipher_key: Option<Vec<u8>>,
     /// Log content cipher nonce.
     ///
-    /// 加密的nonce
+    /// cipher nonce, default is `None`
     pub cipher_nonce: Option<Vec<u8>>,
 }
 
 impl EZLogConfig {
-    pub(crate) fn now_file_name(&self, now: OffsetDateTime) -> crate::Result<String> {
-        let format = format_description::parse(DATE_FORMAT).map_err(|e| {
+    pub(crate) fn file_name(&self) -> crate::Result<String> {
+        let str = format!("{}.{}", self.name, self.file_suffix);
+        Ok(str)
+    }
+
+    pub(crate) fn file_name_with_date(
+        &self,
+        time: OffsetDateTime,
+        count: i32,
+    ) -> crate::Result<String> {
+        let format = time::format_description::parse(DATE_FORMAT).map_err(|e| {
             crate::errors::LogError::Parse(format!(
-                "Unable to create a formatter; this is a bug in EZLogConfig#now_file_name: {}",
+                "Unable to create a formatter; this is a bug in EZLogConfig#file_name_with_date: {}",
                 e
             ))
         })?;
-        let date = now.format(&format).map_err(|_| {
+        let date = time.format(&format).map_err(|_| {
             crate::errors::LogError::Parse(
-                "Unable to format date; this is a bug in EZLogConfig#now_file_name".to_string(),
+                "Unable to format date; this is a bug in EZLogConfig#file_name_with_date"
+                    .to_string(),
             )
         })?;
-        let str = format!("{}_{}.{}", self.name, date, self.file_suffix);
-        Ok(str)
+        let new_name = format!("{}_{}.{}.{}", self.name, date, count, self.file_suffix);
+        Ok(new_name)
     }
 
     pub fn is_valid(&self) -> bool {
         !self.dir_path.is_empty() && !self.name.is_empty() && !self.file_suffix.is_empty()
     }
 
-    pub fn create_mmap_file(&self, time: OffsetDateTime) -> crate::Result<(PathBuf, MmapMut)> {
-        let (file, path) = self.create_log_file(time)?;
+    pub fn create_mmap_file(&self) -> crate::Result<(File, PathBuf, MmapMut)> {
+        let (file, path) = self.create_log_file()?;
         let mmap = unsafe { MmapOptions::new().map_mut(&file)? };
-        Ok((path, mmap))
+        Ok((file, path, mmap))
     }
 
-    pub(crate) fn create_log_file(&self, time: OffsetDateTime) -> crate::Result<(File, PathBuf)> {
-        let file_name = self.now_file_name(time)?;
+    pub(crate) fn create_log_file(&self) -> crate::Result<(File, PathBuf)> {
+        let file_name = self.file_name()?;
         let max_size = cmp::max(self.max_size, MIN_LOG_SIZE);
         let path = Path::new(&self.dir_path).join(file_name);
 
@@ -115,16 +125,12 @@ impl EZLogConfig {
             .create(true)
             .open(&path)?;
         let mut len = file.metadata()?.len();
-        if len == 0 {
-            len = max_size;
-            if len == 0 {
-                len = DEFAULT_MAX_LOG_SIZE;
-            }
-            file.set_len(len)?;
-        } else if len != max_size {
-            rename_current_file(&path)?;
-            return self.create_log_file(time);
-        }
+        len = if len != max_size && len != 0 {
+            len
+        } else {
+            max_size
+        };
+        file.set_len(len)?;
         Ok((file, path))
     }
 
@@ -178,7 +184,7 @@ impl EZLogConfig {
     }
 
     pub(crate) fn writable_size(&self) -> u64 {
-        self.max_size - Header::fixed_size() as u64
+        self.max_size - Header::length_compat(&self.version) as u64
     }
 
     pub fn query_log_files_for_date(&self, date: Date) -> Vec<PathBuf> {
@@ -195,11 +201,7 @@ impl EZLogConfig {
                             };
                         }
                         Err(e) => {
-                            event!(
-                                Event::RequestLogError,
-                                "get dir entry in dir",
-                                &e.into()
-                            );
+                            event!(Event::RequestLogError, "get dir entry in dir", &e.into());
                         }
                     }
                 }
@@ -549,24 +551,27 @@ mod tests {
             .cipher(CipherKind::AES128GCM)
             .cipher_key(key.to_vec())
             .cipher_nonce(nonce.to_vec())
+            .max_size(1024)
             .build();
 
-        let appender = EZAppender::create_inner(&config).unwrap();
+        let mut appender = EZAppender::create_inner(&config).unwrap();
         let f = OpenOptions::new()
             .write(true)
             .create(true)
             .open(appender.file_path())
             .unwrap();
+        appender.write(&[0u8; 512]).unwrap();
         drop(appender);
 
-        f.set_len(1).unwrap();
+        f.set_len((crate::Header::max_length() + 1) as u64).unwrap();
 
         let appender = EZAppender::create_inner(&config).unwrap();
+
         drop(appender);
 
         let files = config.query_log_files_for_date(OffsetDateTime::now_utc().date());
 
-        assert_eq!(files.len(), 2);
+        assert_eq!(files.len(), 1);
         if temp.exists() {
             fs::remove_dir_all(&temp).unwrap();
         }

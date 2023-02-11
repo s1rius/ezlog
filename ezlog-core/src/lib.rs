@@ -70,6 +70,7 @@ pub(crate) const MIN_LOG_SIZE: u64 = 100;
 
 /// Log file fixed header length.
 pub const V1_LOG_HEADER_SIZE: usize = 10;
+pub const V2_LOG_HEADER_SIZE: usize = 18;
 
 // maybe set as threadlocal variable
 static mut LOG_MAP: MaybeUninit<HashMap<String, EZLogger>> = MaybeUninit::uninit();
@@ -106,8 +107,7 @@ fn get_fetch_sender() -> &'static Sender<FetchResult> {
 ///
 /// # Examples
 /// ```
-/// use ezlog::init;
-/// init();
+/// ezlog::init();
 /// ```
 pub fn init() {
     hook_panic();
@@ -664,8 +664,8 @@ impl From<CompressLevel> for u8 {
     }
 }
 
-pub(crate) fn next_date(time: OffsetDateTime) -> OffsetDateTime {
-    time.date().midnight().assume_utc() + Duration::days(1)
+pub(crate) fn rotate_time(time: OffsetDateTime) -> OffsetDateTime {
+    time + Duration::days(1)
 }
 
 #[cfg(feature = "backtrace")]
@@ -685,7 +685,9 @@ fn hook_panic() {
 
 #[cfg(test)]
 mod tests {
-    use std::io::{Cursor, Read, Write};
+    use std::io::Cursor;
+    use std::io::Read;
+    use std::io::Write;
 
     use aead::KeyInit;
     use aes_gcm::aead::Aead;
@@ -745,7 +747,7 @@ mod tests {
         let header = Header::new();
         let mut v = Vec::new();
         header.encode(&mut v).unwrap();
-        assert_eq!(v.len(), Header::fixed_size());
+        assert_eq!(v.len(), header.length());
     }
 
     #[test]
@@ -819,9 +821,8 @@ mod tests {
     #[test]
     fn teset_encode_decode_file() {
         use crate::EZLogger;
-        use std::fs::{self, OpenOptions};
+        use std::fs;
         use std::io::BufReader;
-        use time::OffsetDateTime;
 
         let config = create_all_feature_config();
         fs::remove_dir_all(&config.dir_path).unwrap_or_default();
@@ -838,18 +839,14 @@ mod tests {
         }
         logger.flush().unwrap();
 
-        let (path, _mmap) = &config.create_mmap_file(OffsetDateTime::now_utc()).unwrap();
-        let origin_log = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(path)
-            .unwrap();
+        let (file, _, _mmap) = &config.create_mmap_file().unwrap();
 
-        let mut reader = BufReader::new(origin_log);
+        let mut reader = BufReader::new(file);
         let mut header = Header::decode(&mut reader).unwrap();
-        header.recorder_position = Header::fixed_size().try_into().unwrap();
-        assert_eq!(header, Header::create(&logger.config));
+        header.recorder_position = header.length().try_into().unwrap();
+        let mut new_header = Header::create(&logger.config);
+        new_header.timestamp = header.timestamp.clone();
+        assert_eq!(header, new_header);
         logger.decode_record(&mut reader).unwrap();
         fs::remove_dir_all(&config.dir_path).unwrap_or_default();
     }
