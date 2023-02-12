@@ -13,7 +13,13 @@ pub trait AppenderInner: Write {
     fn is_oversize(&self, buf_size: usize) -> bool;
 
     /// appender is overtime
-    fn is_overtime(&self, time: OffsetDateTime) -> bool;
+    fn is_overtime(&self, time: OffsetDateTime) -> bool {
+        if let Some(rotate_time) = self.header().rotate_time {
+            time > rotate_time
+        } else {
+            true
+        }
+    }
 
     /// write to the file's path
     fn file_path(&self) -> &PathBuf;
@@ -117,7 +123,6 @@ pub(crate) struct MmapAppendInner {
     header: Header,
     file_path: PathBuf,
     mmap: MmapMut,
-    next_date: i64,
 }
 
 impl MmapAppendInner {
@@ -135,6 +140,7 @@ impl MmapAppendInner {
         let mut c = Cursor::new(mmap_header);
         let mut header = Header::decode(&mut c).unwrap_or_else(|_| Header::new());
         let rotate_time = rotate_time(header.timestamp);
+        header.rotate_time = Some(rotate_time);
 
         let mut write_header = false;
         if header.is_empty() {
@@ -154,7 +160,6 @@ impl MmapAppendInner {
             header,
             file_path,
             mmap,
-            next_date: rotate_time.unix_timestamp(),
         };
         if write_header {
             inner.write_header()?;
@@ -209,10 +214,6 @@ impl AppenderInner for MmapAppendInner {
         self.header.recorder_position as usize + buf_size > max_len
     }
 
-    fn is_overtime(&self, time: OffsetDateTime) -> bool {
-        time.unix_timestamp() > self.next_date
-    }
-
     fn file_path(&self) -> &PathBuf {
         &self.file_path
     }
@@ -232,7 +233,6 @@ struct ByteArrayAppenderInner {
     header: Header,
     file_path: PathBuf,
     byte_array: Vec<u8>,
-    rotate_time: i64,
 }
 
 impl ByteArrayAppenderInner {
@@ -250,6 +250,7 @@ impl ByteArrayAppenderInner {
         })?);
         let mut header = Header::decode(&mut c).unwrap_or_else(|_| Header::new());
         let rotate_time = rotate_time(header.timestamp);
+        header.rotate_time = Some(rotate_time);
 
         let mut write_header = false;
         if header.is_empty() {
@@ -269,7 +270,6 @@ impl ByteArrayAppenderInner {
             header,
             file_path,
             byte_array,
-            rotate_time: rotate_time.unix_timestamp(),
         };
         if write_header {
             inner.write_header()?;
@@ -332,10 +332,6 @@ impl AppenderInner for ByteArrayAppenderInner {
     fn is_oversize(&self, buf_size: usize) -> bool {
         let max_len = self.byte_array.len();
         self.header.recorder_position as usize + buf_size > max_len
-    }
-
-    fn is_overtime(&self, time: OffsetDateTime) -> bool {
-        time.unix_timestamp() > self.rotate_time
     }
 
     fn file_path(&self) -> &PathBuf {
