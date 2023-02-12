@@ -107,15 +107,28 @@ impl EZLogger {
     #[inline]
     fn encode(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
         let mut buf = self.format(record);
-        if let Some(encryptor) = &self.cryptor {
-            event!(Event::Encrypt, &record.t_id());
-            buf = encryptor.encrypt(&buf)?;
-            event!(Event::EncryptEnd, &record.t_id());
-        }
-        if let Some(compression) = &self.compression {
-            event!(Event::Compress, &record.t_id());
-            buf = compression.compress(&buf).map_err(LogError::Compress)?;
-            event!(Event::CompressEnd, &record.t_id());
+        if self.config.version == Version::V1 {
+            if let Some(encryptor) = &self.cryptor {
+                event!(Event::Encrypt, &record.t_id());
+                buf = encryptor.encrypt(&buf)?;
+                event!(Event::EncryptEnd, &record.t_id());
+            }
+            if let Some(compression) = &self.compression {
+                event!(Event::Compress, &record.t_id());
+                buf = compression.compress(&buf).map_err(LogError::Compress)?;
+                event!(Event::CompressEnd, &record.t_id());
+            }
+        } else {
+            if let Some(compression) = &self.compression {
+                event!(Event::Compress, &record.t_id());
+                buf = compression.compress(&buf).map_err(LogError::Compress)?;
+                event!(Event::CompressEnd, &record.t_id());
+            }
+            if let Some(encryptor) = &self.cryptor {
+                event!(Event::Encrypt, &record.t_id());
+                buf = encryptor.encrypt(&buf)?;
+                event!(Event::EncryptEnd, &record.t_id());
+            }
         }
         Ok(buf)
     }
@@ -196,7 +209,7 @@ impl EZLogger {
         cryptor: &Option<Box<dyn Cryptor>>,
     ) -> Result<Vec<u8>> {
         let chunk = Self::decode_record_to_content(reader, version)?;
-        Self::decode_record_content(&chunk, compression, cryptor)
+        Self::decode_record_content(version, &chunk, compression, cryptor)
     }
 
     #[inline]
@@ -252,19 +265,31 @@ impl EZLogger {
     #[inline]
     #[cfg(feature = "decode")]
     pub fn decode_record_content(
+        version: &Version,
         chunk: &[u8],
         compression: &Option<Box<dyn Compress>>,
         cryptor: &Option<Box<dyn Cryptor>>,
     ) -> Result<Vec<u8>> {
         let mut buf = chunk.to_vec();
 
-        if let Some(decompression) = compression {
-            buf = decompression.decompress(&buf)?;
+        if *version == Version::V1 {
+            if let Some(decompression) = compression {
+                buf = decompression.decompress(&buf)?;
+            }
+
+            if let Some(decryptor) = cryptor {
+                buf = decryptor.decrypt(&buf)?;
+            }
+        } else {
+            if let Some(decryptor) = cryptor {
+                buf = decryptor.decrypt(&buf)?;
+            }
+
+            if let Some(decompression) = compression {
+                buf = decompression.decompress(&buf)?;
+            }
         }
 
-        if let Some(decryptor) = cryptor {
-            buf = decryptor.decrypt(&buf)?;
-        }
         Ok(buf)
     }
 
@@ -309,21 +334,13 @@ impl EZLogger {
                                         }
                                     }
                                     Err(e) => {
-                                        event!(
-                                            Event::TrimError,
-                                            "judge file out of date error",
-                                            &e
-                                        )
+                                        event!(Event::TrimError, "judge file out of date error", &e)
                                     }
                                 }
                             };
                         }
                         Err(e) => {
-                            event!(
-                                Event::TrimError,
-                                "traversal file error",
-                                &e.into()
-                            )
+                            event!(Event::TrimError, "traversal file error", &e.into())
                         }
                     }
                 }
