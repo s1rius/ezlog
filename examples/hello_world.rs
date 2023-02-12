@@ -13,7 +13,6 @@ use ezlog::{
 use log::{debug, error, info, trace, warn, LevelFilter};
 use log::{Metadata, Record};
 use rand::Rng;
-use time::OffsetDateTime;
 
 static LOGGER: SimpleLogger = SimpleLogger;
 static EVENT_LISTENER: EventPrinter = EventPrinter;
