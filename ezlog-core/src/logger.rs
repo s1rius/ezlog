@@ -348,6 +348,8 @@ pub struct Header {
     pub(crate) cipher: CipherKind,
     /// timestamp
     pub(crate) timestamp: OffsetDateTime,
+    /// rotate time
+    pub(crate) rotate_time: Option<OffsetDateTime>,
 }
 
 impl Default for Header {
@@ -365,10 +367,13 @@ impl Header {
             compress: CompressKind::ZLIB,
             cipher: CipherKind::AES128GCM,
             timestamp: OffsetDateTime::now_utc(),
+            rotate_time: None,
         }
     }
 
     pub fn create(config: &EZLogConfig) -> Self {
+        let time = OffsetDateTime::now_utc();
+        let rotate_time = crate::rotate_time(time);
         Header {
             version: config.version,
             flag: 0,
@@ -376,6 +381,7 @@ impl Header {
             compress: config.compress,
             cipher: config.cipher,
             timestamp: OffsetDateTime::now_utc(),
+            rotate_time: Some(rotate_time),
         }
     }
 
@@ -446,6 +452,7 @@ impl Header {
             cipher: CipherKind::from(cipher),
             timestamp: OffsetDateTime::from_unix_timestamp(timestamp)
                 .unwrap_or_else(|_| OffsetDateTime::now_utc()),
+            rotate_time: None,
         })
     }
 

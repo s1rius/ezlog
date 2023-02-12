@@ -846,6 +846,7 @@ mod tests {
         header.recorder_position = header.length().try_into().unwrap();
         let mut new_header = Header::create(&logger.config);
         new_header.timestamp = header.timestamp.clone();
+        new_header.rotate_time = header.rotate_time.clone();
         assert_eq!(header, new_header);
         logger.decode_record(&mut reader).unwrap();
         fs::remove_dir_all(&config.dir_path).unwrap_or_default();
