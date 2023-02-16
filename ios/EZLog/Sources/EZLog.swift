@@ -58,7 +58,9 @@ private func ezlogCreate(config: EZLogConfig) {
                      config.cipherKey ?? [],
                      UInt(config.cipherKey?.count ?? 0),
                      config.cipherNonce ?? [],
-                     UInt(config.cipherNonce?.count ?? 0))
+                     UInt(config.cipherNonce?.count ?? 0),
+                     UInt32(config.rotateHours ?? 24)
+    )
 }
 
 public func ezlogInit() {
@@ -196,6 +198,7 @@ public struct EZLogConfig {
     var cipher: Cipher? = Cipher.NONE
     var cipherKey: [UInt8]? = []
     var cipherNonce: [UInt8]? = []
+    var rotateHours: Int? = 24
     
     public init(
         level: Level,
@@ -219,6 +222,32 @@ public struct EZLogConfig {
         self.cipher = cipher ?? Cipher.NONE
         self.cipherKey = cipherKey ?? []
         self.cipherNonce = cipherNonce ?? []
+    }
+    
+    public init(
+        level: Level,
+        dirPath: String,
+        name: String,
+        keepDays: Int,
+        maxSize: Int,
+        compress: CompressKind?,
+        compressLevel: CompressLevel?,
+        cipher: Cipher?,
+        cipherKey: [UInt8]?,
+        cipherNonce: [UInt8]?,
+        rotateHours: Int?
+    ) {
+        self.level = level
+        self.dirPath = dirPath
+        self.name = name
+        self.keepDays = keepDays
+        self.maxSize = maxSize
+        self.compress = compress ?? CompressKind.NONE
+        self.compressLevel = compressLevel ?? CompressLevel.DEFAULT
+        self.cipher = cipher ?? Cipher.NONE
+        self.cipherKey = cipherKey ?? []
+        self.cipherNonce = cipherNonce ?? []
+        self.rotateHours = rotateHours ?? 24
     }
     
     
@@ -264,6 +293,28 @@ public struct EZLogConfig {
         cipherKey: [UInt8]?,
         cipherNonce: [UInt8]?
     ) {
+        self.init(level: level,
+                  dirPath: dirPath,
+                  name: name,
+                  keepDays: keepDays,
+                  maxSize: maxSize,
+                  cipher: cipher,
+                  cipherKey: cipherKey,
+                  cipherNonce: cipherNonce,
+                  rotateHours: 24)
+    }
+    
+    public init(
+        level: Level,
+        dirPath: String,
+        name: String,
+        keepDays: Int,
+        maxSize: Int,
+        cipher: Cipher?,
+        cipherKey: [UInt8]?,
+        cipherNonce: [UInt8]?,
+        rotateHours: Int?
+    ) {
         self.level = level
         self.dirPath = dirPath
         self.name = name
@@ -272,6 +323,7 @@ public struct EZLogConfig {
         self.cipher = cipher ?? Cipher.NONE
         self.cipherKey = cipherKey ?? []
         self.cipherNonce = cipherNonce ?? []
+        self.rotateHours = rotateHours ?? 24
     }
 }
 

@@ -1,6 +1,7 @@
 package wtf.s1.ezlog.benchmarkable
 
 import android.util.Log
+import java.util.*
 import kotlin.random.Random
 import kotlin.random.nextInt
 
@@ -41,6 +42,14 @@ class LogController(
 
     fun flush() {
         log.flush()
+    }
+
+    fun requestLog(date: Date) {
+        log.requestLog(date)
+    }
+
+    fun registerCallback() {
+        log.registerCallback()
     }
 
 

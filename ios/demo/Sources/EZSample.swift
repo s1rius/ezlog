@@ -25,7 +25,8 @@ func ezlogSampleInit() {
                              compressLevel: CompressLevel.DEFAULT,
                              cipher: Cipher.AES128GCM,
                              cipherKey: [UInt8]("a secret key!!!!".utf8),
-                             cipherNonce: [UInt8]("unique nonce".utf8))
+                             cipherNonce: [UInt8]("unique nonce".utf8),
+                             rotateHours: 24)
     _ = EZLogger(config: config)
     
     

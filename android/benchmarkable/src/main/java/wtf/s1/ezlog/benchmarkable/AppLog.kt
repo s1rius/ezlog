@@ -1,14 +1,19 @@
 package wtf.s1.ezlog.benchmarkable
 
 import android.content.Context
+import android.text.TextUtils
 import com.dianping.logan.Logan
 import com.dianping.logan.LoganConfig
+import com.dianping.logan.SendLogRunnable
+import com.dianping.logan.Util
 import com.tencent.mars.xlog.Log
 import com.tencent.mars.xlog.Xlog
 import wtf.s1.ezlog.EZLog
+import wtf.s1.ezlog.EZLogCallback
 import wtf.s1.ezlog.EZLogConfig
 import wtf.s1.ezlog.EZLogger
 import java.io.File
+import java.util.*
 
 
 abstract class AppLog {
@@ -26,6 +31,8 @@ abstract class AppLog {
     abstract fun e(tag: String, msg: String)
 
     abstract fun flush()
+    abstract fun requestLog(date: Date)
+    abstract fun registerCallback()
 }
 
 class AppEZLog(private val config: EZLogConfig): AppLog() {
@@ -61,6 +68,32 @@ class AppEZLog(private val config: EZLogConfig): AppLog() {
         log.flush()
     }
 
+    override fun requestLog(date: Date) {
+        EZLog.requestLogFilesForDate(config.logName, date)
+    }
+
+    override fun registerCallback() {
+        EZLog.registerCallback(callback)
+    }
+
+    private val callback = object : EZLogCallback {
+
+        override fun onSuccess(logName: String?, date: String?, logs: Array<String?>?) {
+            android.util.Log.i("ezlog", "$logName $date ${logs.contentToString()}")
+            logs?.let {
+                logs.getOrNull(0)?.let { log ->
+                    android.util.Log.i("ezlog", "$log exists = ${File(log).exists()}")
+                }
+            }
+            EZLog.trim()
+        }
+
+        override fun onFail(logName: String?, date: String?, err: String?) {
+            android.util.Log.i("ezlog", "$logName $date $err")
+            EZLog.trim()
+        }
+    }
+
 }
 
 class AppLogan(private val config: LoganConfig): AppLog() {
@@ -92,6 +125,20 @@ class AppLogan(private val config: LoganConfig): AppLog() {
 
     override fun flush() {
         Logan.f()
+    }
+
+    override fun requestLog(date: Date) {
+        Logan.s(arrayOf(Util.getDateStr(date.time)), object: SendLogRunnable() {
+            override fun sendLog(logFile: File?) {
+                logFile?.let {
+                    Log.i("logan", it.path)
+                }
+            }
+        })
+    }
+
+    override fun registerCallback() {
+        // noting to do
     }
 
 }
@@ -145,6 +192,14 @@ class AppXLog(val context: Context): AppLog() {
 
     override fun flush() {
         Log.appenderFlush()
+    }
+
+    override fun requestLog(date: Date) {
+        //noting to do
+    }
+
+    override fun registerCallback() {
+        //noting to do
     }
 
 }

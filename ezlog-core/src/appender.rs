@@ -139,7 +139,7 @@ impl MmapAppendInner {
             .ok_or_else(|| io::Error::new(ErrorKind::InvalidData, "mmap get header vec error"))?;
         let mut c = Cursor::new(mmap_header);
         let mut header = Header::decode(&mut c).unwrap_or_else(|_| Header::new());
-        let rotate_time = rotate_time(header.timestamp);
+        let rotate_time = config.rotate_time(header.timestamp);
         header.rotate_time = Some(rotate_time);
 
         let mut write_header = false;
@@ -249,7 +249,7 @@ impl ByteArrayAppenderInner {
             io::Error::new(ErrorKind::InvalidData, "byte array get header vec error")
         })?);
         let mut header = Header::decode(&mut c).unwrap_or_else(|_| Header::new());
-        let rotate_time = rotate_time(header.timestamp);
+        let rotate_time = config.rotate_time(header.timestamp);
         header.rotate_time = Some(rotate_time);
 
         let mut write_header = false;
@@ -397,6 +397,8 @@ mod tests {
     use std::fs::{self, File, OpenOptions};
     use std::io::{BufReader, Seek, SeekFrom};
 
+    use time::Duration;
+
     use crate::config::EZLogConfigBuilder;
 
     use super::*;
@@ -435,7 +437,7 @@ mod tests {
                     .into_string()
                     .unwrap(),
             )
-            .duration(Duration::days(1))
+            .trim_duration(Duration::days(1))
             .name(String::from("test"))
             .file_suffix(String::from("mmap"))
             .max_size(max_size.try_into().unwrap())

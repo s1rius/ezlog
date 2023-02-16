@@ -55,6 +55,7 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeCreateLogger<'local>(
     j_cipher: jint,
     j_cipher_key: JByteArray<'local>,
     j_cipher_nonce: JByteArray<'local>,
+    j_rotate_hours: jint,
 ) {
     let log_name: String = env
         .get_string(&j_log_name)
@@ -66,6 +67,7 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeCreateLogger<'local>(
         .map(|dir| dir.into())
         .unwrap_or_default();
     let duration: Duration = Duration::days(j_keep_days as i64);
+    let rotate_duration: Duration = Duration::hours(j_rotate_hours as i64);
     let compress: CompressKind = CompressKind::from(j_compress as u8);
     let compress_level: CompressLevel = CompressLevel::from(j_compress_level as u8);
     let cipher: CipherKind = CipherKind::from(j_cipher as u8);
@@ -76,7 +78,8 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeCreateLogger<'local>(
         .name(log_name)
         .level(log_level)
         .dir_path(log_dir)
-        .duration(duration)
+        .trim_duration(duration)
+        .rotate_duration(rotate_duration)
         .compress(compress)
         .compress_level(compress_level)
         .cipher(cipher)

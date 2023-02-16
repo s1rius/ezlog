@@ -3,6 +3,7 @@ package wtf.s1.ezlog
 class EZLogConfig(var logName: String, var dirPath: String) {
     var maxLevel: Int = EZLog.VERBOSE
     var keepDays: Int = 7
+    var rotateHours: Int = 24
     var compress = 0
     var compressLevel = 0
     var cipher = 0
@@ -21,6 +22,7 @@ class EZLogConfig(var logName: String, var dirPath: String) {
     class Builder(var logName: String, var dirPath: String) {
         var maxLevel = EZLog.VERBOSE
         var keepDays = 7
+        var rotateHours = 24
         var compress = 0
         var compressLevel = 0
         var cipher = 0
@@ -46,6 +48,16 @@ class EZLogConfig(var logName: String, var dirPath: String) {
         fun keepDays(days: Int): Builder {
             keepDays = days
             return this
+        }
+
+        /**
+         * set log file rotate hours. The log files will be rotated after create time + rotateHours
+         *
+         * @param hours after log file rotate
+         */
+        fun rotateHours(hours: Int): Builder {
+            rotateHours = hours;
+            return this;
         }
 
         /**
@@ -93,7 +105,7 @@ class EZLogConfig(var logName: String, var dirPath: String) {
         }
 
         fun cipher(cipher: EZLog.Cipher): Builder {
-            this.cipher = when(cipher) {
+            this.cipher = when (cipher) {
                 EZLog.Cipher.NONE -> 0
                 EZLog.Cipher.AES256GCM -> EZLog.Aes256Gcm
                 EZLog.Cipher.AES128GCM -> EZLog.Aes128Gcm
@@ -152,6 +164,7 @@ class EZLogConfig(var logName: String, var dirPath: String) {
         if (dirPath != other.dirPath) return false
         if (maxLevel != other.maxLevel) return false
         if (keepDays != other.keepDays) return false
+        if (rotateHours != other.rotateHours) return false
         if (compress != other.compress) return false
         if (compressLevel != other.compressLevel) return false
         if (cipher != other.cipher) return false
@@ -167,6 +180,7 @@ class EZLogConfig(var logName: String, var dirPath: String) {
         result = 31 * result + dirPath.hashCode()
         result = 31 * result + maxLevel
         result = 31 * result + keepDays
+        result = 31 * result + rotateHours
         result = 31 * result + compress
         result = 31 * result + compressLevel
         result = 31 * result + cipher
@@ -175,4 +189,5 @@ class EZLogConfig(var logName: String, var dirPath: String) {
         result = 31 * result + enableTrace.hashCode()
         return result
     }
+
 }

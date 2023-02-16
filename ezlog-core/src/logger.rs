@@ -398,7 +398,7 @@ impl Header {
 
     pub fn create(config: &EZLogConfig) -> Self {
         let time = OffsetDateTime::now_utc();
-        let rotate_time = crate::rotate_time(time);
+        let rotate_time = config.rotate_time(time);
         Header {
             version: config.version,
             flag: 0,
