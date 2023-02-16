@@ -47,7 +47,6 @@ use std::{
     sync::Once,
     thread,
 };
-use time::{Duration, OffsetDateTime};
 
 #[cfg(feature = "backtrace")]
 use backtrace::Backtrace;
@@ -662,10 +661,6 @@ impl From<CompressLevel> for u8 {
             CompressLevel::Best => 0x02,
         }
     }
-}
-
-pub(crate) fn rotate_time(time: OffsetDateTime) -> OffsetDateTime {
-    time + Duration::days(1)
 }
 
 #[cfg(feature = "backtrace")]

@@ -18,39 +18,39 @@ class MockEZLogFlutterPlatform
       int compressLevel,
       int cipher,
       Uint8List? cipherKey,
-      Uint8List? cipherNonce) {
-    // TODO: implement createLogger
+      Uint8List? cipherNonce,
+      int rotateHours) {
+    throw UnimplementedError();
   }
 
   @override
   void flush(String logName) {
-    // TODO: implement flush
+    throw UnimplementedError();
   }
 
   @override
   void init(bool enableTrace) {
-    // TODO: implement init
+    throw UnimplementedError();
   }
 
   @override
   void log(String logName, int level, String tag, String msg) {
-    // TODO: implement log
+    throw UnimplementedError();
   }
 
   @override
   Future<List<Object?>?> requestLogFilesForDate(String name, String date) {
-    // TODO: implement requestLogFilesForDate
     throw UnimplementedError();
   }
 
   @override
   void flushAll() {
-    // TODO: implement flushAll
+    throw UnimplementedError();
   }
 
   @override
   void trim() {
-    // TODO: implement trimAll
+    throw UnimplementedError();
   }
 }
 

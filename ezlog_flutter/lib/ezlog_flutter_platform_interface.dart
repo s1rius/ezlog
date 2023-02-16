@@ -34,7 +34,8 @@ abstract class EZLogFlutterPlatform extends PlatformInterface {
       int compressLevel,
       int cipher,
       Uint8List? cipherKey,
-      Uint8List? cipherNonce) {
+      Uint8List? cipherNonce,
+      int rotateHours) {
     throw UnimplementedError('createLogger() has not been implemented.');
   }
 

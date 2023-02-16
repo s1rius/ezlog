@@ -45,7 +45,7 @@ pub struct EZLogConfig {
     /// Log file expired after duration
     ///
     /// the duration after which the log file will be trimmed
-    pub duration: Duration,
+    pub trim_duration: Duration,
     /// The maxium size of log file
     ///
     /// if log file size is greater than this, logger will rotate the log file
@@ -70,6 +70,10 @@ pub struct EZLogConfig {
     ///
     /// cipher nonce, default is `None`
     pub cipher_nonce: Option<Vec<u8>>,
+    /// rotate duration
+    ///
+    /// the duration after which the log file will be rotated
+    pub rotate_duration: Duration,
 }
 
 impl EZLogConfig {
@@ -163,24 +167,13 @@ impl EZLogConfig {
     }
 
     fn is_out_of_date(&self, target: OffsetDateTime, now: OffsetDateTime) -> bool {
-        if target.year() < now.year() {
-            return true;
-        }
-
-        if target.year() == now.year() && target + self.duration < now {
-            return true;
-        }
-
-        false
+        target + self.trim_duration < now
     }
 
     pub(crate) fn is_file_same_date(&self, file_name: &str, date: Date) -> bool {
-        if let Ok(log_date) = self.read_file_name_as_date(file_name) {
-            if log_date.date() == date {
-                return true;
-            }
-        }
-        false
+        self.read_file_name_as_date(file_name)
+            .map(|log_date| log_date.date() == date)
+            .unwrap_or(false)
     }
 
     pub(crate) fn writable_size(&self) -> u64 {
@@ -209,6 +202,10 @@ impl EZLogConfig {
             Err(e) => event!(Event::RequestLogError, "read dir", &e.into()),
         }
         logs
+    }
+
+    pub(crate) fn rotate_time(&self, time: OffsetDateTime) -> OffsetDateTime {
+        time + self.rotate_duration
     }
 }
 
@@ -244,13 +241,14 @@ impl EZLogConfigBuilder {
                 dir_path: "".to_string(),
                 name: DEFAULT_LOG_NAME.to_string(),
                 file_suffix: DEFAULT_LOG_FILE_SUFFIX.to_string(),
-                duration: Duration::days(7),
+                trim_duration: Duration::days(7),
                 max_size: DEFAULT_MAX_LOG_SIZE,
                 compress: CompressKind::NONE,
                 compress_level: CompressLevel::Default,
                 cipher: CipherKind::NONE,
                 cipher_key: None,
                 cipher_nonce: None,
+                rotate_duration: Duration::days(1),
             },
         }
     }
@@ -280,8 +278,8 @@ impl EZLogConfigBuilder {
     }
 
     #[inline]
-    pub fn duration(mut self, duration: Duration) -> Self {
-        self.config.duration = duration;
+    pub fn trim_duration(mut self, duration: Duration) -> Self {
+        self.config.trim_duration = duration;
         self
     }
 
@@ -326,6 +324,12 @@ impl EZLogConfigBuilder {
         self.config.version = header.version;
         self.config.compress = header.compress;
         self.config.cipher = header.cipher;
+        self
+    }
+
+    #[inline]
+    pub fn rotate_duration(mut self, duration: Duration) -> Self {
+        self.config.rotate_duration = duration;
         self
     }
 
@@ -500,7 +504,7 @@ mod tests {
     #[test]
     fn test_is_out_of_date() {
         let config = EZLogConfigBuilder::default()
-            .duration(Duration::days(1))
+            .trim_duration(Duration::days(1))
             .build();
 
         assert!(!config.is_out_of_date(OffsetDateTime::now_utc(), OffsetDateTime::now_utc()));

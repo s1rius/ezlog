@@ -8,44 +8,45 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ### Add
-- cli: add key, nonce to cli options. https://github.com/s1rius/ezlog/pull/29
-- add create time info to file header. https://github.com/s1rius/ezlog/pull/38
+- cli: Add key, nonce to cli options https://github.com/s1rius/ezlog/pull/29
+- Add create time info to file header https://github.com/s1rius/ezlog/pull/38
+- Make file rorate duration configurable https://github.com/s1rius/ezlog/pull/46
 
 ### Change
-- **break** android:rename native function name, remove underline. https://github.com/s1rius/ezlog/pull/26
-- use varint to describe log's content length https://github.com/s1rius/ezlog/pull/32
-- compress first then encrypt https://github.com/s1rius/ezlog/pull/40
+- **break** android:rename native function name, remove underline https://github.com/s1rius/ezlog/pull/26
+- Use varint to describe log's content length https://github.com/s1rius/ezlog/pull/32
+- Compress first then encrypt https://github.com/s1rius/ezlog/pull/40
 
 ## [0.1.7] (2022-11-24)
 
 ### Fix
-- fix appender rolling fail https://github.com/s1rius/ezlog/pull/22
-- fix get error on request logs path multi times https://github.com/s1rius/ezlog/pull/23
-- fix global typo by @nickming https://github.com/s1rius/ezlog/pull/21
+- Fix appender rolling fail https://github.com/s1rius/ezlog/pull/22
+- Fix get error on request logs path multi times https://github.com/s1rius/ezlog/pull/23
+- Fix global typo by @nickming https://github.com/s1rius/ezlog/pull/21
 
 ### Add
-- add ci build android and ios rust lib https://github.com/s1rius/ezlog/pull/17
+- Add ci build android and ios rust lib https://github.com/s1rius/ezlog/pull/17
 - flutter: support trim function https://github.com/s1rius/ezlog/pull/18
-- add mobile benchmark https://github.com/s1rius/ezlog/pull/20
+- Add mobile benchmark https://github.com/s1rius/ezlog/pull/20
 
 ## [0.1.6] (2022-11-1)
-- support trim log files which are out of date 
+- Support trim log files which are out of date 
 
 ## [0.1.5] (2022-08-25)
 
-- fix android jni method signature error
-- support multi callbacks
+- Fix android jni method signature error
+- Support multi callbacks
 
 ## [0.1.4] (2022-07-25)
 
-- update android/iOS prebuild library
+- Update android/iOS prebuild library
 
 ## [0.1.3] (2022-07-25)
 
-- ffi hook panic when init
-- downgrade ios support version to 13.0
-- use Result when index is out of bounds
-- add features: decode, backtrace, log
+- FFI hook panic when init
+- Downgrade ios support version to 13.0
+- Use Result when index is out of bounds
+- Add features: decode, backtrace, log
 
 [Unreleased]: https://github.com/s1rius/ezlog/compare/0.1.7...HEAD
 [0.1.7]: https://github.com/s1rius/ezlog/compare/0.1.6...0.1.7

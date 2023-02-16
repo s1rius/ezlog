@@ -53,7 +53,9 @@ public class EzlogFlutterPlugin implements FlutterPlugin, MethodCallHandler {
                     .compressLevel(argumentOrDefault(call, "compressLevel", EZLog.CompressDefault))
                     .cipher(argumentOrDefault(call, "cipher", 0))
                     .cipherKey(argumentOrDefault(call, "cipherKey", new byte[]{}))
-                    .cipherNonce(argumentOrDefault(call, "cipherNonce", new byte[]{})).build();
+                    .cipherNonce(argumentOrDefault(call, "cipherNonce", new byte[]{}))
+                    .rotateHours(argumentOrDefault(call, "rotateHours", 24))
+                    .build();
             EZLog._createLogger(config);
 
         } else if (call.method.equals("log")) {

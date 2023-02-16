@@ -48,7 +48,9 @@ void ezlog_create_log(const char * _Nonnull c_log_name,
                       const unsigned char * _Nonnull c_cipher_key,
                       uintptr_t c_key_len,
                       const unsigned char * _Nonnull c_cipher_nonce,
-                      uintptr_t c_nonce_len);
+                      uintptr_t c_nonce_len,
+                      unsigned int c_rotate_duration
+);
 
 /**
  * Write log to file

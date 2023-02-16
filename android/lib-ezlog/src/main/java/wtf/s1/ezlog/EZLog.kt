@@ -167,7 +167,8 @@ object EZLog {
             config.compressLevel,
             config.cipher,
             config.cipherKey,
-            config.cipherNonce
+            config.cipherNonce,
+            config.rotateHours,
         )
     }
 
@@ -247,7 +248,8 @@ object EZLog {
         compressLevel: Int,
         cipher: Int,
         cipherKey: ByteArray,
-        cipherNonce: ByteArray
+        cipherNonce: ByteArray,
+        rotateHours: Int,
     )
 
     /**

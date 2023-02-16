@@ -1,4 +1,5 @@
 use libc::c_void;
+use time::Duration;
 
 use crate::config::Level;
 use crate::events::EventPrinter;
@@ -51,6 +52,7 @@ pub unsafe extern "C" fn ezlog_create_log(
     c_key_len: usize,
     c_cipher_nonce: *const c_uchar,
     c_nonce_len: usize,
+    c_rotate_duration: c_uint,
 ) {
     let log_name = CStr::from_ptr(c_log_name).to_string_lossy().into_owned();
     let level = Level::from_usize(c_level as usize).unwrap_or(Level::Trace);
@@ -63,17 +65,19 @@ pub unsafe extern "C" fn ezlog_create_log(
     let cipher_key: Vec<u8> = key_bytes.to_owned();
     let nonce_bytes = slice::from_raw_parts(c_cipher_nonce, c_nonce_len);
     let cipher_nonce: Vec<u8> = nonce_bytes.to_owned();
+    let rotate_duration = Duration::hours(c_rotate_duration as i64);
 
     let config = EZLogConfigBuilder::new()
         .name(log_name)
         .dir_path(dir_path)
         .level(level)
-        .duration(duration)
+        .trim_duration(duration)
         .compress(compress)
         .compress_level(compress_level)
         .cipher(cipher)
         .cipher_key(cipher_key)
         .cipher_nonce(cipher_nonce)
+        .rotate_duration(rotate_duration)
         .build();
 
     create_log(config);
