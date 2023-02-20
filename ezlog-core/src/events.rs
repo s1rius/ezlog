@@ -91,7 +91,7 @@ pub fn set_event_listener(event: &'static dyn EventListener) {
         #[cfg(target_os = "android")]
         android_logger::init_once(
             android_logger::Config::default()
-                .with_max_level(log::LevelFilter::Trace)
+                .with_max_level(log::LevelFilter::Debug)
                 .with_log_buffer(android_logger::LogId::Main)
         );
         EVENT_LISTENER = event;
@@ -129,7 +129,7 @@ pub(crate) use println_with_time;
 pub(crate) fn android_print(record: std::fmt::Arguments) {
     let s = log::RecordBuilder::new()
         .args(record)
-        .level(log::Level::Trace)
+        .level(log::Level::Debug)
         .module_path(Some("ezlog"))
         .build();
     android_logger::log(&s);
