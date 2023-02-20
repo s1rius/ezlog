@@ -134,7 +134,7 @@ pub(crate) fn android_print(record: std::fmt::Arguments) {
         AndroidLogger::new(
             Config::default()
                 .with_tag("ezlog")
-                .with_min_level(log::Level::Trace),
+                .with_max_level(log::LevelFilter::Trace),
         )
     });
 
