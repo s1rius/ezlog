@@ -46,7 +46,7 @@ pub enum Event {
 /// if you care about what's things going on, just register an event listener.
 macro_rules! event {
     ($t:expr) => {
-        crate::events::call_event($t, "ok")
+        crate::events::call_event($t, "")
     };
     ($t:expr, $info: expr) => {
         crate::events::call_event($t, $info)
@@ -88,6 +88,12 @@ pub fn listener() -> &'static dyn EventListener {
 
 pub fn set_event_listener(event: &'static dyn EventListener) {
     EVENT_INIT.call_once(|| unsafe {
+        #[cfg(target_os = "android")]
+        android_logger::init_once(
+            android_logger::Config::default()
+                .with_max_level(log::LevelFilter::Trace)
+                .with_log_buffer(android_logger::LogId::Main)
+        );
         EVENT_LISTENER = event;
     })
 }
@@ -106,9 +112,6 @@ macro_rules! println_with_time {
     }};
 }
 
-#[cfg(all(target_os = "android", feature = "log"))]
-use android_logger::AndroidLogger;
-
 /// android logcat already has time prefix
 /// just print current log
 
@@ -123,24 +126,13 @@ use crate::errors::LogError;
 pub(crate) use println_with_time;
 
 #[cfg(all(target_os = "android", feature = "log"))]
-static ANDROID_LOGGER: once_cell::sync::OnceCell<AndroidLogger> = once_cell::sync::OnceCell::new();
-
-#[cfg(all(target_os = "android", feature = "log"))]
 pub(crate) fn android_print(record: std::fmt::Arguments) {
-    use android_logger::Config;
-    use log::{Log, RecordBuilder};
-
-    let log = ANDROID_LOGGER.get_or_init(|| {
-        AndroidLogger::new(
-            Config::default()
-                .with_tag("ezlog")
-                .with_max_level(log::LevelFilter::Trace),
-        )
-    });
-
-    let r = RecordBuilder::new().args(record).build();
-
-    log.log(&r);
+    let s = log::RecordBuilder::new()
+        .args(record)
+        .level(log::Level::Trace)
+        .module_path(Some("ezlog"))
+        .build();
+    android_logger::log(&s);
 }
 
 struct NopEvent;
@@ -151,7 +143,9 @@ impl EventListener for NopEvent {
 }
 
 /// Default [EventListener] implementation, print every event in console
+
 pub struct EventPrinter;
+
 impl EventPrinter {}
 
 #[allow(unused_variables)]
