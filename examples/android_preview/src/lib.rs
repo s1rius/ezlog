@@ -28,7 +28,7 @@ fn main() {
     ezlog::flush(ezlog::DEFAULT_LOG_NAME);
     ezlog::request_log_files_for_date(DEFAULT_LOG_NAME, "2022_07_11");
 
-    for i in 0..10000 {
+    for i in 0..10 {
         ezlog::log(
             EZRecordBuilder::new()
                 .content(format!("{}{}", i, random_string(100)))
@@ -57,10 +57,10 @@ struct SimpleCallback;
 
 impl EZLogCallback for SimpleCallback {
     fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
-        print!("{} {} {}", name, date, logs.join(" "));
+        println!("fetch sucess {} {} {}", name, date, logs.join(" "));
     }
     fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
-        print!("{} {} {}", name, date, err);
+        println!("fetch fail {} {} {}", name, date, err);
     }
 }
 

@@ -20,7 +20,7 @@ use time::Duration;
 static JVM: OnceCell<JavaVM> = OnceCell::new();
 static CALL_BACK_CLASS: OnceCell<GlobalRef> = OnceCell::new();
 
-static EVENT_LISTENER: EventPrinter = EventPrinter {};
+static EVENT_LISTENER: EventPrinter = EventPrinter;
 
 #[no_mangle]
 pub extern "system" fn JNI_OnLoad(vm: JavaVM, _: *mut c_void) -> jint {
