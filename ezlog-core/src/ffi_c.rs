@@ -53,6 +53,7 @@ pub unsafe extern "C" fn ezlog_create_log(
     c_cipher_nonce: *const c_uchar,
     c_nonce_len: usize,
     c_rotate_duration: c_uint,
+    c_extra: *const c_char,
 ) {
     let log_name = CStr::from_ptr(c_log_name).to_string_lossy().into_owned();
     let level = Level::from_usize(c_level as usize).unwrap_or(Level::Trace);
@@ -66,6 +67,7 @@ pub unsafe extern "C" fn ezlog_create_log(
     let nonce_bytes = slice::from_raw_parts(c_cipher_nonce, c_nonce_len);
     let cipher_nonce: Vec<u8> = nonce_bytes.to_owned();
     let rotate_duration = Duration::hours(c_rotate_duration as i64);
+    let extra = CStr::from_ptr(c_extra).to_string_lossy().into_owned();
 
     let config = EZLogConfigBuilder::new()
         .name(log_name)
@@ -78,6 +80,7 @@ pub unsafe extern "C" fn ezlog_create_log(
         .cipher_key(cipher_key)
         .cipher_nonce(cipher_nonce)
         .rotate_duration(rotate_duration)
+        .extra(extra)
         .build();
 
     create_log(config);

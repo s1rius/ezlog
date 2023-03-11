@@ -17,6 +17,7 @@ fun ezlogDemoConfig(context: Context): EZLogConfig {
         .cipher(EZLog.Cipher.AES128GCM)
         .cipherKey("a secret key!!!!".toByteArray())
         .cipherNonce("unique nonce".toByteArray())
+        .extra("extra info")
         .keepDays(10)
         .enableTrace(true)
         .build()

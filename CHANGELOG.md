@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - cli: Add key, nonce to cli options https://github.com/s1rius/ezlog/pull/29
 - Add create time info to file header https://github.com/s1rius/ezlog/pull/38
 - Make file rorate duration configurable https://github.com/s1rius/ezlog/pull/46
+- Add log file header extra info https://github.com/s1rius/ezlog/pull/48
 
 ### Change
 - **break** android:rename native function name, remove underline https://github.com/s1rius/ezlog/pull/26

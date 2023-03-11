@@ -27,7 +27,8 @@ class MethodChannelEzlogFlutter extends EZLogFlutterPlatform {
       int cipher,
       Uint8List? cipherKey,
       Uint8List? cipherNonce,
-      int rotateHours) {
+      int rotateHours,
+      String? extra) {
     methodChannel.invokeMethod('createLogger', <String, dynamic>{
       "logName": logName,
       "maxLevel": maxLevel,
@@ -39,6 +40,7 @@ class MethodChannelEzlogFlutter extends EZLogFlutterPlatform {
       "cipherKey": cipherKey,
       "cipherNonce": cipherNonce,
       "rotateHours": rotateHours,
+      "extra": extra,
     });
   }
 

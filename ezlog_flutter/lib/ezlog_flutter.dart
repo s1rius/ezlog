@@ -37,6 +37,7 @@ class EZLogConfig {
   Uint8List? cipherNonce;
   bool enableTrace = false;
   int rorateHours = 24;
+  String? extra;
 
   EZLogConfig.plaintext(
       this.logName, this.maxLevel, this.dirPath, this.keepDays);
@@ -51,7 +52,8 @@ class EZLogConfig {
       this.cipher,
       this.cipherKey,
       this.cipherNonce,
-      this.rorateHours);
+      this.rorateHours,
+      this.extra);
 }
 
 enum Level {
@@ -105,7 +107,8 @@ class EZLogger {
         config.cipher,
         config.cipherKey,
         config.cipherNonce,
-        config.rorateHours);
+        config.rorateHours,
+        config.extra);
   }
 
   void v(String tag, String msg) {

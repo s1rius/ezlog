@@ -37,7 +37,8 @@ pub struct EZLogger {
 impl EZLogger {
     pub fn new(config: EZLogConfig) -> Result<Self> {
         let rc_conf = Rc::new(config);
-        let appender = Box::new(EZAppender::new(Rc::clone(&rc_conf))?);
+        let mut appender = Box::new(EZAppender::new(Rc::clone(&rc_conf))?);
+        appender.check_config_rolling(&rc_conf)?;
         let compression = EZLogger::create_compress(&rc_conf);
         let cryptor = EZLogger::create_cryptor(&rc_conf)?;
 
@@ -81,27 +82,22 @@ impl EZLogger {
     }
 
     pub(crate) fn append(&mut self, record: &EZRecord) -> Result<()> {
-        let mut e: Option<LogError> = None;
         if record.content().len() > self.config.max_size as usize / 2 {
+            let mut e: Option<LogError> = None;
+
             record.trunks(&self.config).iter().for_each(|record| {
-                match self.encode_as_block(record) {
-                    Ok(buf) => match self.appender.write_all(&buf) {
-                        Ok(_) => {}
-                        Err(err) => e = Some(LogError::IoError(err)),
-                    },
-                    Err(err) => {
-                        e = Some(err);
-                    }
+                match self
+                    .encode_as_block(record)
+                    .map(|buf| self.appender.write_all(&buf))
+                {
+                    Ok(_) => {}
+                    Err(err) => e = Some(err),
                 }
-            })
+            });
+            e.map_or(Ok(()), Err)
         } else {
             let buf = self.encode_as_block(record)?;
-            self.appender.write_all(&buf)?;
-        }
-        if let Some(err) = e {
-            Err(err)
-        } else {
-            Ok(())
+            self.appender.write_all(&buf).map_err(|e| e.into())
         }
     }
 
@@ -355,6 +351,16 @@ impl EZLogger {
     }
 }
 
+use bitflags::bitflags;
+
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub(crate) struct Flags: u8 {
+        const NONE = 0b0000_0000;
+        const HAS_EXTRA = 0b0000_0001;
+    }
+}
+
 /// EZLog file Header
 ///
 /// every log file starts with a header,
@@ -363,8 +369,8 @@ impl EZLogger {
 pub struct Header {
     /// version code
     pub(crate) version: Version,
-    /// unused flag
-    pub(crate) flag: u8,
+    /// flag
+    pub(crate) flag: Flags,
     /// current log file write position
     pub(crate) recorder_position: u32,
     /// compress type
@@ -387,8 +393,8 @@ impl Header {
     pub fn new() -> Self {
         Header {
             version: Version::V2,
-            flag: 0,
-            recorder_position: V2_LOG_HEADER_SIZE as u32,
+            flag: Flags::NONE,
+            recorder_position: 0,
             compress: CompressKind::ZLIB,
             cipher: CipherKind::AES128GCM,
             timestamp: OffsetDateTime::now_utc(),
@@ -396,13 +402,30 @@ impl Header {
         }
     }
 
+    pub fn empty() -> Self {
+        Header {
+            version: Version::UNKNOWN,
+            flag: Flags::NONE,
+            recorder_position: 0,
+            compress: CompressKind::NONE,
+            cipher: CipherKind::NONE,
+            timestamp: OffsetDateTime::UNIX_EPOCH,
+            rotate_time: None,
+        }
+    }
+
     pub fn create(config: &EZLogConfig) -> Self {
         let time = OffsetDateTime::now_utc();
         let rotate_time = config.rotate_time(time);
+        let flag = if config.extra.is_some() {
+            Flags::HAS_EXTRA
+        } else {
+            Flags::NONE
+        };
         Header {
             version: config.version,
-            flag: 0,
-            recorder_position: Header::length_compat(&config.version) as u32,
+            flag,
+            recorder_position: 0,
             compress: config.compress,
             cipher: config.cipher,
             timestamp: OffsetDateTime::now_utc(),
@@ -441,7 +464,7 @@ impl Header {
     pub fn encode_v1(&self, writer: &mut dyn Write) -> std::result::Result<(), io::Error> {
         writer.write_all(crate::FILE_SIGNATURE)?;
         writer.write_u8(self.version.into())?;
-        writer.write_u8(self.flag)?;
+        writer.write_u8(self.flag.bits())?;
         writer.write_u32::<BigEndian>(self.recorder_position)?;
         writer.write_u8(self.compress.into())?;
         writer.write_u8(self.cipher.into())
@@ -456,7 +479,7 @@ impl Header {
         let mut signature = [0u8; 2];
         reader.read_exact(&mut signature)?;
         let version = Version::from(reader.read_u8()?);
-        let flag = reader.read_u8()?;
+        let flag = Flags::from_bits(reader.read_u8()?).unwrap_or(Flags::NONE);
         let mut recorder_size = reader.read_u32::<BigEndian>()?;
         if recorder_size < Header::length_compat(&version) as u32 {
             recorder_size = Header::length_compat(&version) as u32;
@@ -481,6 +504,17 @@ impl Header {
         })
     }
 
+    pub fn decode_and_config(
+        reader: &mut dyn Read,
+        config: &EZLogConfig,
+    ) -> std::result::Result<Self, errors::LogError> {
+        let mut decode = Self::decode(reader)?;
+        if !decode.is_config() {
+            decode = Self::create(config);
+        }
+        Ok(decode)
+    }
+
     pub fn is_valid(&self, config: &EZLogConfig) -> bool {
         self.version == config.version
             && self.compress == config.compress
@@ -488,7 +522,11 @@ impl Header {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.version == Version::UNKNOWN || self.recorder_position <= self.length() as u32
+        self.recorder_position <= self.length() as u32
+    }
+
+    pub fn is_config(&self) -> bool {
+        self.version != Version::UNKNOWN
     }
 
     pub fn has_record(&self) -> bool {
@@ -497,5 +535,9 @@ impl Header {
 
     pub fn version(&self) -> &Version {
         &self.version
+    }
+
+    pub(crate) fn init_record_poition(&mut self) {
+        self.recorder_position = Self::length_compat(&self.version) as u32;
     }
 }

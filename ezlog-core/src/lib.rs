@@ -834,14 +834,20 @@ mod tests {
         }
         logger.flush().unwrap();
 
-        let (file, _, _mmap) = &config.create_mmap_file().unwrap();
-
+        let (path, _mmap) = &config.create_mmap_file().unwrap();
+        let file = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(&path)
+            .unwrap();
         let mut reader = BufReader::new(file);
         let mut header = Header::decode(&mut reader).unwrap();
         header.recorder_position = header.length().try_into().unwrap();
         let mut new_header = Header::create(&logger.config);
         new_header.timestamp = header.timestamp.clone();
         new_header.rotate_time = header.rotate_time.clone();
+        new_header.recorder_position = Header::length_compat(&config.version) as u32;
         assert_eq!(header, new_header);
         logger.decode_record(&mut reader).unwrap();
         fs::remove_dir_all(&config.dir_path).unwrap_or_default();

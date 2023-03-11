@@ -59,7 +59,8 @@ private func ezlogCreate(config: EZLogConfig) {
                      UInt(config.cipherKey?.count ?? 0),
                      config.cipherNonce ?? [],
                      UInt(config.cipherNonce?.count ?? 0),
-                     UInt32(config.rotateHours ?? 24)
+                     UInt32(config.rotateHours ?? 24),
+                     config.extra ?? ""
     )
 }
 
@@ -191,37 +192,24 @@ public struct EZLogConfig {
     var level: Level
     var dirPath: String
     var name: String
-    var keepDays: Int
-    var maxSize: Int
+    var keepDays: Int = 7
+    var maxSize: Int = 0
     var compress: CompressKind? = CompressKind.NONE
     var compressLevel: CompressLevel? = CompressLevel.DEFAULT
     var cipher: Cipher? = Cipher.NONE
     var cipherKey: [UInt8]? = []
     var cipherNonce: [UInt8]? = []
     var rotateHours: Int? = 24
+    var extra: String?
     
     public init(
         level: Level,
         dirPath: String,
-        name: String,
-        keepDays: Int,
-        maxSize: Int,
-        compress: CompressKind?,
-        compressLevel: CompressLevel?,
-        cipher: Cipher?,
-        cipherKey: [UInt8]?,
-        cipherNonce: [UInt8]?
+        name: String
     ) {
         self.level = level
         self.dirPath = dirPath
         self.name = name
-        self.keepDays = keepDays
-        self.maxSize = maxSize
-        self.compress = compress ?? CompressKind.NONE
-        self.compressLevel = compressLevel ?? CompressLevel.DEFAULT
-        self.cipher = cipher ?? Cipher.NONE
-        self.cipherKey = cipherKey ?? []
-        self.cipherNonce = cipherNonce ?? []
     }
     
     public init(
@@ -235,7 +223,8 @@ public struct EZLogConfig {
         cipher: Cipher?,
         cipherKey: [UInt8]?,
         cipherNonce: [UInt8]?,
-        rotateHours: Int?
+        rotateHours: Int?,
+        extra: String?
     ) {
         self.level = level
         self.dirPath = dirPath
@@ -248,87 +237,40 @@ public struct EZLogConfig {
         self.cipherKey = cipherKey ?? []
         self.cipherNonce = cipherNonce ?? []
         self.rotateHours = rotateHours ?? 24
+        self.extra = extra
+    }
+
+}
+
+public class EZLogConifgBuilder {
+    
+    var config: EZLogConfig
+    
+    public init(level: Level,
+         dirPath: String,
+         name: String) {
+        config = EZLogConfig(level: level, dirPath: dirPath, name: name)
     }
     
-    
-    public init(
-        level: Level,
-        dirPath: String,
-        name: String,
-        keepDays: Int,
-        maxSize: Int
-    ) {
-        self.level = level
-        self.dirPath = dirPath
-        self.name = name
-        self.keepDays = keepDays
-        self.maxSize = maxSize
-    }
-    
-    public init(
-        level: Level,
-        dirPath: String,
-        name: String,
-        keepDays: Int,
-        maxSize: Int,
-        compress: CompressKind?,
-        compressLevel: CompressLevel?
-    ) {
-        self.level = level
-        self.dirPath = dirPath
-        self.name = name
-        self.keepDays = keepDays
-        self.maxSize = maxSize
-        self.compress = compress ?? CompressKind.NONE
-        self.compressLevel = compressLevel ?? CompressLevel.DEFAULT
-    }
-    
-    public init(
-        level: Level,
-        dirPath: String,
-        name: String,
-        keepDays: Int,
-        maxSize: Int,
-        cipher: Cipher?,
-        cipherKey: [UInt8]?,
-        cipherNonce: [UInt8]?
-    ) {
-        self.init(level: level,
-                  dirPath: dirPath,
-                  name: name,
-                  keepDays: keepDays,
-                  maxSize: maxSize,
-                  cipher: cipher,
-                  cipherKey: cipherKey,
-                  cipherNonce: cipherNonce,
-                  rotateHours: 24)
-    }
-    
-    public init(
-        level: Level,
-        dirPath: String,
-        name: String,
-        keepDays: Int,
-        maxSize: Int,
-        cipher: Cipher?,
-        cipherKey: [UInt8]?,
-        cipherNonce: [UInt8]?,
-        rotateHours: Int?
-    ) {
-        self.level = level
-        self.dirPath = dirPath
-        self.name = name
-        self.keepDays = keepDays
-        self.maxSize = maxSize
-        self.cipher = cipher ?? Cipher.NONE
-        self.cipherKey = cipherKey ?? []
-        self.cipherNonce = cipherNonce ?? []
-        self.rotateHours = rotateHours ?? 24
+    public func name(name: String) -> EZLogConifgBuilder {config.name = name; return self}
+    public func level(level: Level) -> EZLogConifgBuilder {config.level = level; return self}
+    public func dirPath(dirPath: String) -> EZLogConifgBuilder {config.dirPath = dirPath; return self}
+    public func keepDays(keepDays: Int) -> EZLogConifgBuilder {config.keepDays = keepDays; return self}
+    public func maxSize(maxSize: Int) -> EZLogConifgBuilder {config.maxSize = maxSize; return self}
+    public func compress(compress: CompressKind? = CompressKind.NONE) -> EZLogConifgBuilder {config.compress = compress; return self}
+    public func compressLevel(compressLevel: CompressLevel? = CompressLevel.DEFAULT) -> EZLogConifgBuilder {config.compressLevel = compressLevel; return self}
+    public func cipher(cipher: Cipher? = Cipher.NONE) -> EZLogConifgBuilder {config.cipher = cipher; return self}
+    public func cipherKey(cipherKey: [UInt8]? = []) -> EZLogConifgBuilder {config.cipherKey = cipherKey; return self}
+    public func cipherNonce(cipherNonce: [UInt8]? = []) -> EZLogConifgBuilder {config.cipherNonce = cipherNonce; return self}
+    public func rotateHours(rotateHours: Int? = 24) -> EZLogConifgBuilder {config.rotateHours = rotateHours; return self}
+    public func extra(extra: String?) -> EZLogConifgBuilder {config.extra = extra; return self}
+    public func build() -> EZLogConfig {
+        return config
     }
 }
 
 extension NSLock {
-
+    
     @discardableResult
     func with<T>(_ block: () throws -> T) rethrows -> T {
         lock()

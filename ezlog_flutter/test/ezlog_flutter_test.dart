@@ -19,7 +19,8 @@ class MockEZLogFlutterPlatform
       int cipher,
       Uint8List? cipherKey,
       Uint8List? cipherNonce,
-      int rotateHours) {
+      int rotateHours,
+      String? extra) {
     throw UnimplementedError();
   }
 

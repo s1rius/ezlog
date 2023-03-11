@@ -51,6 +51,7 @@ public class SwiftEzlogFlutterPlugin: NSObject, FlutterPlugin {
             let cipherKey = arguments["cipherKey"] as? [UInt8] ?? []
             let cipherNonce = arguments["cipherNonce"] as? [UInt8] ?? []
             let rotateHours = arguments["rotateHours"] as? Int ?? 24
+            let extra = arguments["extra"] as? String ?? ""
             let config = EZLogConfig(level: maxLevel,
                                      dirPath: dirPath,
                                      name: logName,
@@ -58,10 +59,11 @@ public class SwiftEzlogFlutterPlugin: NSObject, FlutterPlugin {
                                      maxSize: 150*1024,
                                      compress: compress,
                                      compressLevel: compressLevel,
-                                     cipher:cipher,
-                                     cipherKey:cipherKey,
-                                     cipherNonce:cipherNonce,
-                                     rotateHours: rotateHours)
+                                     cipher: cipher,
+                                     cipherKey: cipherKey,
+                                     cipherNonce: cipherNonce,
+                                     rotateHours: rotateHours,
+                                     extra: extra)
             var _ = EZLogger(config: config)
             result(nil)
             break
