@@ -7,35 +7,23 @@ class EZLogConfig(var logName: String, var dirPath: String) {
     var compress = 0
     var compressLevel = 0
     var cipher = 0
-    var cipherKey: ByteArray
-    var cipherNonce: ByteArray
+    var cipherKey: ByteArray = byteArrayOf()
+    var cipherNonce: ByteArray = byteArrayOf()
     var enableTrace = false
-
-    init {
-        cipherKey = byteArrayOf()
-        cipherNonce = byteArrayOf()
-    }
+    var extra: String? = null
 
     /**
      * EZLog Builder
      */
-    class Builder(var logName: String, var dirPath: String) {
-        var maxLevel = EZLog.VERBOSE
-        var keepDays = 7
-        var rotateHours = 24
-        var compress = 0
-        var compressLevel = 0
-        var cipher = 0
-        private var cipherKey: ByteArray = ByteArray(0)
-        private var cipherNonce: ByteArray = ByteArray(0)
-        var enableTrace = false
+    class Builder(logName: String, dirPath: String) {
+        val config = EZLogConfig(logName, dirPath)
 
         /**
          * set up the max level, any log's level < maxLevel will be filtered out.
          * @param level the max level
          */
         fun maxLevel(level: Int): Builder {
-            maxLevel = level
+            this.config.maxLevel = level
             return this
         }
 
@@ -46,7 +34,7 @@ class EZLogConfig(var logName: String, var dirPath: String) {
          * @param days keep log file days
          */
         fun keepDays(days: Int): Builder {
-            keepDays = days
+            this.config.keepDays = days
             return this
         }
 
@@ -56,7 +44,7 @@ class EZLogConfig(var logName: String, var dirPath: String) {
          * @param hours after log file rotate
          */
         fun rotateHours(hours: Int): Builder {
-            rotateHours = hours;
+            this.config.rotateHours = hours;
             return this;
         }
 
@@ -65,12 +53,12 @@ class EZLogConfig(var logName: String, var dirPath: String) {
          * @param compress compress kind
          */
         fun compress(compress: Int): Builder {
-            this.compress = compress
+            this.config.compress = compress
             return this
         }
 
         fun compress(compress: EZLog.Compress): Builder {
-            this.compress = when (compress) {
+            this.config.compress = when (compress) {
                 EZLog.Compress.NONE -> 0
                 EZLog.Compress.ZLIB -> EZLog.CompressZlib
             }
@@ -82,12 +70,12 @@ class EZLogConfig(var logName: String, var dirPath: String) {
          * @param compressLevel compress level
          */
         fun compressLevel(compressLevel: Int): Builder {
-            this.compressLevel = compressLevel
+            this.config.compressLevel = compressLevel
             return this
         }
 
         fun compressLevel(compressLevel: EZLog.CompressLevel): Builder {
-            this.compressLevel = when (compressLevel) {
+            this.config.compressLevel = when (compressLevel) {
                 EZLog.CompressLevel.DEFAULT -> EZLog.CompressDefault
                 EZLog.CompressLevel.BEST -> EZLog.CompressBest
                 EZLog.CompressLevel.FAST -> EZLog.CompressFast
@@ -100,12 +88,12 @@ class EZLogConfig(var logName: String, var dirPath: String) {
          * @param cipher cipher kind
          */
         fun cipher(cipher: Int): Builder {
-            this.cipher = cipher
+            this.config.cipher = cipher
             return this
         }
 
         fun cipher(cipher: EZLog.Cipher): Builder {
-            this.cipher = when (cipher) {
+            this.config.cipher = when (cipher) {
                 EZLog.Cipher.NONE -> 0
                 EZLog.Cipher.AES256GCM -> EZLog.Aes256Gcm
                 EZLog.Cipher.AES128GCM -> EZLog.Aes128Gcm
@@ -118,7 +106,7 @@ class EZLogConfig(var logName: String, var dirPath: String) {
          * @param cipherKey cipher key
          */
         fun cipherKey(cipherKey: ByteArray): Builder {
-            this.cipherKey = cipherKey
+            this.config.cipherKey = cipherKey
             return this
         }
 
@@ -127,7 +115,7 @@ class EZLogConfig(var logName: String, var dirPath: String) {
          * @param cipherNonce nonce
          */
         fun cipherNonce(cipherNonce: ByteArray): Builder {
-            this.cipherNonce = cipherNonce
+            this.config.cipherNonce = cipherNonce
             return this
         }
 
@@ -136,20 +124,16 @@ class EZLogConfig(var logName: String, var dirPath: String) {
          * @param isEnable is trace enable
          */
         fun enableTrace(isEnable: Boolean): Builder {
-            enableTrace = isEnable
+            this.config.enableTrace = isEnable
+            return this
+        }
+
+        fun extra(extra: String): Builder {
+            this.config.extra = extra
             return this
         }
 
         fun build(): EZLogConfig {
-            val config = EZLogConfig(logName, dirPath)
-            config.maxLevel = maxLevel
-            config.keepDays = keepDays
-            config.compress = compress
-            config.compressLevel = compressLevel
-            config.cipher = cipher
-            config.cipherKey = cipherKey
-            config.cipherNonce = cipherNonce
-            config.enableTrace = enableTrace
             return config
         }
     }

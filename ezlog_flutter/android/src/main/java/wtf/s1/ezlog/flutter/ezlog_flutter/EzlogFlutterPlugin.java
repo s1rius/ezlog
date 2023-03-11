@@ -55,8 +55,9 @@ public class EzlogFlutterPlugin implements FlutterPlugin, MethodCallHandler {
                     .cipherKey(argumentOrDefault(call, "cipherKey", new byte[]{}))
                     .cipherNonce(argumentOrDefault(call, "cipherNonce", new byte[]{}))
                     .rotateHours(argumentOrDefault(call, "rotateHours", 24))
+                    .extra(argumentOrDefault(call, "extra", ""))
                     .build();
-            EZLog._createLogger(config);
+            EZLog.createLogger(config);
 
         } else if (call.method.equals("log")) {
             String name = argumentOrDefault(call, "logName", "");
@@ -68,26 +69,26 @@ public class EzlogFlutterPlugin implements FlutterPlugin, MethodCallHandler {
                 return;
             }
 
-            EZLog._log(name, level, tag, msg);
+            EZLog.log(name, level, tag, msg);
             result.success(null);
         } else if (call.method.equals("flush")) {
             String name = argumentOrDefault(call, "logName", "");
             if (TextUtils.isEmpty(name)) {
                 return;
             }
-            EZLog._flush(name);
+            EZLog.flush(name);
             result.success(null);
         } else if (call.method.equals("requestLogFilesForDate")) {
             String name = argumentOrDefault(call, "logName", "");
             String date = argumentOrDefault(call, "date", "");
             resultHolder.update(name, result);
             resultHolder.bind();
-            EZLog._requestLogFilesForDate(name, date);
+            EZLog.requestLogFilesForDate(name, date);
         } else if (call.method.equals("flush")) {
             EZLog.flush();
             result.success(null);
         } else if (call.method.equals("trim")) {
-            EZLog._trim();
+            EZLog.trim();
         } else {
             result.notImplemented();
         }

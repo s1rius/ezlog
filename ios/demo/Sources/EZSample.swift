@@ -11,22 +11,21 @@ import benchmarkable
 
 func ezlogSampleInit() {
 #if DEBUG
-        ezlogInitWithTrace()
+    ezlogInitWithTrace()
 #else
-        ezlogInit()
+    ezlogInit()
 #endif
     let dirPath = URL.documents.appendingPathComponent("ezlog").relativePath
-    let config = EZLogConfig(level: Level.trace,
-                             dirPath: dirPath,
-                             name: "demo",
-                             keepDays: 7,
-                             maxSize: 150*1024,
-                             compress: CompressKind.ZLIB,
-                             compressLevel: CompressLevel.DEFAULT,
-                             cipher: Cipher.AES128GCM,
-                             cipherKey: [UInt8]("a secret key!!!!".utf8),
-                             cipherNonce: [UInt8]("unique nonce".utf8),
-                             rotateHours: 24)
+    let config = EZLogConifgBuilder(level: Level.trace, dirPath: dirPath, name: "demo")
+        .maxSize(maxSize: 150*1024)
+        .compress(compress: CompressKind.ZLIB)
+        .compressLevel(compressLevel: CompressLevel.DEFAULT)
+        .cipher(cipher: Cipher.AES128GCM)
+        .cipherKey(cipherKey: [UInt8]("a secret key!!!!".utf8))
+        .cipherNonce(cipherNonce: [UInt8]("unique nonce".utf8))
+        .rotateHours(rotateHours: 24)
+        .extra(extra: "extra info")
+        .build()
     _ = EZLogger(config: config)
     
     

@@ -74,6 +74,11 @@ pub struct EZLogConfig {
     ///
     /// the duration after which the log file will be rotated
     pub rotate_duration: Duration,
+
+    /// Extra info to be added to log header
+    ///
+    /// Plaintext infomation write in log file header
+    pub extra: Option<String>,
 }
 
 impl EZLogConfig {
@@ -107,10 +112,10 @@ impl EZLogConfig {
         !self.dir_path.is_empty() && !self.name.is_empty() && !self.file_suffix.is_empty()
     }
 
-    pub fn create_mmap_file(&self) -> crate::Result<(File, PathBuf, MmapMut)> {
+    pub fn create_mmap_file(&self) -> crate::Result<(PathBuf, MmapMut)> {
         let (file, path) = self.create_log_file()?;
         let mmap = unsafe { MmapOptions::new().map_mut(&file)? };
-        Ok((file, path, mmap))
+        Ok((path, mmap))
     }
 
     pub(crate) fn create_log_file(&self) -> crate::Result<(File, PathBuf)> {
@@ -249,6 +254,7 @@ impl EZLogConfigBuilder {
                 cipher_key: None,
                 cipher_nonce: None,
                 rotate_duration: Duration::days(1),
+                extra: None,
             },
         }
     }
@@ -330,6 +336,12 @@ impl EZLogConfigBuilder {
     #[inline]
     pub fn rotate_duration(mut self, duration: Duration) -> Self {
         self.config.rotate_duration = duration;
+        self
+    }
+
+    #[inline]
+    pub fn extra(mut self, extra: String) -> Self {
+        self.config.extra = Some(extra);
         self
     }
 
@@ -569,8 +581,8 @@ mod tests {
 
         f.set_len((crate::Header::max_length() + 1) as u64).unwrap();
 
-        let appender = EZAppender::create_inner(&config).unwrap();
-
+        let mut appender = EZAppender::new(std::rc::Rc::new(config.clone())).unwrap();
+        appender.check_config_rolling(&config).unwrap();
         drop(appender);
 
         let files = config.query_log_files_for_date(OffsetDateTime::now_utc().date());

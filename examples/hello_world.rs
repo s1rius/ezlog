@@ -65,14 +65,20 @@ fn get_config() -> EZLogConfig {
         .cipher(CipherKind::AES256GCM)
         .cipher_key(key.to_vec())
         .cipher_nonce(nonce.to_vec())
+        .extra("this is an plaintext extra infomation insert in the first of log file".to_string())
         .build()
 }
 
 #[allow(dead_code)]
 fn read_log_file_rewrite() {
     let log_config = get_config();
-    let (file, path, _mmap) = log_config.create_mmap_file().unwrap();
-
+    let (path, _mmap) = log_config.create_mmap_file().unwrap();
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(&path)
+        .unwrap();
     let mut br = BufReader::new(&file);
 
     let mut buffer = Vec::new();

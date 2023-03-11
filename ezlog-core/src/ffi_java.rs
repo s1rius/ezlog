@@ -56,6 +56,7 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeCreateLogger<'local>(
     j_cipher_key: JByteArray<'local>,
     j_cipher_nonce: JByteArray<'local>,
     j_rotate_hours: jint,
+    j_extra: JString<'local>,
 ) {
     let log_name: String = env
         .get_string(&j_log_name)
@@ -73,6 +74,10 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeCreateLogger<'local>(
     let cipher: CipherKind = CipherKind::from(j_cipher as u8);
     let cipher_key = &env.convert_byte_array(&j_cipher_key).unwrap_or_default();
     let cipher_nonce = &env.convert_byte_array(&j_cipher_nonce).unwrap_or_default();
+    let extra: String = env
+        .get_string(&j_extra)
+        .map(|s| s.into())
+        .unwrap_or_default();
 
     let config = EZLogConfigBuilder::new()
         .name(log_name)
@@ -85,6 +90,7 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeCreateLogger<'local>(
         .cipher(cipher)
         .cipher_key(cipher_key.to_owned())
         .cipher_nonce(cipher_nonce.to_owned())
+        .extra(extra)
         .build();
 
     if !config.is_valid() {
