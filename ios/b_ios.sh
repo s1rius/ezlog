@@ -3,9 +3,9 @@
 PATH=$PATH:$HOME/.cargo/bin
 
 echo "cargo build for iOS"
-cargo build -Z build-std -p ezlog --release --lib --target aarch64-apple-ios --verbose
-cargo build -Z build-std -p ezlog --release --lib --target aarch64-apple-ios-sim --verbose
-cargo build -Z build-std -p ezlog --release --lib --target x86_64-apple-ios --verbose
+cargo build -p ezlog --release --lib --target aarch64-apple-ios --verbose
+cargo build -p ezlog --release --lib --target aarch64-apple-ios-sim --verbose
+cargo build -p ezlog --release --lib --target x86_64-apple-ios --verbose
 
 echo "\n"
 # echo "cbindgen"
