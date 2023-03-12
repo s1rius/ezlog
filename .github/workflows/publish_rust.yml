@@ -20,10 +20,10 @@ jobs:
       - name: Install latest nightly
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           override: true
           components: rustfmt, clippy
       - name: Publish ezlog on crates.io
-        run: cargo +nightly publish --package ezlog --token ${CRATES_TOKEN}
+        run: cargo publish --package ezlog --token ${CRATES_TOKEN}
       - name: Publish ezlog-cli on crates.io
-        run: cargo +nightly publish --package ezlog-cli --token ${CRATES_TOKEN}
+        run: cargo publish --package ezlog-cli --token ${CRATES_TOKEN}
