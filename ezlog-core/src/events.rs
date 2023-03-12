@@ -92,7 +92,7 @@ pub fn set_event_listener(event: &'static dyn EventListener) {
         android_logger::init_once(
             android_logger::Config::default()
                 .with_max_level(log::LevelFilter::Debug)
-                .with_log_buffer(android_logger::LogId::Main)
+                .with_log_buffer(android_logger::LogId::Main),
         );
         EVENT_LISTENER = event;
     })
