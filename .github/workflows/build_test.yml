@@ -29,7 +29,7 @@ jobs:
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly-2023-03-07
           profile: minimal
           components: ${{ matrix.components }}
           default: true
@@ -48,11 +48,11 @@ jobs:
       - name: Add Linux rust std
         if: ${{ runner.os == 'Linux' }}
         run: > 
-          rustup component add rust-src --toolchain stable
+          rustup component add rust-src --toolchain nightly-2023-03-07-x86_64-unknown-linux-gnu
       - name: Add macOS rust std 
         if: ${{ runner.os == 'macOS' }}
         run: >   
-          rustup component add rust-src --toolchain stable
+          rustup component add rust-src --toolchain nightly-2023-03-07-x86_64-apple-darwin    
       - name: Build & Test - ezlog All Features
         run: cargo test --manifest-path ./ezlog-core/Cargo.toml --verbose --all-features --no-fail-fast
       - name: Build & Test - ezlog_cli
@@ -71,12 +71,12 @@ jobs:
           cargo ndk 
           -t armeabi-v7a 
           -t arm64-v8a 
-          -o lib-ezlog/src/main/jniLibs build -p ezlog
+          -o lib-ezlog/src/main/jniLibs build -Zbuild-std -p ezlog
         env:
           ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
       - name: Build iOS library
         if: ${{ runner.os == 'macOS' }}
-        run: cargo build -p ezlog --release --lib --target aarch64-apple-ios
+        run: cargo build -Z build-std -p ezlog --release --lib --target aarch64-apple-ios
       - name: Clippy Check
         uses: actions-rs/clippy-check@v1
         with:
