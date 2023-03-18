@@ -1,6 +1,5 @@
-use aead::KeyInit;
-use aes_gcm::aead::Aead;
-use aes_gcm::Nonce;
+use aead::{Aead, KeyInit};
+use aes_gcm_siv::Nonce;
 
 use crate::errors::LogError;
 use crate::{Decryptor, Encryptor};
@@ -109,6 +108,7 @@ impl Decryptor for Aes128GcmSiv {
     }
 }
 
+#[cfg(feature = "decode")]
 pub struct Aes256Gcm {
     // 96-bits; unique per message
     nonce: Vec<u8>,
@@ -116,6 +116,7 @@ pub struct Aes256Gcm {
     cipher: aes_gcm::Aes256Gcm,
 }
 
+#[cfg(feature = "decode")]
 impl Aes256Gcm {
     pub fn new(key: &[u8], nonce: &[u8]) -> crate::Result<Self> {
         if nonce.len() != 12 {
@@ -137,6 +138,7 @@ impl Aes256Gcm {
     }
 }
 
+#[cfg(feature = "decode")]
 impl Encryptor for Aes256Gcm {
     fn encrypt(
         &self,
@@ -151,6 +153,7 @@ impl Encryptor for Aes256Gcm {
     }
 }
 
+#[cfg(feature = "decode")]
 impl Decryptor for Aes256Gcm {
     fn decrypt(&self, data: &[u8], op: Box<dyn Fn(&[u8]) -> Vec<u8>>) -> Result<Vec<u8>, LogError> {
         let new_nonce = op(&self.nonce);
@@ -161,6 +164,7 @@ impl Decryptor for Aes256Gcm {
     }
 }
 
+#[cfg(feature = "decode")]
 pub struct Aes128Gcm {
     // 96-bits; unique per message
     nonce: Vec<u8>,
@@ -168,6 +172,7 @@ pub struct Aes128Gcm {
     cipher: aes_gcm::Aes128Gcm,
 }
 
+#[cfg(feature = "decode")]
 impl Aes128Gcm {
     pub fn new(key: &[u8], nonce: &[u8]) -> crate::Result<Self> {
         if nonce.len() != 12 {
@@ -190,6 +195,7 @@ impl Aes128Gcm {
     }
 }
 
+#[cfg(feature = "decode")]
 impl Encryptor for Aes128Gcm {
     fn encrypt(&self, data: &[u8], op: Box<dyn Fn(&[u8]) -> Vec<u8>>) -> Result<Vec<u8>, LogError> {
         let new_nonce = op(&self.nonce);
@@ -200,6 +206,7 @@ impl Encryptor for Aes128Gcm {
     }
 }
 
+#[cfg(feature = "decode")]
 impl Decryptor for Aes128Gcm {
     fn decrypt(&self, data: &[u8], op: Box<dyn Fn(&[u8]) -> Vec<u8>>) -> Result<Vec<u8>, LogError> {
         let new_nonce = op(&self.nonce);
