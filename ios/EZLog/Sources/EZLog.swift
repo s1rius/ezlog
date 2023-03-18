@@ -178,8 +178,12 @@ public enum CompressKind: Int, Codable {
 
 public enum Cipher: Int {
     case NONE = 0
+    @available(*, deprecated, message: "Use AES128GCMSIV instead. If set, will automatically switch to AES128GCMSIV.")
     case AES128GCM
+    @available(*, deprecated, message: "Use AES256GCMSIV instead. If set, will automatically switch to AES256GCMSIV.")
     case AES256GCM
+    case AES128GCMSIV
+    case AES256GCMSIV
 }
 
 public enum CompressLevel: Int, Codable {
@@ -239,7 +243,7 @@ public struct EZLogConfig {
         self.rotateHours = rotateHours ?? 24
         self.extra = extra
     }
-
+    
 }
 
 public class EZLogConifgBuilder {
@@ -247,8 +251,8 @@ public class EZLogConifgBuilder {
     var config: EZLogConfig
     
     public init(level: Level,
-         dirPath: String,
-         name: String) {
+                dirPath: String,
+                name: String) {
         config = EZLogConfig(level: level, dirPath: dirPath, name: name)
     }
     
@@ -259,11 +263,28 @@ public class EZLogConifgBuilder {
     public func maxSize(maxSize: Int) -> EZLogConifgBuilder {config.maxSize = maxSize; return self}
     public func compress(compress: CompressKind? = CompressKind.NONE) -> EZLogConifgBuilder {config.compress = compress; return self}
     public func compressLevel(compressLevel: CompressLevel? = CompressLevel.DEFAULT) -> EZLogConifgBuilder {config.compressLevel = compressLevel; return self}
-    public func cipher(cipher: Cipher? = Cipher.NONE) -> EZLogConifgBuilder {config.cipher = cipher; return self}
     public func cipherKey(cipherKey: [UInt8]? = []) -> EZLogConifgBuilder {config.cipherKey = cipherKey; return self}
     public func cipherNonce(cipherNonce: [UInt8]? = []) -> EZLogConifgBuilder {config.cipherNonce = cipherNonce; return self}
     public func rotateHours(rotateHours: Int? = 24) -> EZLogConifgBuilder {config.rotateHours = rotateHours; return self}
     public func extra(extra: String?) -> EZLogConifgBuilder {config.extra = extra; return self}
+    
+    public func cipher(cipher: Cipher? = Cipher.NONE) -> EZLogConifgBuilder {
+        switch cipher {
+        case nil:
+            break;
+        case let nonullCipher?:
+            switch nonullCipher {
+            case Cipher.AES128GCM:
+                config.cipher = Cipher.AES128GCMSIV;
+            case Cipher.AES256GCM:
+                config.cipher = Cipher.AES256GCMSIV;
+            default:
+                config.cipher = cipher;
+            }
+        }
+        return self
+    }
+    
     public func build() -> EZLogConfig {
         return config
     }

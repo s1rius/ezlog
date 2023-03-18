@@ -62,7 +62,7 @@ fn get_config() -> EZLogConfig {
         .name(ezlog::DEFAULT_LOG_NAME.to_string())
         .file_suffix(String::from("mmap"))
         .compress(CompressKind::ZLIB)
-        .cipher(CipherKind::AES256GCM)
+        .cipher(CipherKind::AES256GCMSIV)
         .cipher_key(key.to_vec())
         .cipher_nonce(nonce.to_vec())
         .extra("this is an plaintext extra infomation insert in the first of log file".to_string())

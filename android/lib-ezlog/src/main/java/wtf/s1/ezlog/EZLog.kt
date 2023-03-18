@@ -10,8 +10,24 @@ object EZLog {
 
     enum class Cipher {
         NONE,
+
+        @Deprecated(
+            "AES256GCM is deprecated since 2.0, will auto replace with AES256GCMSIV",
+            ReplaceWith("AES256GCMSIV"),
+            DeprecationLevel.WARNING
+        )
         AES256GCM,
+
+        AES256GCMSIV,
+
+        @Deprecated(
+            "AES256GCM is deprecated since 2.0, will auto replace with AES128GCMSIV",
+            ReplaceWith("AES256GCMSIV"),
+            DeprecationLevel.WARNING
+        )
         AES128GCM,
+
+        AES128GCMSIV,
     }
 
     enum class Compress {
@@ -36,6 +52,8 @@ object EZLog {
     const val ERROR = 1
     const val Aes128Gcm = 1
     const val Aes256Gcm = 2
+    const val Aes128GcmSiv = 3
+    const val Aes256GcmSiv = 4
     const val CompressZlib = 1
     const val CompressDefault = 0
     const val CompressFast = 1
@@ -260,7 +278,12 @@ object EZLog {
      * @param target     log target
      * @param logContent log message
      */
-    private external fun nativeLog(logName: String, level: Int, target: String?, logContent: String?)
+    private external fun nativeLog(
+        logName: String,
+        level: Int,
+        target: String?,
+        logContent: String?
+    )
 
     /**
      * native flush all logger, sync content to file

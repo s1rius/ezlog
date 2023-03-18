@@ -14,7 +14,7 @@ fun ezlogDemoConfig(context: Context): EZLogConfig {
     return EZLogConfig.Builder("demo", ezlogDir(context))
         .compress(EZLog.Compress.ZLIB)
         .compressLevel(EZLog.CompressLevel.BEST)
-        .cipher(EZLog.Cipher.AES128GCM)
+        .cipher(EZLog.Cipher.AES128GCMSIV)
         .cipherKey("a secret key!!!!".toByteArray())
         .cipherNonce("unique nonce".toByteArray())
         .extra("extra info")
@@ -25,6 +25,7 @@ fun ezlogDemoConfig(context: Context): EZLogConfig {
 
 fun uiConfig(context: Context): EZLogConfig {
     return EZLogConfig.Builder("ui", ezlogDir(context))
+        .cipher(EZLog.Cipher.AES256GCMSIV)
         .cipherKey("a secret key!!!!".toByteArray())
         .cipherNonce("unique nonce".toByteArray())
         .build()

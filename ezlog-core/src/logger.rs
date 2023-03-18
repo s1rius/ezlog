@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use std::{fs, io};
 use std::{io::Write, rc::Rc};
 
+use crate::crypto::{Aes128GcmSiv, Aes256GcmSiv};
 use crate::events::Event::{self};
 use crate::{
     appender::EZAppender,
@@ -62,6 +63,14 @@ impl EZLogger {
                     }
                     CipherKind::AES256GCM => {
                         let encryptor = Aes256Gcm::new(key, nonce)?;
+                        Ok(Some(Box::new(encryptor)))
+                    }
+                    CipherKind::AES128GCMSIV => {
+                        let encryptor = Aes128GcmSiv::new(key, nonce)?;
+                        Ok(Some(Box::new(encryptor)))
+                    }
+                    CipherKind::AES256GCMSIV => {
+                        let encryptor = Aes256GcmSiv::new(key, nonce)?;
                         Ok(Some(Box::new(encryptor)))
                     }
                     CipherKind::NONE => Ok(None),
@@ -147,7 +156,7 @@ impl EZLogger {
         let position = self.appender.inner.header().recorder_position;
         let combine = combine_time_position(timestamp, position.into());
 
-        // create and return a closure that XORs each input slice with the count 
+        // create and return a closure that XORs each input slice with the count
         Box::new(move |input| xor_slice(input, &combine))
     }
 
