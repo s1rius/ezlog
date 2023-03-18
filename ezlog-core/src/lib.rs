@@ -12,6 +12,9 @@ mod logger;
 mod recorder;
 mod thread_name;
 
+#[cfg(feature = "decode")]
+pub mod decode;
+
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 #[allow(non_snake_case)]
 mod ffi_c;
@@ -550,7 +553,9 @@ impl From<Version> for u8 {
 /// Cipher kind current support
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
 pub enum CipherKind {
+    #[deprecated(since = "2.0.0", note = "Use AES128GCMSIV instead")]
     AES128GCM,
+    #[deprecated(since = "2.0.0", note = "Use AES256GCMSIV instead")]
     AES256GCM,
     AES128GCMSIV,
     AES256GCMSIV,
@@ -558,6 +563,7 @@ pub enum CipherKind {
     UNKNOWN,
 }
 
+#[allow(deprecated)]
 impl From<u8> for CipherKind {
     fn from(orig: u8) -> Self {
         match orig {
@@ -571,6 +577,7 @@ impl From<u8> for CipherKind {
     }
 }
 
+#[allow(deprecated)]
 impl From<CipherKind> for u8 {
     fn from(orig: CipherKind) -> Self {
         match orig {
@@ -584,6 +591,7 @@ impl From<CipherKind> for u8 {
     }
 }
 
+#[allow(deprecated)]
 impl core::fmt::Display for CipherKind {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match self {
@@ -597,6 +605,7 @@ impl core::fmt::Display for CipherKind {
     }
 }
 
+#[allow(deprecated)]
 impl std::str::FromStr for CipherKind {
     type Err = LogError;
 
@@ -700,11 +709,15 @@ mod tests {
     use flate2::{bufread::ZlibDecoder, write::ZlibEncoder, Compression};
 
     use crate::logger::Header;
+    
     use crate::recorder::EZRecordBuilder;
     use crate::EZLogger;
     use crate::{
         config::EZLogConfigBuilder, EZLogConfig, RECORD_SIGNATURE_END, RECORD_SIGNATURE_START,
     };
+
+    #[cfg(feature = "decode")]
+    use crate::decode;
 
     fn create_config() -> EZLogConfig {
         EZLogConfig::default()
@@ -730,7 +743,7 @@ mod tests {
             .file_suffix(String::from("mmap"))
             .max_size(150 * 1024)
             .compress(CompressKind::ZLIB)
-            .cipher(CipherKind::AES256GCM)
+            .cipher(CipherKind::AES256GCMSIV)
             .cipher_key(key.to_vec())
             .cipher_nonce(nonce.to_vec())
             .build()
@@ -800,9 +813,10 @@ mod tests {
     #[cfg(feature = "decode")]
     #[test]
     fn test_record_len() {
+
         let chunk = EZLogger::create_size_chunk(1000).unwrap();
         let mut cursor = Cursor::new(chunk);
-        let size = EZLogger::decode_record_size(&mut cursor, &crate::Version::V2).unwrap();
+        let size = decode::decode_record_size(&mut cursor, &crate::Version::V2).unwrap();
         assert_eq!(1000, size)
     }
 
@@ -822,7 +836,7 @@ mod tests {
         let vec = "hello world".as_bytes();
         let encode = EZLogger::encode_content(vec.to_owned()).unwrap();
         let mut cursor = Cursor::new(encode);
-        let decode = EZLogger::decode_record_to_content(&mut cursor, &crate::Version::V2).unwrap();
+        let decode = decode::decode_record_to_content(&mut cursor, &crate::Version::V2).unwrap();
         assert_eq!(vec, decode)
     }
 
@@ -867,7 +881,7 @@ mod tests {
         new_header.rotate_time = header.rotate_time.clone();
         new_header.recorder_position = Header::length_compat(&config.version) as u32;
         assert_eq!(header, new_header);
-        let count = logger.decode_logs_count(&mut cursor, &header).unwrap();
+        let count = decode::decode_logs_count(&mut logger, &mut cursor, &header).unwrap();
         assert_eq!(count, log_count);
         fs::remove_dir_all(&config.dir_path).unwrap_or_default();
     }

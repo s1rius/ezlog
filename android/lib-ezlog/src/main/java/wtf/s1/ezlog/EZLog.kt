@@ -21,8 +21,8 @@ object EZLog {
         AES256GCMSIV,
 
         @Deprecated(
-            "AES256GCM is deprecated since 2.0, will auto replace with AES128GCMSIV",
-            ReplaceWith("AES256GCMSIV"),
+            "AES128GCM is deprecated since 2.0, will auto replace with AES128GCMSIV",
+            ReplaceWith("AES128GCMSIV"),
             DeprecationLevel.WARNING
         )
         AES128GCM,

@@ -160,7 +160,7 @@ pub fn main() {
 
     let mut plain_text_write = BufWriter::new(output_file);
 
-    EZLogger::decode_body_and_write(
+    ezlog::decode::decode_body_and_write(
         &mut cursor,
         &mut plain_text_write,
         &config.version,

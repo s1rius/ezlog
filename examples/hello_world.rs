@@ -100,7 +100,7 @@ fn read_log_file_rewrite() {
     let mut cryptor = EZLogger::create_cryptor(&log_config).unwrap();
     let header = Header::decode(&mut cursor).unwrap();
     println!("{:?}", &header);
-    EZLogger::decode_body_and_write(
+    ezlog::decode::decode_body_and_write(
         &mut cursor,
         &mut writer,
         &header.version(),

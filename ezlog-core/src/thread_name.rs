@@ -91,7 +91,6 @@ mod tests {
     fn test_get_thread_name() {
         use windows::core::HRESULT;
         use windows::core::HSTRING;
-        use windows::core::PCWSTR;
         use windows_sys::Win32::System::Threading;
 
         unsafe {
