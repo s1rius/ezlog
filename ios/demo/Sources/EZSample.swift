@@ -20,7 +20,7 @@ func ezlogSampleInit() {
         .maxSize(maxSize: 150*1024)
         .compress(compress: CompressKind.ZLIB)
         .compressLevel(compressLevel: CompressLevel.DEFAULT)
-        .cipher(cipher: Cipher.AES128GCM)
+        .cipher(cipher: Cipher.AES128GCMSIV)
         .cipherKey(cipherKey: [UInt8]("a secret key!!!!".utf8))
         .cipherNonce(cipherNonce: [UInt8]("unique nonce".utf8))
         .rotateHours(rotateHours: 24)

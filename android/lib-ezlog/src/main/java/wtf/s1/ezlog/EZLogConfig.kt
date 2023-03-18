@@ -87,16 +87,29 @@ class EZLogConfig(var logName: String, var dirPath: String) {
          * set cipher kind
          * @param cipher cipher kind
          */
+        @Deprecated(
+            "this function is deprecated",
+            replaceWith = ReplaceWith("cipher(cipher: EZLog.Cipher)"),
+            level = DeprecationLevel.ERROR
+        )
         fun cipher(cipher: Int): Builder {
+            val c = when (cipher) {
+                EZLog.Aes128Gcm -> EZLog.Cipher.AES128GCMSIV
+                EZLog.Aes256Gcm -> EZLog.Cipher.AES256GCMSIV
+                0 -> EZLog.Cipher.NONE
+                else -> throw IllegalArgumentException("use cipher(cipher: EZLog.Cipher) to set cipher")
+            }
+            cipher(c)
             this.config.cipher = cipher
             return this
         }
 
+        @SuppressWarnings
         fun cipher(cipher: EZLog.Cipher): Builder {
             this.config.cipher = when (cipher) {
                 EZLog.Cipher.NONE -> 0
-                EZLog.Cipher.AES256GCM -> EZLog.Aes256Gcm
-                EZLog.Cipher.AES128GCM -> EZLog.Aes128Gcm
+                EZLog.Cipher.AES256GCM, EZLog.Cipher.AES256GCMSIV -> EZLog.Aes256GcmSiv
+                EZLog.Cipher.AES128GCM, EZLog.Cipher.AES128GCMSIV -> EZLog.Aes128GcmSiv
             }
             return this
         }
