@@ -1,6 +1,6 @@
 use std::{
     fs::OpenOptions,
-    io::{BufReader, BufWriter, Read},
+    io::{BufReader, BufWriter, Cursor, Read},
     path::PathBuf,
 };
 
@@ -95,9 +95,12 @@ pub fn main() {
         println!("-o output file create error")
     );
 
-    let mut buf_reader = BufReader::new(input_file);
+    let mut buf = Vec::<u8>::new();
+    let mut reader = BufReader::new(input_file);
+    reader.read_to_end(&mut buf).unwrap();
+    let mut cursor = Cursor::new(buf);
     let header = unwrap_or_return!(
-        ezlog::Header::decode(&mut buf_reader),
+        ezlog::Header::decode(&mut cursor),
         println!("log file can not be recognized")
     );
 
@@ -158,11 +161,12 @@ pub fn main() {
     let mut plain_text_write = BufWriter::new(output_file);
 
     EZLogger::decode_body_and_write(
-        &mut buf_reader,
+        &mut cursor,
         &mut plain_text_write,
         &config.version,
         &compression,
         &decryptor,
+        &header,
     )
     .unwrap();
 }

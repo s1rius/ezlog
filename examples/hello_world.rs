@@ -106,6 +106,7 @@ fn read_log_file_rewrite() {
         &header.version(),
         &mut compression,
         &mut cryptor,
+        &header,
     )
     .unwrap();
 }

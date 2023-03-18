@@ -34,8 +34,13 @@ impl Aes256Gcm {
 }
 
 impl Encryptor for Aes256Gcm {
-    fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, LogError> {
-        let nonce = Nonce::from_slice(&self.nonce); // 96-bits; unique per message
+    fn encrypt(
+        &self,
+        data: &[u8],
+        op: Box<dyn Fn(&[u8]) -> Vec<u8>>,
+    ) -> std::result::Result<Vec<u8>, LogError> {
+        let new_nonce = op(&self.nonce);
+        let nonce = Nonce::from_slice(new_nonce.as_slice()); // 96-bits; unique per message
         self.cipher
             .encrypt(nonce, data)
             .map_err(|e| LogError::Crypto(format!("{e:?}")))
@@ -43,8 +48,9 @@ impl Encryptor for Aes256Gcm {
 }
 
 impl Decryptor for Aes256Gcm {
-    fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, LogError> {
-        let nonce = Nonce::from_slice(&self.nonce);
+    fn decrypt(&self, data: &[u8], op: Box<dyn Fn(&[u8]) -> Vec<u8>>) -> Result<Vec<u8>, LogError> {
+        let new_nonce = op(&self.nonce);
+        let nonce = Nonce::from_slice(&new_nonce);
         self.cipher
             .decrypt(nonce, data)
             .map_err(|e| LogError::Crypto(format!("{e:?}")))
@@ -81,8 +87,9 @@ impl Aes128Gcm {
 }
 
 impl Encryptor for Aes128Gcm {
-    fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, LogError> {
-        let nonce = Nonce::from_slice(&self.nonce); // 96-bits; unique per message
+    fn encrypt(&self, data: &[u8], op: Box<dyn Fn(&[u8]) -> Vec<u8>>) -> Result<Vec<u8>, LogError> {
+        let new_nonce = op(&self.nonce);
+        let nonce = Nonce::from_slice(new_nonce.as_slice()); // 96-bits; unique per message
         self.cipher
             .encrypt(nonce, data)
             .map_err(|e| LogError::Crypto(format!("{e:?}")))
@@ -90,8 +97,9 @@ impl Encryptor for Aes128Gcm {
 }
 
 impl Decryptor for Aes128Gcm {
-    fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, LogError> {
-        let nonce = Nonce::from_slice(&self.nonce);
+    fn decrypt(&self, data: &[u8], op: Box<dyn Fn(&[u8]) -> Vec<u8>>) -> Result<Vec<u8>, LogError> {
+        let new_nonce = op(&self.nonce);
+        let nonce = Nonce::from_slice(&new_nonce);
         self.cipher
             .decrypt(nonce, data)
             .map_err(|e| LogError::Crypto(format!("{e:?}")))
