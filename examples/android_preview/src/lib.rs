@@ -47,7 +47,7 @@ fn get_config() -> EZLogConfig {
         .name(DEFAULT_LOG_NAME.to_string())
         .file_suffix(String::from("mmap"))
         .compress(CompressKind::ZLIB)
-        .cipher(CipherKind::AES256GCM)
+        .cipher(CipherKind::AES256GCMSIV)
         .cipher_key(key.to_vec())
         .cipher_nonce(nonce.to_vec())
         .build()

@@ -1,7 +1,5 @@
 use byteorder::{BigEndian, WriteBytesExt};
 use integer_encoding::VarIntWriter;
-#[cfg(feature = "decode")]
-use std::io::BufRead;
 use std::io::Read;
 use std::path::PathBuf;
 
@@ -11,11 +9,8 @@ use std::{io::Write, rc::Rc};
 use crate::crypto::{Aes128GcmSiv, Aes256GcmSiv};
 use crate::events::Event::{self};
 use crate::{
-    appender::EZAppender,
-    compress::ZlibCodec,
-    errors::LogError,
-    CipherKind, Compress, CompressKind, Cryptor, EZLogConfig, EZRecord, RECORD_SIGNATURE_END,
-    RECORD_SIGNATURE_START,
+    appender::EZAppender, compress::ZlibCodec, errors::LogError, CipherKind, Compress,
+    CompressKind, Cryptor, EZLogConfig, EZRecord, RECORD_SIGNATURE_END, RECORD_SIGNATURE_START,
 };
 use crate::{errors, event, NonceGenFn, V1_LOG_HEADER_SIZE};
 use crate::{Version, V2_LOG_HEADER_SIZE};
@@ -25,18 +20,14 @@ use time::{Date, OffsetDateTime};
 
 #[cfg(feature = "decode")]
 use crate::crypto::{Aes128Gcm, Aes256Gcm};
-#[cfg(feature = "decode")]
-use std::io::Cursor;
-#[cfg(feature = "decode")]
-use integer_encoding::VarIntReader;
 
 type Result<T> = std::result::Result<T, LogError>;
 
 pub struct EZLogger {
-    pub config: Rc<EZLogConfig>,
-    pub appender: EZAppender,
-    compression: Option<Box<dyn Compress>>,
-    cryptor: Option<Box<dyn Cryptor>>,
+    pub(crate) config: Rc<EZLogConfig>,
+    pub(crate) appender: EZAppender,
+    pub(crate) compression: Option<Box<dyn Compress>>,
+    pub(crate) cryptor: Option<Box<dyn Cryptor>>,
 }
 
 impl EZLogger {
@@ -55,6 +46,7 @@ impl EZLogger {
         })
     }
 
+    #[allow(deprecated)]
     pub fn create_cryptor(config: &EZLogConfig) -> Result<Option<Box<dyn Cryptor>>> {
         if let Some(key) = &config.cipher_key {
             if let Some(nonce) = &config.cipher_nonce {
@@ -79,7 +71,7 @@ impl EZLogger {
                         Ok(Some(Box::new(encryptor)))
                     }
                     CipherKind::NONE => Ok(None),
-                    unknown => Err(LogError::Crypto(format!("unknown cryption {}", unknown)))
+                    unknown => Err(LogError::Crypto(format!("unknown cryption {}", unknown))),
                 }
             } else {
                 Ok(None)
@@ -189,183 +181,6 @@ impl EZLogger {
         let mut chunk: Vec<u8> = Vec::new();
         chunk.write_varint(size)?;
         Ok(chunk)
-    }
-
-    #[inline]
-    #[cfg(feature = "decode")]
-    pub fn decode_logs_count(
-        &mut self,
-        reader: &mut Cursor<Vec<u8>>,
-        header: &Header,
-    ) -> Result<i32> {
-        let mut count = 0;
-        loop {
-            let position = reader.position();
-            match Self::decode_record_from_read(
-                reader,
-                &self.config.version,
-                &self.compression,
-                &self.cryptor,
-                header,
-                position,
-            ) {
-                Ok(_) => {
-                    count += 1;
-                }
-                Err(e) => match e {
-                    LogError::IoError(err) => {
-                        if err.kind() == io::ErrorKind::UnexpectedEof {
-                            break;
-                        }
-                    }
-                    LogError::IllegalArgument(_) => break,
-                    _ => continue,
-                },
-            }
-        }
-        Ok(count)
-    }
-
-    #[inline]
-    #[cfg(feature = "decode")]
-    pub fn decode_body_and_write(
-        reader: &mut Cursor<Vec<u8>>,
-        writer: &mut dyn Write,
-        version: &Version,
-        compression: &Option<Box<dyn Compress>>,
-        cryptor: &Option<Box<dyn Cryptor>>,
-        header: &Header,
-    ) -> io::Result<()> {
-        loop {
-            let position: u64 = reader.position();
-            match Self::decode_record_from_read(
-                reader,
-                version,
-                compression,
-                cryptor,
-                header,
-                position,
-            ) {
-                Ok(buf) => {
-                    if buf.is_empty() {
-                        break;
-                    }
-                    writer.write_all(&buf)?;
-                }
-                Err(e) => match e {
-                    LogError::IoError(err) => {
-                        if err.kind() == io::ErrorKind::UnexpectedEof {
-                            break;
-                        }
-                    }
-                    LogError::IllegalArgument(_) => break,
-                    _ => continue,
-                },
-            }
-        }
-        writer.flush()
-    }
-
-    #[cfg(feature = "decode")]
-    pub(crate) fn decode_record_from_read(
-        reader: &mut Cursor<Vec<u8>>,
-        version: &Version,
-        compression: &Option<Box<dyn Compress>>,
-        cryptor: &Option<Box<dyn Cryptor>>,
-        header: &Header,
-        position: u64,
-    ) -> Result<Vec<u8>> {
-        let chunk = Self::decode_record_to_content(reader, version)?;
-        let combine = combine_time_position(header.timestamp.unix_timestamp(), position);
-
-        let op = Box::new(move |input: &[u8]| xor_slice(input, &combine));
-        if header.has_record() && position != header.length().try_into().unwrap_or_default() {
-            Self::decode_record_content(version, &chunk, compression, cryptor, op)
-        } else {
-            Ok(chunk)
-        }
-    }
-
-    #[inline]
-    #[cfg(feature = "decode")]
-    pub(crate) fn decode_record_to_content(
-        reader: &mut dyn BufRead,
-        version: &Version,
-    ) -> Result<Vec<u8>> {
-        let mut buf = Vec::new();
-        let nums = reader.read_until(RECORD_SIGNATURE_START, &mut buf)?;
-        if nums == 0 {
-            return Err(LogError::IllegalArgument(
-                "has no record start signature".to_string(),
-            ));
-        }
-        let content_size: usize = Self::decode_record_size(reader, version)?;
-        let mut chunk = vec![0u8; content_size];
-        reader.read_exact(&mut chunk)?;
-        let end_sign = reader.read_u8()?;
-        if RECORD_SIGNATURE_END != end_sign {
-            return Err(LogError::Parse("record end sign error".to_string()));
-        }
-        Ok(chunk)
-    }
-
-    #[inline]
-    #[cfg(feature = "decode")]
-    pub(crate) fn decode_record_size(
-        mut reader: &mut dyn BufRead,
-        version: &Version,
-    ) -> Result<usize> {
-        match version {
-            Version::V1 => {
-                let size_of_size = reader.read_u8()?;
-                let content_size: usize = match size_of_size {
-                    1 => reader.read_u8()? as usize,
-                    2 => reader.read_u16::<BigEndian>()? as usize,
-                    _ => reader.read_u32::<BigEndian>()? as usize,
-                };
-                Ok(content_size)
-            }
-            Version::V2 => {
-                let size: usize = reader.read_varint()?;
-                Ok(size)
-            }
-            Version::UNKNOWN => Err(LogError::IllegalArgument(format!(
-                "unknow version {:?}",
-                version
-            ))),
-        }
-    }
-
-    #[inline]
-    #[cfg(feature = "decode")]
-    pub fn decode_record_content(
-        version: &Version,
-        chunk: &[u8],
-        compression: &Option<Box<dyn Compress>>,
-        cryptor: &Option<Box<dyn Cryptor>>,
-        op: NonceGenFn,
-    ) -> Result<Vec<u8>> {
-        let mut buf = chunk.to_vec();
-
-        if *version == Version::V1 {
-            if let Some(decompression) = compression {
-                buf = decompression.decompress(&buf)?;
-            }
-
-            if let Some(decryptor) = cryptor {
-                buf = decryptor.decrypt(&buf, op)?;
-            }
-        } else {
-            if let Some(decryptor) = cryptor {
-                buf = decryptor.decrypt(&buf, op)?;
-            }
-
-            if let Some(decompression) = compression {
-                buf = decompression.decompress(&buf)?;
-            }
-        }
-
-        Ok(buf)
     }
 
     fn format(&self, record: &EZRecord) -> Vec<u8> {
@@ -488,6 +303,8 @@ impl Default for Header {
 }
 
 impl Header {
+    
+    #[allow(deprecated)]
     pub fn new() -> Self {
         Header {
             version: Version::V2,

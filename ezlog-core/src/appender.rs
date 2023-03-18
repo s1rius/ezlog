@@ -452,7 +452,7 @@ mod tests {
             .file_suffix(String::from("mmap"))
             .max_size(1024)
             .compress(CompressKind::ZLIB)
-            .cipher(CipherKind::AES128GCM)
+            .cipher(CipherKind::AES128GCMSIV)
             .cipher_key(key.to_vec())
             .cipher_nonce(nonce.to_vec())
             .build();
