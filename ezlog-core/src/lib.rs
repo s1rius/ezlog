@@ -500,14 +500,16 @@ pub trait Compress: Compression + Decompression {}
 
 impl<T: Compression + Decompression> Compress for T {}
 
+type NonceGenFn = Box<dyn Fn(&[u8]) -> Vec<u8>>;
+
 /// Encrypt function abstract
 pub trait Encryptor {
-    fn encrypt(&self, data: &[u8]) -> std::result::Result<Vec<u8>, LogError>;
+    fn encrypt(&self, data: &[u8], op: NonceGenFn) -> std::result::Result<Vec<u8>, LogError>;
 }
 
 /// decrypt function abstract
 pub trait Decryptor {
-    fn decrypt(&self, data: &[u8]) -> std::result::Result<Vec<u8>, LogError>;
+    fn decrypt(&self, data: &[u8], op: NonceGenFn) -> std::result::Result<Vec<u8>, LogError>;
 }
 
 impl<T: Encryptor + Decryptor> Cryptor for T {}
@@ -823,7 +825,8 @@ mod tests {
         fs::remove_dir_all(&config.dir_path).unwrap_or_default();
         let mut logger = EZLogger::new(config.clone()).unwrap();
 
-        for i in 0..1 {
+        let log_count = 10;
+        for i in 0..log_count {
             logger
                 .append(
                     &EZRecordBuilder::default()
@@ -841,15 +844,19 @@ mod tests {
             .create(true)
             .open(&path)
             .unwrap();
+        let mut buf = Vec::<u8>::new();
         let mut reader = BufReader::new(file);
-        let mut header = Header::decode(&mut reader).unwrap();
+        reader.read_to_end(&mut buf).unwrap();
+        let mut cursor = Cursor::new(buf);
+        let mut header = Header::decode(&mut cursor).unwrap();
         header.recorder_position = header.length().try_into().unwrap();
         let mut new_header = Header::create(&logger.config);
         new_header.timestamp = header.timestamp.clone();
         new_header.rotate_time = header.rotate_time.clone();
         new_header.recorder_position = Header::length_compat(&config.version) as u32;
         assert_eq!(header, new_header);
-        logger.decode_record(&mut reader).unwrap();
+        let count = logger.decode_logs_count(&mut cursor, &header).unwrap();
+        assert_eq!(count, log_count);
         fs::remove_dir_all(&config.dir_path).unwrap_or_default();
     }
 }

@@ -59,7 +59,7 @@ pub trait AppenderInner: Write {
 /// # Appender 的实现
 pub struct EZAppender {
     config: Rc<EZLogConfig>,
-    inner: Box<dyn AppenderInner>,
+    pub(crate) inner: Box<dyn AppenderInner>,
 }
 
 impl EZAppender {

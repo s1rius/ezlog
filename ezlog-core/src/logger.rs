@@ -17,11 +17,13 @@ use crate::{
     CipherKind, Compress, CompressKind, Cryptor, EZLogConfig, EZRecord, RECORD_SIGNATURE_END,
     RECORD_SIGNATURE_START,
 };
-use crate::{errors, event, V1_LOG_HEADER_SIZE};
+use crate::{errors, event, NonceGenFn, V1_LOG_HEADER_SIZE};
 use crate::{Version, V2_LOG_HEADER_SIZE};
 use byteorder::ReadBytesExt;
 #[cfg(feature = "decode")]
 use integer_encoding::VarIntReader;
+#[cfg(feature = "decode")]
+use std::io::Cursor;
 use time::format_description::well_known::Rfc3339;
 use time::{Date, OffsetDateTime};
 
@@ -29,7 +31,7 @@ type Result<T> = std::result::Result<T, LogError>;
 
 pub struct EZLogger {
     pub config: Rc<EZLogConfig>,
-    pub appender: Box<dyn Write>,
+    pub appender: EZAppender,
     compression: Option<Box<dyn Compress>>,
     cryptor: Option<Box<dyn Cryptor>>,
 }
@@ -37,7 +39,7 @@ pub struct EZLogger {
 impl EZLogger {
     pub fn new(config: EZLogConfig) -> Result<Self> {
         let rc_conf = Rc::new(config);
-        let mut appender = Box::new(EZAppender::new(Rc::clone(&rc_conf))?);
+        let mut appender = EZAppender::new(Rc::clone(&rc_conf))?;
         appender.check_config_rolling(&rc_conf)?;
         let compression = EZLogger::create_compress(&rc_conf);
         let cryptor = EZLogger::create_cryptor(&rc_conf)?;
@@ -103,11 +105,12 @@ impl EZLogger {
 
     #[inline]
     fn encode(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
+        let nonce_fn: NonceGenFn = self.gen_nonce();
         let mut buf = self.format(record);
         if self.config.version == Version::V1 {
             if let Some(encryptor) = &self.cryptor {
                 event!(Event::Encrypt, &record.t_id());
-                buf = encryptor.encrypt(&buf)?;
+                buf = encryptor.encrypt(&buf, nonce_fn)?;
                 event!(Event::EncryptEnd, &record.t_id());
             }
             if let Some(compression) = &self.compression {
@@ -123,11 +126,29 @@ impl EZLogger {
             }
             if let Some(encryptor) = &self.cryptor {
                 event!(Event::Encrypt, &record.t_id());
-                buf = encryptor.encrypt(&buf)?;
+                buf = encryptor.encrypt(&buf, nonce_fn)?;
                 event!(Event::EncryptEnd, &record.t_id());
             }
         }
         Ok(buf)
+    }
+
+    /// Generates a nonce generation function for the current `EZLogger`.
+    ///
+    /// The nonce generation function XORs each input slice with a unique nonce that is generated based on the current
+    /// timestamp and recorder position of the `EZAppender`.
+    ///
+    /// # Returns
+    ///
+    /// A `NonceGenFn` closure that be used in encode and decode.
+    ///
+    fn gen_nonce(&mut self) -> NonceGenFn {
+        let timestamp = self.appender.inner.header().timestamp.unix_timestamp();
+        let position = self.appender.inner.header().recorder_position;
+        let combine = combine_time_position(timestamp, position.into());
+
+        // create and return a closure that XORs each input slice with the count 
+        Box::new(move |input| xor_slice(input, &combine))
     }
 
     ///
@@ -158,26 +179,59 @@ impl EZLogger {
 
     #[inline]
     #[cfg(feature = "decode")]
-    pub fn decode_record(&mut self, reader: &mut dyn BufRead) -> Result<Vec<u8>> {
-        Self::decode_record_from_read(
-            reader,
-            &self.config.version,
-            &self.compression,
-            &self.cryptor,
-        )
+    pub fn decode_logs_count(
+        &mut self,
+        reader: &mut Cursor<Vec<u8>>,
+        header: &Header,
+    ) -> Result<i32> {
+        let mut count = 0;
+        loop {
+            let position = reader.position();
+            match Self::decode_record_from_read(
+                reader,
+                &self.config.version,
+                &self.compression,
+                &self.cryptor,
+                header,
+                position,
+            ) {
+                Ok(_) => {
+                    count += 1;
+                }
+                Err(e) => match e {
+                    LogError::IoError(err) => {
+                        if err.kind() == io::ErrorKind::UnexpectedEof {
+                            break;
+                        }
+                    }
+                    LogError::IllegalArgument(_) => break,
+                    _ => continue,
+                },
+            }
+        }
+        Ok(count)
     }
 
     #[inline]
     #[cfg(feature = "decode")]
     pub fn decode_body_and_write(
-        reader: &mut dyn BufRead,
+        reader: &mut Cursor<Vec<u8>>,
         writer: &mut dyn Write,
         version: &Version,
         compression: &Option<Box<dyn Compress>>,
         cryptor: &Option<Box<dyn Cryptor>>,
+        header: &Header,
     ) -> io::Result<()> {
         loop {
-            match Self::decode_record_from_read(reader, version, compression, cryptor) {
+            let position: u64 = reader.position();
+            match Self::decode_record_from_read(
+                reader,
+                version,
+                compression,
+                cryptor,
+                header,
+                position,
+            ) {
                 Ok(buf) => {
                     if buf.is_empty() {
                         break;
@@ -200,13 +254,22 @@ impl EZLogger {
 
     #[cfg(feature = "decode")]
     pub(crate) fn decode_record_from_read(
-        reader: &mut dyn BufRead,
+        reader: &mut Cursor<Vec<u8>>,
         version: &Version,
         compression: &Option<Box<dyn Compress>>,
         cryptor: &Option<Box<dyn Cryptor>>,
+        header: &Header,
+        position: u64,
     ) -> Result<Vec<u8>> {
         let chunk = Self::decode_record_to_content(reader, version)?;
-        Self::decode_record_content(version, &chunk, compression, cryptor)
+        let combine = combine_time_position(header.timestamp.unix_timestamp(), position);
+
+        let op = Box::new(move |input: &[u8]| xor_slice(input, &combine));
+        if header.has_record() && position != header.length().try_into().unwrap_or_default() {
+            Self::decode_record_content(version, &chunk, compression, cryptor, op)
+        } else {
+            Ok(chunk)
+        }
     }
 
     #[inline]
@@ -266,6 +329,7 @@ impl EZLogger {
         chunk: &[u8],
         compression: &Option<Box<dyn Compress>>,
         cryptor: &Option<Box<dyn Cryptor>>,
+        op: NonceGenFn,
     ) -> Result<Vec<u8>> {
         let mut buf = chunk.to_vec();
 
@@ -275,11 +339,11 @@ impl EZLogger {
             }
 
             if let Some(decryptor) = cryptor {
-                buf = decryptor.decrypt(&buf)?;
+                buf = decryptor.decrypt(&buf, op)?;
             }
         } else {
             if let Some(decryptor) = cryptor {
-                buf = decryptor.decrypt(&buf)?;
+                buf = decryptor.decrypt(&buf, op)?;
             }
 
             if let Some(decompression) = compression {
@@ -349,6 +413,26 @@ impl EZLogger {
     pub fn query_log_files_for_date(&self, date: Date) -> Vec<PathBuf> {
         self.config.query_log_files_for_date(date)
     }
+}
+
+pub(crate) fn combine_time_position(timestamp: i64, position: u64) -> Vec<u8> {
+    let position_bytes = position.to_be_bytes();
+    let time_bytes = timestamp.to_be_bytes();
+    let mut vec = time_bytes.to_vec();
+    vec.extend(position_bytes);
+    vec
+}
+
+pub(crate) fn xor_slice<'a>(slice: &'a [u8], vec: &'a [u8]) -> Vec<u8> {
+    let mut result = Vec::with_capacity(slice.len());
+    for (i, byte) in slice.iter().enumerate() {
+        if let Some(vec_byte) = vec.get(i) {
+            result.push(byte ^ vec_byte);
+        } else {
+            result.push(*byte);
+        }
+    }
+    result
 }
 
 use bitflags::bitflags;
