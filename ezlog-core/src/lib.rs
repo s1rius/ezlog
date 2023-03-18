@@ -696,9 +696,7 @@ mod tests {
     use std::io::Read;
     use std::io::Write;
 
-    use aead::KeyInit;
-    use aes_gcm::aead::Aead;
-    use aes_gcm::{Aes256Gcm, Nonce}; // Or `Aes128Gcm`
+    use aead::{Aead, KeyInit};
     use flate2::{bufread::ZlibDecoder, write::ZlibEncoder, Compression};
 
     use crate::logger::Header;
@@ -774,7 +772,11 @@ mod tests {
 
     /// https://docs.rs/aes-gcm/latest/aes_gcm/
     #[test]
+    #[cfg(feature = "decode")]
     fn test_cipher() {
+        use aes_gcm::Aes256Gcm;
+        use aes_gcm::Nonce;
+
         let cipher = Aes256Gcm::new_from_slice(b"an example very very secret key.").unwrap();
 
         let nonce = Nonce::from_slice(b"unique nonce"); // 96-bits; unique per message

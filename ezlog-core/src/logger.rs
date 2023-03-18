@@ -13,7 +13,6 @@ use crate::events::Event::{self};
 use crate::{
     appender::EZAppender,
     compress::ZlibCodec,
-    crypto::{Aes128Gcm, Aes256Gcm},
     errors::LogError,
     CipherKind, Compress, CompressKind, Cryptor, EZLogConfig, EZRecord, RECORD_SIGNATURE_END,
     RECORD_SIGNATURE_START,
@@ -21,12 +20,15 @@ use crate::{
 use crate::{errors, event, NonceGenFn, V1_LOG_HEADER_SIZE};
 use crate::{Version, V2_LOG_HEADER_SIZE};
 use byteorder::ReadBytesExt;
-#[cfg(feature = "decode")]
-use integer_encoding::VarIntReader;
-#[cfg(feature = "decode")]
-use std::io::Cursor;
 use time::format_description::well_known::Rfc3339;
 use time::{Date, OffsetDateTime};
+
+#[cfg(feature = "decode")]
+use crate::crypto::{Aes128Gcm, Aes256Gcm};
+#[cfg(feature = "decode")]
+use std::io::Cursor;
+#[cfg(feature = "decode")]
+use integer_encoding::VarIntReader;
 
 type Result<T> = std::result::Result<T, LogError>;
 
@@ -56,11 +58,14 @@ impl EZLogger {
     pub fn create_cryptor(config: &EZLogConfig) -> Result<Option<Box<dyn Cryptor>>> {
         if let Some(key) = &config.cipher_key {
             if let Some(nonce) = &config.cipher_nonce {
+                #[warn(unreachable_patterns)]
                 match config.cipher {
+                    #[cfg(feature = "decode")]
                     CipherKind::AES128GCM => {
                         let encryptor = Aes128Gcm::new(key, nonce)?;
                         Ok(Some(Box::new(encryptor)))
                     }
+                    #[cfg(feature = "decode")]
                     CipherKind::AES256GCM => {
                         let encryptor = Aes256Gcm::new(key, nonce)?;
                         Ok(Some(Box::new(encryptor)))
@@ -74,7 +79,7 @@ impl EZLogger {
                         Ok(Some(Box::new(encryptor)))
                     }
                     CipherKind::NONE => Ok(None),
-                    CipherKind::UNKNOWN => Ok(None),
+                    unknown => Err(LogError::Crypto(format!("unknown cryption {}", unknown)))
                 }
             } else {
                 Ok(None)
