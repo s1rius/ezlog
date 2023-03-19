@@ -25,15 +25,12 @@ jobs:
     runs-on: ${{ matrix.platform }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly-2023-03-07
-          profile: minimal
           components: ${{ matrix.components }}
-          default: true
-          override: true
       - name: Install android target
         if: ${{ runner.os == 'Linux' }}
         run: >
@@ -78,9 +75,4 @@ jobs:
         if: ${{ runner.os == 'macOS' }}
         run: cargo build -Z build-std -p ezlog --release --lib --target aarch64-apple-ios
       - name: Clippy Check
-        uses: actions-rs/clippy-check@v1
-        with:
-          name: clippy-${{ matrix.platform }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: |
-            --workspace  --all-features
+        run: cargo clippy --all --all-features -- -D warnings
