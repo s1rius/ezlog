@@ -553,9 +553,9 @@ impl From<Version> for u8 {
 /// Cipher kind current support
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
 pub enum CipherKind {
-    #[deprecated(since = "2.0.0", note = "Use AES128GCMSIV instead")]
+    #[deprecated(since = "0.2.0", note = "Use AES128GCMSIV instead")]
     AES128GCM,
-    #[deprecated(since = "2.0.0", note = "Use AES256GCMSIV instead")]
+    #[deprecated(since = "0.2.0", note = "Use AES256GCMSIV instead")]
     AES256GCM,
     AES128GCMSIV,
     AES256GCMSIV,
