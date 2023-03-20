@@ -20,7 +20,7 @@ log = "0.4.17"
 time = { version = "0.3", default-features = false, features = ["formatting"] }
 
 [dev-dependencies]
-dirs = "4.0"
+dirs = "5.0"
 rand = "0.8"
 
 [[example]]
