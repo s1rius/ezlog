@@ -44,5 +44,5 @@ windows = "0.44"
 windows-sys = { version = "0.45", features = ["Win32_System_Threading", "Win32_Foundation"] } 
 
 [dev-dependencies]
-dirs = "4.0"
+dirs = "5.0"
 time = { version = "0.3", default-features = false, features = ["macros"] }
