@@ -72,7 +72,7 @@ pub(crate) const MIN_LOG_SIZE: u64 = 100;
 
 /// Log file fixed header length.
 pub const V1_LOG_HEADER_SIZE: usize = 10;
-pub const V2_LOG_HEADER_SIZE: usize = 18;
+pub const V2_LOG_HEADER_SIZE: usize = 22;
 
 // maybe set as threadlocal variable
 static mut LOG_MAP: MaybeUninit<HashMap<String, EZLogger>> = MaybeUninit::uninit();
@@ -701,23 +701,23 @@ fn hook_panic() {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Cursor;
-    use std::io::Read;
-    use std::io::Write;
-
-    use aead::{Aead, KeyInit};
+    use std::io::{Read, Write};
     use flate2::{bufread::ZlibDecoder, write::ZlibEncoder, Compression};
-
-    use crate::logger::Header;
-    
     use crate::recorder::EZRecordBuilder;
-    use crate::EZLogger;
+    
+    use crate::Header;
     use crate::{
         config::EZLogConfigBuilder, EZLogConfig, RECORD_SIGNATURE_END, RECORD_SIGNATURE_START,
     };
 
     #[cfg(feature = "decode")]
     use crate::decode;
+    #[cfg(feature = "decode")]
+    use aead::{Aead, KeyInit};
+    #[cfg(feature = "decode")]
+    use std::io::Cursor;
+    #[cfg(feature = "decode")]
+    use crate::EZLogger;
 
     fn create_config() -> EZLogConfig {
         EZLogConfig::default()
@@ -813,7 +813,6 @@ mod tests {
     #[cfg(feature = "decode")]
     #[test]
     fn test_record_len() {
-
         let chunk = EZLogger::create_size_chunk(1000).unwrap();
         let mut cursor = Cursor::new(chunk);
         let size = decode::decode_record_size(&mut cursor, &crate::Version::V2).unwrap();

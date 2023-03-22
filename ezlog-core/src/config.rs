@@ -1,5 +1,7 @@
 use std::{
-    cmp, fmt,
+    cmp,
+    collections::hash_map::DefaultHasher,
+    fmt,
     fs::{self, File, OpenOptions},
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
@@ -212,6 +214,13 @@ impl EZLogConfig {
     pub(crate) fn rotate_time(&self, time: OffsetDateTime) -> OffsetDateTime {
         time + self.rotate_duration
     }
+
+    pub(crate) fn cipher_hash(&self) -> u32 {
+        let mut hasher = DefaultHasher::new();
+        self.cipher.hash(&mut hasher);
+        self.cipher_key.hash(&mut hasher);
+        hasher.finish() as u32
+    }
 }
 
 impl Default for EZLogConfig {
@@ -229,10 +238,12 @@ impl Hash for EZLogConfig {
         self.cipher.hash(state);
         self.cipher_key.hash(state);
         self.cipher_nonce.hash(state);
+        self.extra.hash(state)
     }
 }
 
 /// The builder of [EZLogConfig]
+#[derive(Debug, Clone)]
 pub struct EZLogConfigBuilder {
     config: EZLogConfig,
 }
@@ -257,6 +268,12 @@ impl EZLogConfigBuilder {
                 extra: None,
             },
         }
+    }
+
+    #[inline]
+    pub fn version(mut self, version: Version) -> Self {
+        self.config.version = version;
+        self
     }
 
     #[inline]
@@ -512,6 +529,41 @@ mod tests {
 
     use crate::{appender::EZAppender, CipherKind, CompressKind, EZLogConfigBuilder};
     use time::{macros::datetime, Duration, OffsetDateTime};
+
+    #[test]
+    fn test_config_cipher_hash() {
+        let config_builder = EZLogConfigBuilder::default();
+
+        let default1 = config_builder.clone().build();
+        let default2 = config_builder.clone().build();
+        assert_eq!(default1.cipher_hash(), default2.cipher_hash());
+
+        let cipher1 = config_builder
+            .clone()
+            .cipher(CipherKind::AES128GCMSIV)
+            .cipher_key(vec![])
+            .build();
+        let cipher2 = config_builder
+            .clone()
+            .cipher(CipherKind::AES128GCMSIV)
+            .cipher_key(vec![])
+            .build();
+        assert_eq!(cipher1.cipher_hash(), cipher2.cipher_hash());
+
+        let cipher3 = config_builder
+            .clone()
+            .cipher(CipherKind::AES256GCMSIV)
+            .cipher_key(vec![])
+            .build();
+        assert_ne!(cipher1.cipher_hash(), cipher3.cipher_hash());
+
+        let cipher4 = config_builder
+            .clone()
+            .cipher(CipherKind::AES128GCMSIV)
+            .cipher_key(vec![1, 2, 3])
+            .build();
+        assert_ne!(cipher1.cipher_hash(), cipher4.cipher_hash());
+    }
 
     #[test]
     fn test_is_out_of_date() {

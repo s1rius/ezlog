@@ -290,6 +290,8 @@ pub struct Header {
     pub(crate) compress: CompressKind,
     /// cipher kind
     pub(crate) cipher: CipherKind,
+    // config key and nonce hash
+    pub(crate) cihper_hash: u32,
     /// timestamp
     pub(crate) timestamp: OffsetDateTime,
     /// rotate time
@@ -303,7 +305,6 @@ impl Default for Header {
 }
 
 impl Header {
-    
     #[allow(deprecated)]
     pub fn new() -> Self {
         Header {
@@ -312,6 +313,7 @@ impl Header {
             recorder_position: 0,
             compress: CompressKind::ZLIB,
             cipher: CipherKind::AES128GCM,
+            cihper_hash: 0,
             timestamp: OffsetDateTime::now_utc(),
             rotate_time: None,
         }
@@ -324,6 +326,7 @@ impl Header {
             recorder_position: 0,
             compress: CompressKind::NONE,
             cipher: CipherKind::NONE,
+            cihper_hash: 0,
             timestamp: OffsetDateTime::UNIX_EPOCH,
             rotate_time: None,
         }
@@ -343,6 +346,7 @@ impl Header {
             recorder_position: 0,
             compress: config.compress,
             cipher: config.cipher,
+            cihper_hash: config.cipher_hash(),
             timestamp: OffsetDateTime::now_utc(),
             rotate_time: Some(rotate_time),
         }
@@ -387,6 +391,7 @@ impl Header {
 
     pub fn encode_v2(&self, writer: &mut dyn Write) -> std::result::Result<(), io::Error> {
         self.encode_v1(writer)?;
+        writer.write_u32::<BigEndian>(self.cihper_hash)?;
         writer.write_i64::<BigEndian>(self.timestamp.unix_timestamp())
     }
 
@@ -402,17 +407,19 @@ impl Header {
 
         let compress = reader.read_u8()?;
         let cipher = reader.read_u8()?;
-        let timestamp = if version == Version::V2 {
-            reader.read_i64::<BigEndian>()?
-        } else {
-            OffsetDateTime::now_utc().unix_timestamp()
-        };
+        let mut hash:u32 = 0;
+        let mut timestamp = OffsetDateTime::now_utc().unix_timestamp();
+        if version == Version::V2 {
+            hash = reader.read_u32::<BigEndian>()?;
+            timestamp = reader.read_i64::<BigEndian>()?
+        }
         Ok(Header {
             version,
             flag,
             recorder_position: recorder_size,
             compress: CompressKind::from(compress),
             cipher: CipherKind::from(cipher),
+            cihper_hash: hash,
             timestamp: OffsetDateTime::from_unix_timestamp(timestamp)
                 .unwrap_or_else(|_| OffsetDateTime::now_utc()),
             rotate_time: None,
@@ -430,10 +437,11 @@ impl Header {
         Ok(decode)
     }
 
-    pub fn is_valid(&self, config: &EZLogConfig) -> bool {
+    pub fn is_match(&self, config: &EZLogConfig) -> bool {
         self.version == config.version
             && self.compress == config.compress
             && self.cipher == config.cipher
+            && self.cihper_hash == config.cipher_hash()
     }
 
     pub fn is_empty(&self) -> bool {

@@ -83,20 +83,34 @@ impl EZAppender {
         Ok(Self { config, inner })
     }
 
+    #[inline]
     pub(crate) fn check_write_rolling(&mut self, buf_size: usize) -> Result<()> {
-        let now = OffsetDateTime::now_utc();
-        if self.inner.is_overtime(now) || self.inner.is_oversize(buf_size) {
+        if self.is_write_rolling(buf_size) {
             self.rotate()?;
         }
         Ok(())
     }
 
-    pub(crate) fn check_config_rolling(&mut self, config: &EZLogConfig) -> Result<()> {
+    #[inline]
+    pub(crate) fn is_write_rolling(&self, buf_size: usize) -> bool {
         let now = OffsetDateTime::now_utc();
-        if self.inner.is_overtime(now) || self.inner.file_len() != config.max_size as usize {
+        self.inner.is_overtime(now) || self.inner.is_oversize(buf_size)
+    }
+
+    #[inline]
+    pub(crate) fn check_config_rolling(&mut self, config: &EZLogConfig) -> Result<()> {
+        if self.is_config_rolling(config) {
             self.rotate()?;
         }
         Ok(())
+    }
+
+    #[inline]
+    pub(crate) fn is_config_rolling(&self, config: &EZLogConfig) -> bool {
+        let now = OffsetDateTime::now_utc();
+        self.inner.is_overtime(now)
+            || self.inner.file_len() != config.max_size as usize
+            || !self.inner.header().is_match(config)
     }
 
     pub(crate) fn rotate(&mut self) -> Result<()> {
@@ -436,8 +450,7 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn create_all_feature_config() {
+    fn create_all_feature_config() -> EZLogConfigBuilder {
         let key = b"an example very very secret key.";
         let nonce = b"unique nonce";
         EZLogConfigBuilder::new()
@@ -455,54 +468,48 @@ mod tests {
             .cipher(CipherKind::AES128GCMSIV)
             .cipher_key(key.to_vec())
             .cipher_nonce(nonce.to_vec())
-            .build();
     }
 
     #[test]
     fn test_appender_inner_rolling() {
-        let max_size: usize = 1024;
-        let config = EZLogConfigBuilder::new()
-            .name("test".to_string())
-            .dir_path(
-                dirs::cache_dir()
-                    .unwrap()
-                    .into_os_string()
-                    .into_string()
-                    .unwrap(),
-            )
-            .trim_duration(Duration::days(1))
-            .name(String::from("test"))
-            .file_suffix(String::from("mmap"))
-            .max_size(max_size.try_into().unwrap())
-            .build();
-
+        let config_builder = create_all_feature_config();
+        let builder_clone = config_builder.clone();
+        let config = config_builder.build();
         let inner = MmapAppendInner::new(&config).unwrap();
-        assert!(inner.is_oversize(max_size - inner.header.length() + 1));
-        assert!(!inner.is_oversize(max_size - inner.header.length()));
-        assert!(inner.is_overtime(
-            time::OffsetDateTime::now_utc() + Duration::days(1) + Duration::seconds(1)
-        ));
-        assert!(!inner.is_overtime(
-            time::OffsetDateTime::now_utc()
-                .date()
-                .midnight()
-                .assume_utc()
-                + Duration::hours(23)
-        ));
+        test_inner_rolling(&inner, &builder_clone);
         let mut file_path = inner.file_path().to_owned();
         drop(inner);
         fs::remove_file(file_path).unwrap();
 
         let inner = ByteArrayAppenderInner::new(&config).unwrap();
-        assert!(inner.is_oversize(max_size - inner.header.length() + 1));
-        assert!(!inner.is_oversize(max_size - inner.header.length()));
-        assert!(inner.is_overtime(
-            time::OffsetDateTime::now_utc() + Duration::days(1) + Duration::seconds(1)
-        ));
-        assert!(!inner.is_overtime(time::OffsetDateTime::now_utc() + Duration::hours(23)));
+        test_inner_rolling(&inner, &builder_clone);
         file_path = inner.file_path().to_owned();
-        drop(inner);
         fs::remove_file(file_path).unwrap();
+    }
+
+    fn test_inner_rolling (inner: &dyn AppenderInner, config_builder: &EZLogConfigBuilder) {
+        
+        let config = config_builder.clone().build();
+        let max_size: usize = config.max_size as usize;
+        assert!(inner.is_oversize(max_size - inner.header().length() + 1));
+        assert!(!inner.is_oversize(max_size - inner.header().length()));
+        assert!(
+            inner.is_overtime(inner.header().timestamp + Duration::days(1) + Duration::seconds(1))
+        );
+        assert!(!inner.is_overtime(inner.header().timestamp + Duration::hours(23)));
+        assert!(inner.header().is_match(&config));
+
+        let no_cipher_config = config_builder.clone().cipher(CipherKind::NONE).build();
+        assert!(!inner.header().is_match(&no_cipher_config));
+
+        let diff_nonce_config = config_builder.clone().cipher_key(vec![1]).build();
+        assert!(!inner.header().is_match(&diff_nonce_config));
+
+        let diff_version_config = config_builder.clone().version(Version::V1).build();
+        assert!(!inner.header().is_match(&diff_version_config));
+
+        let diff_compress_config = config_builder.clone().compress(CompressKind::NONE).build();
+        assert!(!inner.header().is_match(&diff_compress_config));
     }
 
     fn current_file(path: &PathBuf) -> std::result::Result<File, errors::LogError> {

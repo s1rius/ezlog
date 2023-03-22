@@ -12,11 +12,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Add create time info to file header https://github.com/s1rius/ezlog/pull/38
 - Make file rorate duration configurable https://github.com/s1rius/ezlog/pull/46
 - Add log file header extra info https://github.com/s1rius/ezlog/pull/48
+- Add AES-GCM-SIV encryption as mandatory for v2 https://github.com/s1rius/ezlog/pull/56
+- Generate a unique nonce for each encryption instance https://github.com/s1rius/ezlog/pull/56
 
 ### Change
 - **break** android:rename native function name, remove underline https://github.com/s1rius/ezlog/pull/26
 - Use varint to describe log's content length https://github.com/s1rius/ezlog/pull/32
 - Compress first then encrypt https://github.com/s1rius/ezlog/pull/40
+
+### Fix
+- Auto rotate log file, when the config is not match previous https://github.com/s1rius/ezlog/pull/57
 
 ## [0.1.7] (2022-11-24)
 
