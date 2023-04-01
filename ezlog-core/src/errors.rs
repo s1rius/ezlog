@@ -19,6 +19,8 @@ pub enum LogError {
     FFi(String),
     #[error("unknown error: {0}")]
     Unknown(String),
+    #[error("log init error")]
+    NotInit,
 }
 
 impl LogError {

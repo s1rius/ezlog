@@ -16,11 +16,12 @@ use std::ffi::NulError;
 /// Init ezlog, must call before any other function
 #[no_mangle]
 pub extern "C" fn ezlog_init(enable_trace: c_uint) {
+    let mut builder = crate::InitBuilder::new();
     if enable_trace as i8 > 0 {
         static EVENT: EventPrinter = EventPrinter {};
-        set_event_listener(&EVENT)
+        builder = builder.with_event_listener(&EVENT);
     }
-    crate::init();
+    builder.init();
 }
 
 /// Flush target log which name is `c_log_name`

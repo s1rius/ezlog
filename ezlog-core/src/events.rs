@@ -6,7 +6,7 @@
 /// defining an event listener to make your systems observable.
 /// It’s a lot of power in a simple pattern.
 ///
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Event {
     Init,
     InitError,

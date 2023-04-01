@@ -8,6 +8,7 @@ mod config;
 mod crypto;
 mod errors;
 mod events;
+mod init;
 mod logger;
 mod recorder;
 mod thread_name;
@@ -25,28 +26,30 @@ mod ffi_java;
 pub use self::config::EZLogConfig;
 pub use self::config::EZLogConfigBuilder;
 pub use self::config::Level;
-pub(crate) use self::events::event;
-use self::events::Event;
+pub use self::errors::LogError;
+pub use self::events::Event;
 pub use self::events::EventListener;
 pub use self::events::EventPrinter;
+pub use self::init::InitBuilder;
+pub use self::init::MsgHandler;
 pub use self::logger::EZLogger;
 pub use self::logger::Header;
 pub use self::recorder::EZRecord;
 pub use self::recorder::EZRecordBuilder;
 
+pub(crate) use self::events::event;
+
 use crossbeam_channel::{Sender, TrySendError};
-use errors::LogError;
 use memmap2::MmapMut;
-use once_cell::sync::OnceCell;
 
 use std::error::Error;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::{
     collections::HashMap,
     hash::Hash,
     io::{self, Cursor, Read, Write},
     mem::MaybeUninit,
-    ptr,
     sync::Once,
     thread,
 };
@@ -74,9 +77,8 @@ pub(crate) const MIN_LOG_SIZE: u64 = 100;
 pub const V1_LOG_HEADER_SIZE: usize = 10;
 pub const V2_LOG_HEADER_SIZE: usize = 22;
 
-// maybe set as threadlocal variable
-static mut LOG_MAP: MaybeUninit<HashMap<String, EZLogger>> = MaybeUninit::uninit();
-static LOG_MAP_INIT: Once = Once::new();
+static mut LOG_SERVICE: MaybeUninit<LogService> = MaybeUninit::uninit();
+static LOG_SERVICE_INIT: Once = Once::new();
 
 static mut GLOBAL_CALLBACK: &dyn EZLogCallback = &NopCallback;
 static CALLBACK_INIT: Once = Once::new();
@@ -84,23 +86,27 @@ static CALLBACK_INIT: Once = Once::new();
 type Result<T> = std::result::Result<T, LogError>;
 
 #[inline]
-fn get_map() -> &'static mut HashMap<String, EZLogger> {
-    LOG_MAP_INIT.call_once(|| unsafe {
-        ptr::write(LOG_MAP.as_mut_ptr(), HashMap::new());
-    });
-    unsafe { &mut (*LOG_MAP.as_mut_ptr()) }
+fn get_map() -> Result<&'static mut HashMap<String, EZLogger>> {
+    if !LOG_SERVICE_INIT.is_completed() {
+        return Err(LogError::NotInit);
+    }
+    unsafe { Ok(&mut LOG_SERVICE.assume_init_mut().loggers) }
 }
 
 #[inline]
-fn get_sender() -> &'static Sender<EZMsg> {
-    static SENDER: OnceCell<Sender<EZMsg>> = OnceCell::new();
-    SENDER.get_or_init(init_log_channel)
+fn get_sender() -> Result<&'static Sender<EZMsg>> {
+    if !LOG_SERVICE_INIT.is_completed() {
+        return Err(LogError::NotInit);
+    }
+    unsafe { Ok(&LOG_SERVICE.assume_init_mut().log_sender) }
 }
 
 #[inline]
-fn get_fetch_sender() -> &'static Sender<FetchResult> {
-    static FETCH_SENDER: OnceCell<Sender<FetchResult>> = OnceCell::new();
-    FETCH_SENDER.get_or_init(init_callback_channel)
+fn get_fetch_sender() -> Result<&'static Sender<FetchResult>> {
+    if !LOG_SERVICE_INIT.is_completed() {
+        return Err(LogError::NotInit);
+    }
+    unsafe { Ok(&LOG_SERVICE.assume_init_mut().fetch_sender) }
 }
 
 /// Init ezlog
@@ -111,22 +117,53 @@ fn get_fetch_sender() -> &'static Sender<FetchResult> {
 /// ```
 /// ezlog::init();
 /// ```
+#[deprecated(
+    since = "0.2.0",
+    note = "please use `ezlog::InitBuilder::new().init()` instead"
+)]
 pub fn init() {
-    hook_panic();
+    InitBuilder::new().init();
 }
 
+#[deprecated(
+    since = "0.2.0",
+    note = "please use `ezlog::InitBuilder::new().with_listener(event).init()` instead"
+)]
 pub fn init_with_event(event: &'static dyn EventListener) {
-    set_event_listener(event);
-    init();
+    InitBuilder::new().with_event_listener(event).init();
+}
+
+struct LogService {
+    layers: Arc<Vec<Box<dyn MsgHandler>>>,
+    loggers: HashMap<String, EZLogger>,
+    log_sender: Sender<EZMsg>,
+    fetch_sender: Sender<FetchResult>,
+}
+
+impl LogService {
+    fn new() -> Self {
+        LogService {
+            layers: Arc::new(Vec::new()),
+            loggers: HashMap::new(),
+            log_sender: init_log_channel(),
+            fetch_sender: init_callback_channel(),
+        }
+    }
+
+    fn dispatch(&self, msg: EZMsg) {
+        self.layers.iter().for_each(|layer| layer.handle(&msg));
+        self.log_sender
+            .try_send(msg)
+            .unwrap_or_else(crate::report_channel_send_err);
+    }
 }
 
 /// Trim all [EZLogger]s outdated files
 ///
 /// manual trim the log files in disk. delete logs which are out of date.
 pub fn trim() {
-    if post_msg(EZMsg::Trim()) {
-        event!(Event::Trim)
-    }
+    event!(Event::Trim);
+    post_msg(EZMsg::Trim());
 }
 
 /// Set global [EventListener]
@@ -145,9 +182,10 @@ fn init_log_channel() -> Sender<EZMsg> {
                         let name = config.name.clone();
                         match EZLogger::new(config) {
                             Ok(log) => {
-                                let map = get_map();
-                                map.insert(log.config.name.clone(), log);
-                                event!(Event::CreateLoggerEnd, &name);
+                                if let Ok(map) = get_map() {
+                                    map.insert(log.config.name.clone(), log);
+                                    event!(Event::CreateLoggerEnd, &name);
+                                }
                             }
                             Err(e) => {
                                 event!(Event::CreateLoggerError, &name, &e);
@@ -155,7 +193,15 @@ fn init_log_channel() -> Sender<EZMsg> {
                         };
                     }
                     EZMsg::Record(record) => {
-                        let log = match get_map().get_mut(&record.log_name().to_owned()) {
+                        let map = match get_map() {
+                            Ok(map) => map,
+                            Err(e) => {
+                                service_not_init_op(e);
+                                continue;
+                            }
+                        };
+
+                        let log = match map.get_mut(&record.log_name().to_owned()) {
                             Some(l) => l,
                             None => {
                                 event!(
@@ -199,32 +245,42 @@ fn init_log_channel() -> Sender<EZMsg> {
                         }
                     }
                     EZMsg::ForceFlush(name) => {
-                        let log = match get_map().get_mut(&name) {
-                            Some(l) => l,
-                            None => {
+                        get_map().map_or_else(service_not_init_op, |map| {
+                            if let Some(log) = map.get_mut(&name) {
+                                log.appender.flush().ok();
+                                event!(Event::FlushEnd, &name);
+                            } else {
                                 event!(
                                     Event::FlushError,
                                     &name,
                                     &LogError::IllegalArgument("no logger found".into())
                                 );
-                                continue;
                             }
-                        };
-                        log.appender.flush().ok();
-                        event!(Event::FlushEnd, &name);
+                        });
                     }
                     EZMsg::FlushAll() => {
-                        get_map().values_mut().for_each(|item| {
-                            item.flush().ok();
+                        get_map().map_or_else(service_not_init_op, |map| {
+                            map.values_mut().for_each(|item| {
+                                item.flush().ok();
+                            })
                         });
                         event!(Event::FlushEnd);
                     }
                     EZMsg::Trim() => {
-                        get_map().values().for_each(|logger| logger.trim());
+                        get_map().map_or_else(service_not_init_op, |map| {
+                            map.values().for_each(|logger| logger.trim())
+                        });
                         event!(Event::TrimEnd)
                     }
                     EZMsg::FetchLog(task) => {
-                        let logger = match get_map().get_mut(&task.name) {
+                        let map = match get_map() {
+                            Ok(map) => map,
+                            Err(e) => {
+                                service_not_init_op(e);
+                                continue;
+                            }
+                        };
+                        let logger = match map.get_mut(&task.name) {
                             Some(l) => l,
                             None => {
                                 event!(
@@ -295,10 +351,10 @@ fn init_callback_channel() -> Sender<FetchResult> {
             }
         }) {
         Ok(_) => {
-            event!(Event::Init, "init callback success");
+            event!(Event::Init, "init callback channel success");
         }
         Err(e) => {
-            event!(Event::InitError, "init callback err", &e.into());
+            event!(Event::InitError, "init callback channel err", &e.into());
         }
     }
     fetch_sender
@@ -308,55 +364,61 @@ fn init_callback_channel() -> Sender<FetchResult> {
 pub fn create_log(config: EZLogConfig) {
     let name = config.name.clone();
     let msg = EZMsg::CreateLogger(config);
-    if post_msg(msg) {
-        event!(Event::CreateLogger, &name);
-    }
+    event!(Event::CreateLogger, &name);
+    post_msg(msg);
 }
 
 /// Write a [EZRecord] to the log file
 pub fn log(record: EZRecord) {
     let tid = record.t_id();
     let msg = EZMsg::Record(record);
-    if post_msg(msg) {
-        event!(Event::Record, &tid);
-    }
+    event!(Event::Record, &tid);
+    post_msg(msg);
 }
 
 /// Force flush the log file
 pub fn flush(log_name: &str) {
     let msg = EZMsg::ForceFlush(log_name.to_string());
-    if post_msg(msg) {
-        event!(Event::Flush, log_name)
-    }
+    event!(Event::Flush, log_name);
+    post_msg(msg);
 }
 
 /// Flush all log files
 pub fn flush_all() {
+    event!(Event::Flush);
     let msg = EZMsg::FlushAll();
-    if post_msg(msg) {
-        event!(Event::Flush)
-    }
+    post_msg(msg);
 }
 
 /// Request logs file path array at the date which [EZLogger]'s name is define in the parameter
 pub fn request_log_files_for_date(log_name: &str, date_str: &str) {
+    let sender = match get_fetch_sender() {
+        Ok(sender) => sender,
+        Err(e) => {
+            service_not_init_op(e);
+            return;
+        }
+    };
     let msg = FetchReq {
         name: log_name.to_string(),
         date: date_str.to_string(),
-        task_sender: get_fetch_sender().clone(),
+        task_sender: sender.clone(),
     };
 
-    get_sender()
-        .try_send(EZMsg::FetchLog(msg))
-        .unwrap_or_else(report_channel_send_err);
+    get_sender().map_or_else(service_not_init_op, |sender| {
+        sender
+            .try_send(EZMsg::FetchLog(msg))
+            .unwrap_or_else(report_channel_send_err);
+    });
 }
 
 #[inline]
-fn post_msg(msg: EZMsg) -> bool {
-    get_sender()
-        .try_send(msg)
-        .map_err(report_channel_send_err)
-        .is_ok()
+fn post_msg(msg: EZMsg) {
+    if LOG_SERVICE_INIT.is_completed() {
+        unsafe { LOG_SERVICE.assume_init_mut().dispatch(msg) }
+    } else {
+        service_not_init_op(LogError::NotInit)
+    }
 }
 
 #[inline]
@@ -373,6 +435,11 @@ where
     event!(Event::FFiError, "ffi error handle", &e);
 }
 
+#[inline]
+pub(crate) fn service_not_init_op(e: LogError) {
+    event!(Event::InitError, "log service not init ", &e);
+}
+
 fn invoke_fetch_callback(result: FetchResult) {
     match result.logs {
         Some(logs) => {
@@ -387,7 +454,7 @@ fn invoke_fetch_callback(result: FetchResult) {
         }
         None => {
             if let Some(err) = result.error {
-                callback().on_fetch_fail(&result.name, &result.date, &err);
+                callback().on_fetch_fail(&result.name, &result.date, &err)
             }
         }
     }
@@ -450,7 +517,7 @@ impl EZLogCallback for NopCallback {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum EZMsg {
+pub enum EZMsg {
     CreateLogger(EZLogConfig),
     Record(EZRecord),
     ForceFlush(String),
@@ -701,10 +768,10 @@ fn hook_panic() {
 
 #[cfg(test)]
 mod tests {
-    use std::io::{Read, Write};
-    use flate2::{bufread::ZlibDecoder, write::ZlibEncoder, Compression};
     use crate::recorder::EZRecordBuilder;
-    
+    use flate2::{bufread::ZlibDecoder, write::ZlibEncoder, Compression};
+    use std::io::{Read, Write};
+
     use crate::Header;
     use crate::{
         config::EZLogConfigBuilder, EZLogConfig, RECORD_SIGNATURE_END, RECORD_SIGNATURE_START,
@@ -713,11 +780,11 @@ mod tests {
     #[cfg(feature = "decode")]
     use crate::decode;
     #[cfg(feature = "decode")]
+    use crate::EZLogger;
+    #[cfg(feature = "decode")]
     use aead::{Aead, KeyInit};
     #[cfg(feature = "decode")]
     use std::io::Cursor;
-    #[cfg(feature = "decode")]
-    use crate::EZLogger;
 
     fn create_config() -> EZLogConfig {
         EZLogConfig::default()
