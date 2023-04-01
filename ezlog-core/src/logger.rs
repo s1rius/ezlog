@@ -407,7 +407,7 @@ impl Header {
 
         let compress = reader.read_u8()?;
         let cipher = reader.read_u8()?;
-        let mut hash:u32 = 0;
+        let mut hash: u32 = 0;
         let mut timestamp = OffsetDateTime::now_utc().unix_timestamp();
         if version == Version::V2 {
             hash = reader.read_u32::<BigEndian>()?;

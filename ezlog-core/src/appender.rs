@@ -487,8 +487,7 @@ mod tests {
         fs::remove_file(file_path).unwrap();
     }
 
-    fn test_inner_rolling (inner: &dyn AppenderInner, config_builder: &EZLogConfigBuilder) {
-        
+    fn test_inner_rolling(inner: &dyn AppenderInner, config_builder: &EZLogConfigBuilder) {
         let config = config_builder.clone().build();
         let max_size: usize = config.max_size as usize;
         assert!(inner.is_oversize(max_size - inner.header().length() + 1));

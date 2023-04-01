@@ -19,7 +19,10 @@ static EVENT_LISTENER: EventPrinter = EventPrinter;
 
 pub fn main() {
     println!("start");
-    ezlog::init_with_event(&EVENT_LISTENER);
+    ezlog::InitBuilder::new()
+        .with_layer_fn(|msg| println!("{:?}", msg))
+        .with_event_listener(&EVENT_LISTENER)
+        .init();
     ezlog::set_boxed_callback(Box::new(SimpleCallback));
     log::set_logger(&LOGGER)
         .map(|()| log::set_max_level(LevelFilter::Trace))
@@ -99,7 +102,6 @@ fn read_log_file_rewrite() {
     let mut compression = EZLogger::create_compress(&log_config);
     let mut cryptor = EZLogger::create_cryptor(&log_config).unwrap();
     let header = Header::decode(&mut cursor).unwrap();
-    println!("{:?}", &header);
     ezlog::decode::decode_body_and_write(
         &mut cursor,
         &mut writer,
@@ -131,11 +133,11 @@ struct SimpleCallback;
 
 impl EZLogCallback for SimpleCallback {
     fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
-        print!("{} {} {}", name, date, logs.join(" "));
+        println!("fetch success {} {} {}", name, date, logs.join(" "));
     }
 
     fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
-        print!("{} {} {}", name, date, err);
+        println!("fetch fail {} {} {}", name, date, err);
     }
 }
 

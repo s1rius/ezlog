@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::errors::LogError;
 use crate::events::Event::{self, *};
 use crate::{
-    event, events::EventPrinter, set_boxed_callback, set_event_listener, thread_name, CipherKind,
+    event, events::EventPrinter, set_boxed_callback, thread_name, CipherKind,
     CompressKind, CompressLevel, EZLogConfigBuilder, EZRecordBuilder, Level,
 };
 use jni::objects::{JByteArray, JObjectArray, JValueGen};
@@ -19,7 +19,6 @@ use once_cell::sync::OnceCell;
 use time::Duration;
 
 static JVM: OnceCell<Arc<JavaVM>> = OnceCell::new();
-static EVENT_LISTENER: EventPrinter = EventPrinter {};
 
 #[no_mangle]
 pub extern "system" fn JNI_OnLoad(vm: JavaVM, _: *mut c_void) -> jint {
@@ -35,11 +34,13 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeInit(
     _: JClass,
     j_enable_trace: jboolean,
 ) {
+    let mut builder = crate::InitBuilder::new();
     let enable_trace = j_enable_trace as u8;
-    if enable_trace > 0 {
-        set_event_listener(&EVENT_LISTENER);
+    if enable_trace as i8 > 0 {
+        static EVENT: EventPrinter = EventPrinter {};
+        builder = builder.with_event_listener(&EVENT);
     }
-    crate::init();
+    builder.init();
 }
 
 #[no_mangle]

@@ -19,7 +19,9 @@ static EVENT_LISTENER: EventPrinter = EventPrinter;
 #[cfg_attr(target_os = "android", ndk_glue::main(backtrace = "on"))]
 #[allow(dead_code)]
 fn main() {
-    ezlog::init_with_event(&EVENT_LISTENER);
+    ezlog::InitBuilder::new()
+        .with_event_listener(&EVENT_LISTENER)
+        .init();
     ezlog::set_boxed_callback(Box::new(SimpleCallback {}));
     let log_config = get_config();
     ezlog::create_log(log_config);
