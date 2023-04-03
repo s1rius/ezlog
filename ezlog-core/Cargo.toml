@@ -42,7 +42,7 @@ jni = "0.21.0"
 android_logger = "0.13"
 
 [target.'cfg(windows)'.dependencies]
-windows = "0.46"
+windows = "0.48"
 windows-sys = { version = "0.45", features = ["Win32_System_Threading", "Win32_Foundation"] } 
 
 [dev-dependencies]
