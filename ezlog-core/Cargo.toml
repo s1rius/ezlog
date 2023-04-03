@@ -43,7 +43,7 @@ android_logger = "0.13"
 
 [target.'cfg(windows)'.dependencies]
 windows = "0.46"
-windows-sys = { version = "0.45", features = ["Win32_System_Threading", "Win32_Foundation"] } 
+windows-sys = { version = "0.48", features = ["Win32_System_Threading", "Win32_Foundation"] } 
 
 [dev-dependencies]
 dirs = "5.0"
