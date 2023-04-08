@@ -3,8 +3,8 @@ use std::sync::Arc;
 use crate::errors::LogError;
 use crate::events::Event::{self, *};
 use crate::{
-    event, events::EventPrinter, set_boxed_callback, thread_name, CipherKind,
-    CompressKind, CompressLevel, EZLogConfigBuilder, EZRecordBuilder, Level,
+    event, events::EventPrinter, set_boxed_callback, thread_name, CipherKind, CompressKind,
+    CompressLevel, EZLogConfigBuilder, EZRecordBuilder, Level,
 };
 use jni::objects::{JByteArray, JObjectArray, JValueGen};
 use jni::{

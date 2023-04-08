@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Add log file header extra info https://github.com/s1rius/ezlog/pull/48
 - Add AES-GCM-SIV encryption as mandatory for v2 https://github.com/s1rius/ezlog/pull/56
 - Generate a unique nonce for each encryption instance https://github.com/s1rius/ezlog/pull/56
+- Make log record format configurable https://github.com/s1rius/ezlog/pull/66
 
 ### Change
 - **break** android:rename native function name, remove underline https://github.com/s1rius/ezlog/pull/26
@@ -21,7 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Compress first then encrypt https://github.com/s1rius/ezlog/pull/40
 
 ### Fix
-- Auto rotate log file, when the config is not match previous https://github.com/s1rius/ezlog/pull/57
+- Auto rotate log file, when the config is not match previous https://github.com/s1rius/ezlog/pull/60
 
 ## [0.1.7] (2022-11-24)
 

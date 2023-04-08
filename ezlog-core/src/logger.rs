@@ -15,7 +15,6 @@ use crate::{
 use crate::{errors, event, NonceGenFn, V1_LOG_HEADER_SIZE};
 use crate::{Version, V2_LOG_HEADER_SIZE};
 use byteorder::ReadBytesExt;
-use time::format_description::well_known::Rfc3339;
 use time::{Date, OffsetDateTime};
 
 #[cfg(feature = "decode")]
@@ -112,7 +111,7 @@ impl EZLogger {
     #[inline]
     fn encode(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
         let nonce_fn: NonceGenFn = self.gen_nonce();
-        let mut buf = self.format(record);
+        let mut buf = self.format(record)?;
         if self.config.version == Version::V1 {
             if let Some(encryptor) = &self.cryptor {
                 event!(Event::Encrypt, &record.t_id());
@@ -183,21 +182,8 @@ impl EZLogger {
         Ok(chunk)
     }
 
-    fn format(&self, record: &EZRecord) -> Vec<u8> {
-        let time = record
-            .time()
-            .format(&Rfc3339)
-            .unwrap_or_else(|_| "unknown".to_string());
-        format!(
-            "\n{} {} {} [{}:{}] {}",
-            time,
-            record.level(),
-            record.target(),
-            record.thread_name(),
-            record.thread_id(),
-            record.content()
-        )
-        .into_bytes()
+    fn format(&self, record: &EZRecord) -> Result<Vec<u8>> {
+        crate::formatter().format(record)
     }
 
     pub(crate) fn flush(&mut self) -> std::result::Result<(), io::Error> {

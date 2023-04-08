@@ -1,6 +1,8 @@
 use std::{ptr, sync::Arc};
 
-use crate::{hook_panic, EZLogCallback, EZMsg, EventListener, EventPrinter, LogService};
+use crate::{
+    hook_panic, EZLogCallback, EZMsg, EZRecord, EventListener, EventPrinter, Formatter, LogService,
+};
 
 /// InitBuilder is used to init ezlog
 pub struct InitBuilder {
@@ -8,6 +10,7 @@ pub struct InitBuilder {
     debug: bool,
     layers: Vec<Box<dyn MsgHandler>>,
     callback: Option<Box<dyn EZLogCallback>>,
+    formatter: Option<Box<dyn Formatter>>,
 }
 
 impl InitBuilder {
@@ -17,6 +20,7 @@ impl InitBuilder {
             debug: false,
             layers: vec![],
             callback: None,
+            formatter: None,
         }
     }
 
@@ -157,6 +161,41 @@ impl InitBuilder {
         self
     }
 
+    /// set a formatter to format log record
+    ///
+    /// # Example
+    /// ```
+    /// use ezlog::Formatter;
+    /// use ezlog::EZRecord;
+    /// struct MyFormatter;
+    /// impl Formatter for MyFormatter {
+    ///    fn format(&self, msg: &EZRecord) -> std::result::Result<Vec<u8>, ezlog::LogError> {
+    ///       Ok(format!("{:?}", msg).into_bytes())
+    ///   }
+    /// }
+    /// ezlog::InitBuilder::new()
+    ///    .with_formatter(Box::new(MyFormatter))
+    ///    .init();
+    /// ```
+    ///
+    pub fn with_formatter(mut self, formatter: Box<dyn Formatter>) -> Self {
+        self.formatter = Some(formatter);
+        self
+    }
+
+    /// set a formatter to format log record
+    ///
+    /// # Example
+    /// ```
+    /// ezlog::InitBuilder::new()
+    ///    .with_formatter_fn(|msg| format!("{:?}", msg).into_bytes())
+    ///    .init();
+    /// ```
+    pub fn with_formatter_fn(mut self, op: fn(&EZRecord) -> Vec<u8>) -> Self {
+        self.formatter = Some(Box::new(FormatterProxy::new(op)));
+        self
+    }
+
     /// real init ezlog
     pub fn init(self) {
         if let Some(listener) = self.listener {
@@ -168,6 +207,10 @@ impl InitBuilder {
 
         if let Some(callback) = self.callback {
             crate::set_boxed_callback(callback);
+        }
+
+        if let Some(formatter) = self.formatter {
+            crate::set_boxed_formatter(formatter);
         }
 
         let mut service = LogService::new();
@@ -228,5 +271,20 @@ impl EZLogCallback for EZLogCallbackProxy {
 
     fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
         (self.fail_fn)(name, date, err);
+    }
+}
+
+struct FormatterProxy {
+    op: fn(&EZRecord) -> Vec<u8>,
+}
+impl FormatterProxy {
+    fn new(op: fn(&EZRecord) -> Vec<u8>) -> FormatterProxy {
+        FormatterProxy { op }
+    }
+}
+
+impl Formatter for FormatterProxy {
+    fn format(&self, msg: &EZRecord) -> std::result::Result<Vec<u8>, crate::LogError> {
+        Ok((self.op)(msg))
     }
 }

@@ -4,12 +4,12 @@ use std::io::{BufReader, BufWriter, Cursor, Read};
 use std::thread;
 use std::time::Duration;
 
-use ezlog::EZLogger;
 use ezlog::Level;
 use ezlog::{
-    create_log, CipherKind, CompressKind, EZLogCallback, EZLogConfig, EZLogConfigBuilder, EZRecord,
+    create_log, CipherKind, CompressKind, EZLogCallback, EZLogConfig, EZLogConfigBuilder,
     EventPrinter, Header,
 };
+use ezlog::{EZLogger, EZMsg};
 use log::{debug, error, info, trace, warn, LevelFilter};
 use log::{Metadata, Record};
 use rand::Rng;
@@ -20,10 +20,14 @@ static EVENT_LISTENER: EventPrinter = EventPrinter;
 pub fn main() {
     println!("start");
     ezlog::InitBuilder::new()
-        .with_layer_fn(|msg| println!("{:?}", msg))
+        .with_layer_fn(|msg| {
+            if let EZMsg::Record(recode) = msg {
+                println!("{}", ezlog::format(&recode));
+            }
+        })
         .with_event_listener(&EVENT_LISTENER)
+        .with_request_callback(SimpleCallback)
         .init();
-    ezlog::set_boxed_callback(Box::new(SimpleCallback));
     log::set_logger(&LOGGER)
         .map(|()| log::set_max_level(LevelFilter::Trace))
         .expect("log set error");
@@ -122,7 +126,7 @@ impl log::Log for SimpleLogger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            ezlog::log(EZRecord::from(record))
+            ezlog::log(record.into())
         }
     }
 

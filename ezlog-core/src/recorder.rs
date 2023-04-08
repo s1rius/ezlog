@@ -20,6 +20,8 @@ pub struct EZRecord {
     thread_id: usize,
     thread_name: String,
     content: String,
+    file: Option<String>,
+    line: Option<u32>,
 }
 
 impl EZRecord {
@@ -66,6 +68,14 @@ impl EZRecord {
         &self.time
     }
 
+    pub fn file(&self) -> Option<&str> {
+        self.file.as_deref()
+    }
+
+    pub fn line(&self) -> Option<u32> {
+        self.line
+    }
+
     #[inline]
     pub fn to_builder(&self) -> EZRecordBuilder {
         EZRecordBuilder {
@@ -78,6 +88,8 @@ impl EZRecord {
                 thread_id: self.thread_id,
                 thread_name: self.thread_name.clone(),
                 content: self.content.clone(),
+                file: self.file.clone(),
+                line: self.line,
             },
         }
     }
@@ -94,12 +106,14 @@ impl EZRecord {
                 thread_id: self.thread_id,
                 thread_name: self.thread_name.clone(),
                 content: "".into(),
+                file: self.file.clone(),
+                line: self.line,
             },
         }
     }
 
     #[cfg(feature = "log")]
-    pub fn from(r: &Record) -> Self {
+    pub(crate) fn from(r: &Record) -> Self {
         let t = thread::current();
         let t_id = thread_id::get();
         let t_name = t.name().unwrap_or_default();
@@ -111,6 +125,8 @@ impl EZRecord {
             .thread_id(t_id)
             .thread_name(t_name.to_string())
             .content(format!("{}", r.args()))
+            .line(r.line().unwrap_or(0))
+            .file(r.file().unwrap_or_default())
             .build()
     }
 
@@ -210,6 +226,16 @@ impl EZRecordBuilder {
         self
     }
 
+    fn line(&mut self, line: u32) -> &mut Self {
+        self.record.line = Some(line);
+        self
+    }
+
+    fn file(&mut self, file: &str) -> &mut Self {
+        self.record.file = Some(file.to_string());
+        self
+    }
+
     pub fn build(&mut self) -> EZRecord {
         self.record.id = self.record.id();
         self.record.clone()
@@ -228,7 +254,15 @@ impl Default for EZRecordBuilder {
                 thread_id: thread_id::get(),
                 thread_name: thread::current().name().unwrap_or("unknown").to_string(),
                 content: "".to_string(),
+                file: None,
+                line: None,
             },
         }
+    }
+}
+
+impl From<&Record<'_>> for EZRecord {
+    fn from(record: &Record) -> Self {
+        EZRecord::from(record)
     }
 }
