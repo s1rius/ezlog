@@ -59,6 +59,7 @@ pub fn decode_body_and_write(
                     break;
                 }
                 writer.write_all(&buf)?;
+                writer.write_all(b"\n")?;
             }
             Err(e) => match e {
                 LogError::IoError(err) => {
@@ -87,7 +88,7 @@ pub(crate) fn decode_record_from_read(
     let combine = crate::logger::combine_time_position(header.timestamp.unix_timestamp(), position);
 
     let op = Box::new(move |input: &[u8]| crate::logger::xor_slice(input, &combine));
-    if header.has_record() && position != header.length().try_into().unwrap_or_default() {
+    if header.has_record() && position != header.length() as u64 {
         decode_record_content(version, &chunk, compression, cryptor, op)
     } else {
         Ok(chunk)

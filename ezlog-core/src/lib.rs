@@ -83,6 +83,9 @@ static LOG_SERVICE_INIT: Once = Once::new();
 static mut GLOBAL_CALLBACK: &dyn EZLogCallback = &NopCallback;
 static CALLBACK_INIT: Once = Once::new();
 
+static mut FORMATTER: &dyn Formatter = &DefaultFormatter;
+static mut FORMATTER_INIT: Once = Once::new();
+
 type Result<T> = std::result::Result<T, LogError>;
 
 #[inline]
@@ -586,6 +589,72 @@ impl<T: Encryptor + Decryptor> Cryptor for T {}
 
 /// The Encryptor trait + Decryptor trait
 pub trait Cryptor: Encryptor + Decryptor {}
+
+pub trait Formatter {
+    fn format(&self, record: &EZRecord) -> Result<Vec<u8>>;
+}
+
+struct DefaultFormatter;
+
+impl Formatter for DefaultFormatter {
+    fn format(&self, record: &EZRecord) -> Result<Vec<u8>> {
+        let time = record
+            .time()
+            .format(&time::format_description::well_known::Rfc3339)
+            .unwrap_or_else(|_| "unknown".to_string());
+
+        let mut vec = Vec::<u8>::new();
+        vec.write_all(&[b'['])?;
+        vec.write_all(time.as_bytes())?;
+        vec.write_all(&[b' '])?;
+        vec.write_all(record.level().as_str().as_bytes())?;
+        vec.write_all(&[b' '])?;
+        vec.write_all(record.target().as_bytes())?;
+        vec.write_all(&[b' '])?;
+        vec.write_all(record.thread_name().as_bytes())?;
+        vec.write_all(&[b':'])?;
+        vec.write_all(record.thread_id().to_string().as_bytes())?;
+        if let Some(file) = record.file() {
+            vec.write_all(&[b' '])?;
+            vec.write_all(file.as_bytes())?;
+            vec.write_all(&[b':'])?;
+            vec.write_all(record.line().unwrap_or_default().to_string().as_bytes())?;
+        }
+        vec.write_all("] ".as_bytes())?;
+        vec.write_all(record.content().as_bytes())?;
+        Ok(vec)
+    }
+}
+
+pub(crate) fn formatter() -> &'static dyn Formatter {
+    unsafe {
+        if FORMATTER_INIT.is_completed() {
+            FORMATTER
+        } else {
+            static DEFAULT_FORMATTER: DefaultFormatter = DefaultFormatter;
+            &DEFAULT_FORMATTER
+        }
+    }
+}
+
+pub fn format(record: &EZRecord) -> String {
+    String::from_utf8_lossy(&formatter().format(record).unwrap_or_default()).to_string()
+}
+
+fn set_formatter<F>(make_formatter: F)
+where
+    F: FnOnce() -> &'static dyn Formatter,
+{
+    unsafe {
+        FORMATTER_INIT.call_once(|| {
+            FORMATTER = make_formatter();
+        })
+    };
+}
+
+pub fn set_boxed_formatter(formatter: Box<dyn Formatter>) {
+    set_formatter(|| Box::leak(formatter))
+}
 
 /// Log version enum
 ///
