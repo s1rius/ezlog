@@ -221,6 +221,16 @@ impl EZLogConfig {
         self.cipher_key.hash(&mut hasher);
         hasher.finish() as u32
     }
+
+    pub fn check_valid(&self) -> crate::Result<()> {
+        if self.dir_path.is_empty() {
+            return Err(LogError::IllegalArgument("dir_path is empty".to_string()));
+        }
+        if self.name.is_empty() {
+            return Err(LogError::IllegalArgument("name is empty".to_string()));
+        }
+        Ok(())
+    }
 }
 
 impl Default for EZLogConfig {

@@ -365,8 +365,13 @@ fn init_callback_channel() -> Sender<FetchResult> {
 
 /// Create a new [EZLogger] from an [EZLogConfig]
 pub fn create_log(config: EZLogConfig) {
+    if let Err(log_error) = &config.check_valid() {
+        event!(Event::CreateLoggerError, "config is not valid", log_error);
+        return;
+    }
     let name = config.name.clone();
     let msg = EZMsg::CreateLogger(config);
+
     event!(Event::CreateLogger, &name);
     post_msg(msg);
 }
