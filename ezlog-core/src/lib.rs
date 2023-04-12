@@ -369,10 +369,10 @@ pub fn create_log(config: EZLogConfig) {
         event!(Event::CreateLoggerError, "config is not valid", log_error);
         return;
     }
-    let name = config.name.clone();
+    let config_desc = format!("{:?}", config);
     let msg = EZMsg::CreateLogger(config);
 
-    event!(Event::CreateLogger, &name);
+    event!(Event::CreateLogger, &config_desc);
     post_msg(msg);
 }
 
