@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'EZLog'
-  s.version          = '0.1.7'
+  s.version          = '0.2.0-alpha.1'
   s.summary          = 'A high efficiency cross-platform Logging Library.'
   s.swift_version = '5.6'
 
@@ -17,7 +17,7 @@ Pod::Spec.new do |s|
                        DESC
 
   s.homepage         = 'https://github.com/s1rius/ezlog'
-  s.license          = { :type => 'MIT', :file => 'LICENSE-MIT' }
+  s.license          = { :type => 'MIT', :file => 'LICENSE' }
   s.author           = { 's1rius' => 's1rius.noone@gmail.com' }
   s.source           = { :git => 'https://github.com/s1rius/ezlog.git', :tag => s.version.to_s }
 
