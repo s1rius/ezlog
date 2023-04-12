@@ -16,7 +16,7 @@ func ezlogSampleInit() {
     ezlogInit()
 #endif
     let dirPath = URL.documents.appendingPathComponent("ezlog").relativePath
-    let config = EZLogConifgBuilder(level: Level.trace, dirPath: dirPath, name: "demo")
+    let config = EZLogConfigBuilder(level: Level.trace, dirPath: dirPath, name: "demo")
         .maxSize(maxSize: 150*1024)
         .compress(compress: CompressKind.ZLIB)
         .compressLevel(compressLevel: CompressLevel.DEFAULT)

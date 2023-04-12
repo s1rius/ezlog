@@ -246,7 +246,7 @@ public struct EZLogConfig {
     
 }
 
-public class EZLogConifgBuilder {
+public class EZLogConfigBuilder {
     
     var config: EZLogConfig
     
@@ -256,31 +256,28 @@ public class EZLogConifgBuilder {
         config = EZLogConfig(level: level, dirPath: dirPath, name: name)
     }
     
-    public func name(name: String) -> EZLogConifgBuilder {config.name = name; return self}
-    public func level(level: Level) -> EZLogConifgBuilder {config.level = level; return self}
-    public func dirPath(dirPath: String) -> EZLogConifgBuilder {config.dirPath = dirPath; return self}
-    public func keepDays(keepDays: Int) -> EZLogConifgBuilder {config.keepDays = keepDays; return self}
-    public func maxSize(maxSize: Int) -> EZLogConifgBuilder {config.maxSize = maxSize; return self}
-    public func compress(compress: CompressKind? = CompressKind.NONE) -> EZLogConifgBuilder {config.compress = compress; return self}
-    public func compressLevel(compressLevel: CompressLevel? = CompressLevel.DEFAULT) -> EZLogConifgBuilder {config.compressLevel = compressLevel; return self}
-    public func cipherKey(cipherKey: [UInt8]? = []) -> EZLogConifgBuilder {config.cipherKey = cipherKey; return self}
-    public func cipherNonce(cipherNonce: [UInt8]? = []) -> EZLogConifgBuilder {config.cipherNonce = cipherNonce; return self}
-    public func rotateHours(rotateHours: Int? = 24) -> EZLogConifgBuilder {config.rotateHours = rotateHours; return self}
-    public func extra(extra: String?) -> EZLogConifgBuilder {config.extra = extra; return self}
+    public func name(name: String) -> EZLogConfigBuilder {config.name = name; return self}
+    public func level(level: Level) -> EZLogConfigBuilder {config.level = level; return self}
+    public func dirPath(dirPath: String) -> EZLogConfigBuilder {config.dirPath = dirPath; return self}
+    public func keepDays(keepDays: Int) -> EZLogConfigBuilder {config.keepDays = keepDays; return self}
+    public func maxSize(maxSize: Int) -> EZLogConfigBuilder {config.maxSize = maxSize; return self}
+    public func compress(compress: CompressKind? = CompressKind.NONE) -> EZLogConfigBuilder {config.compress = compress; return self}
+    public func compressLevel(compressLevel: CompressLevel? = CompressLevel.DEFAULT) -> EZLogConfigBuilder {config.compressLevel = compressLevel; return self}
+    public func cipherKey(cipherKey: [UInt8]? = []) -> EZLogConfigBuilder {config.cipherKey = cipherKey; return self}
+    public func cipherNonce(cipherNonce: [UInt8]? = []) -> EZLogConfigBuilder {config.cipherNonce = cipherNonce; return self}
+    public func rotateHours(rotateHours: Int? = 24) -> EZLogConfigBuilder {config.rotateHours = rotateHours; return self}
+    public func extra(extra: String?) -> EZLogConfigBuilder {config.extra = extra; return self}
     
-    public func cipher(cipher: Cipher? = Cipher.NONE) -> EZLogConifgBuilder {
+    public func cipher(cipher: Cipher? = Cipher.NONE) -> EZLogConfigBuilder {
         switch cipher {
+        case .some(Cipher.AES128GCM):
+            config.cipher = Cipher.AES128GCMSIV;
+        case .some(Cipher.AES256GCM):
+            config.cipher = Cipher.AES256GCMSIV;
         case nil:
-            break;
-        case let nonullCipher?:
-            switch nonullCipher {
-            case Cipher.AES128GCM:
-                config.cipher = Cipher.AES128GCMSIV;
-            case Cipher.AES256GCM:
-                config.cipher = Cipher.AES256GCMSIV;
-            default:
-                config.cipher = cipher;
-            }
+            config.cipher = Cipher.NONE
+        default:
+            config.cipher = cipher;
         }
         return self
     }
