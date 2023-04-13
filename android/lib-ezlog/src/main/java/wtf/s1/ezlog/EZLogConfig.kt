@@ -10,7 +10,7 @@ class EZLogConfig(var logName: String, var dirPath: String) {
     var cipherKey: ByteArray = byteArrayOf()
     var cipherNonce: ByteArray = byteArrayOf()
     var enableTrace = false
-    var extra: String? = null
+    var extra: String = ""
 
     /**
      * EZLog Builder
