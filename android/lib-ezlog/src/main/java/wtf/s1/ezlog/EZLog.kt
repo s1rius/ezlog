@@ -187,6 +187,7 @@ object EZLog {
             config.cipherKey,
             config.cipherNonce,
             config.rotateHours,
+            config.extra
         )
     }
 
@@ -268,6 +269,7 @@ object EZLog {
         cipherKey: ByteArray,
         cipherNonce: ByteArray,
         rotateHours: Int,
+        extra: String,
     )
 
     /**
