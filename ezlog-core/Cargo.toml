@@ -1,6 +1,6 @@
 [package]
 name = "ezlog"
-version = "0.2.0-alpha.1"
+version = "0.2.0-alpha.2"
 edition = "2021"
 description = "EZLog core function and code"
 homepage = "https://github.com/s1rius/ezlog"
