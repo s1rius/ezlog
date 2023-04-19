@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Make log record format configurable https://github.com/s1rius/ezlog/pull/66
 - Add integration test https://github.com/s1rius/ezlog/pull/67
 - Rotate file when the query date is today https://github.com/s1rius/ezlog/pull/70
+- android: Add x86 and x86_64 ABI support https://github.com/s1rius/ezlog/pull/71
 
 ### Change
 - **break** android:rename native function name, remove underline https://github.com/s1rius/ezlog/pull/26
