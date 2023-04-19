@@ -41,6 +41,7 @@ pub(crate) use self::events::event;
 
 use crossbeam_channel::{Sender, TrySendError};
 use memmap2::MmapMut;
+use time::OffsetDateTime;
 
 use std::error::Error;
 use std::path::PathBuf;
@@ -302,6 +303,23 @@ fn init_log_channel() -> Sender<EZMsg> {
                             "date format error in fetch logs",
                         ) {
                             Ok(date) => {
+                                let now = OffsetDateTime::now_utc();
+                                if now.year() == date.year()
+                                    && now.month() == date.month()
+                                    && now.day() == date.day()
+                                {
+                                    logger
+                                        .rotate()
+                                        .map_err(|e| {
+                                            event!(
+                                                Event::RotateFileError,
+                                                "logger rorate error ",
+                                                &e
+                                            )
+                                        })
+                                        .ok();
+                                }
+
                                 let logs = logger.query_log_files_for_date(date);
                                 task.task_sender
                                     .try_send(FetchResult {

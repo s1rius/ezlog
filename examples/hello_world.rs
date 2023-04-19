@@ -13,6 +13,7 @@ use ezlog::{EZLogger, EZMsg};
 use log::{debug, error, info, trace, warn, LevelFilter};
 use log::{Metadata, Record};
 use rand::Rng;
+use time::OffsetDateTime;
 
 static LOGGER: SimpleLogger = SimpleLogger;
 static EVENT_LISTENER: EventPrinter = EventPrinter;
@@ -47,7 +48,9 @@ pub fn main() {
     }
 
     ezlog::flush(ezlog::DEFAULT_LOG_NAME);
-    ezlog::request_log_files_for_date(ezlog::DEFAULT_LOG_NAME, "2022_06_19");
+    let format = time::format_description::parse("[year]_[month]_[day]").unwrap();
+    let date_str = OffsetDateTime::now_utc().format(&format).unwrap();
+    ezlog::request_log_files_for_date(ezlog::DEFAULT_LOG_NAME, &date_str);
     println!("end");
 
     thread::sleep(Duration::from_secs(1));
