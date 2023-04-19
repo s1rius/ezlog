@@ -228,6 +228,10 @@ impl EZLogger {
     pub fn query_log_files_for_date(&self, date: Date) -> Vec<PathBuf> {
         self.config.query_log_files_for_date(date)
     }
+
+    pub(crate) fn rotate(&mut self) -> Result<()> {
+        self.appender.rotate()
+    }
 }
 
 pub(crate) fn combine_time_position(timestamp: i64, position: u64) -> Vec<u8> {
