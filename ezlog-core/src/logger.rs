@@ -112,6 +112,9 @@ impl EZLogger {
     fn encode(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
         let nonce_fn: NonceGenFn = self.gen_nonce();
         let mut buf = self.format(record)?;
+        if buf.is_empty() {
+            return Ok(buf)
+        }
         if self.config.version == Version::V1 {
             if let Some(encryptor) = &self.cryptor {
                 event!(Event::Encrypt, &record.t_id());
@@ -124,15 +127,27 @@ impl EZLogger {
                 event!(Event::CompressEnd, &record.t_id());
             }
         } else {
+            let len = buf.len();
             if let Some(compression) = &self.compression {
                 event!(Event::Compress, &record.t_id());
                 buf = compression.compress(&buf).map_err(LogError::Compress)?;
-                event!(Event::CompressEnd, &record.t_id());
+                event!(
+                    Event::CompressEnd,
+                    &format!(
+                        "{} compress ratio = {} ",
+                        &record.t_id(),
+                        buf.len() as f64 / len as f64
+                    )
+                );
             }
             if let Some(encryptor) = &self.cryptor {
                 event!(Event::Encrypt, &record.t_id());
                 buf = encryptor.encrypt(&buf, nonce_fn)?;
-                event!(Event::EncryptEnd, &record.t_id());
+                event!(Event::EncryptEnd, &format!(
+                    "{} process ratio = {} ",
+                    &record.t_id(),
+                    buf.len() as f64 / len as f64
+                ));
             }
         }
         Ok(buf)
