@@ -309,7 +309,7 @@ fn init_log_channel() -> Sender<EZMsg> {
                                     && now.day() == date.day()
                                 {
                                     logger
-                                        .rotate()
+                                        .rotate_if_not_empty()
                                         .map_err(|e| {
                                             event!(
                                                 Event::RotateFileError,

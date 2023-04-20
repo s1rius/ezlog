@@ -229,8 +229,12 @@ impl EZLogger {
         self.config.query_log_files_for_date(date)
     }
 
-    pub(crate) fn rotate(&mut self) -> Result<()> {
-        self.appender.rotate()
+    pub(crate) fn rotate_if_not_empty(&mut self) -> Result<()> {
+        if self.appender.inner.header().is_empty() {
+            self.appender.rotate()
+        } else {
+            Ok(())
+        }
     }
 }
 
