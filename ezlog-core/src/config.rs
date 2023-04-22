@@ -146,6 +146,10 @@ impl EZLogConfig {
     }
 
     pub(crate) fn is_file_out_of_date(&self, file_name: &str) -> crate::Result<bool> {
+        if file_name == format!("{}.{}", &self.name, &self.file_suffix) {
+            // ignore logging file
+            return Ok(false);
+        }
         let log_date = self.read_file_name_as_date(file_name)?;
         let now = OffsetDateTime::now_utc();
         Ok(self.is_out_of_date(log_date, now))
@@ -153,13 +157,18 @@ impl EZLogConfig {
 
     pub(crate) fn read_file_name_as_date(&self, file_name: &str) -> crate::Result<OffsetDateTime> {
         const SAMPLE: &str = "2022_02_22";
+        if file_name == format!("{}.{}", &self.name, &self.file_suffix) {
+            return Err(LogError::IllegalArgument(
+                "The file is logging file".to_string(),
+            ));
+        }
         if !file_name.starts_with(format!("{}_", &self.name).as_str()) {
             return Err(LogError::IllegalArgument(format!(
                 "file name is not start with name {}",
                 file_name
             )));
         }
-        if !file_name.len() < self.name.len() + SAMPLE.len() + 1 {
+        if file_name.len() < self.name.len() + 1 + SAMPLE.len() {
             return Err(LogError::IllegalArgument(format!(
                 "file name length is not right {}",
                 file_name
@@ -178,6 +187,11 @@ impl EZLogConfig {
     }
 
     pub(crate) fn is_file_same_date(&self, file_name: &str, date: Date) -> bool {
+        if file_name == format!("{}.{}", &self.name, &self.file_suffix) {
+            // ignore logging file
+            return false;
+        }
+
         self.read_file_name_as_date(file_name)
             .map(|log_date| log_date.date() == date)
             .unwrap_or(false)
