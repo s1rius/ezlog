@@ -11,7 +11,7 @@ name = "ezlog_android_preview"
 crate-type = ["cdylib"]
 
 [dependencies]
-ezlog = { path = "../../ezlog-core", features = ["decode"]}
+ezlog = { path = "../../ezlog-core", features = ["android_logger","decode"]}
 rand = "0.8"
 
 [target.'cfg(target_os = "android")'.dependencies]
