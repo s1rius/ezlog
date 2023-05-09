@@ -88,12 +88,6 @@ pub fn listener() -> &'static dyn EventListener {
 
 pub fn set_event_listener(event: &'static dyn EventListener) {
     EVENT_INIT.call_once(|| unsafe {
-        #[cfg(target_os = "android")]
-        android_logger::init_once(
-            android_logger::Config::default()
-                .with_max_level(log::LevelFilter::Debug)
-                .with_log_buffer(android_logger::LogId::Main),
-        );
         EVENT_LISTENER = event;
     })
 }
@@ -118,22 +112,25 @@ macro_rules! println_with_time {
 #[cfg(target_os = "android")]
 macro_rules! println_with_time {
     ($($arg:tt)*) => {{
-        #[cfg(feature = "log")]
-        crate::events::android_print(format_args!($($arg)*));
+        #[cfg(all(target_os = "android", feature = "android_logger"))] {
+            crate::events::android_print(format_args!($($arg)*));
+        }
     }};
 }
-use crate::errors::LogError;
-pub(crate) use println_with_time;
 
-#[cfg(all(target_os = "android", feature = "log"))]
+#[cfg(all(target_os = "android", feature = "android_logger"))]
+#[inline]
 pub(crate) fn android_print(record: std::fmt::Arguments) {
     let s = log::RecordBuilder::new()
         .args(record)
-        .level(log::Level::Debug)
+        .level(log::Level::Trace)
         .module_path(Some("ezlog"))
         .build();
     android_logger::log(&s);
 }
+
+use crate::errors::LogError;
+pub(crate) use println_with_time;
 
 struct NopEvent;
 impl EventListener for NopEvent {

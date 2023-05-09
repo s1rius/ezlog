@@ -201,6 +201,14 @@ impl InitBuilder {
         if let Some(listener) = self.listener {
             crate::set_event_listener(listener);
         } else if self.debug {
+            #[cfg(all(target_os = "android", feature = "android_logger"))]
+            {
+                android_logger::init_once(
+                    android_logger::Config::default()
+                        .with_max_level(log::LevelFilter::Trace)
+                        .with_log_buffer(android_logger::LogId::Main),
+                );
+            }
             static EVENT: EventPrinter = EventPrinter {};
             crate::set_event_listener(&EVENT);
         }

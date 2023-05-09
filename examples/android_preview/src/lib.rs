@@ -1,10 +1,8 @@
 use ezlog::{
     CipherKind, CompressKind, EZLogCallback, EZLogConfig, EZLogConfigBuilder, EZRecordBuilder,
-    EventPrinter, DEFAULT_LOG_NAME,
+    DEFAULT_LOG_NAME,
 };
 use rand::Rng;
-
-static EVENT_LISTENER: EventPrinter = EventPrinter;
 
 /// Quick run example on android device
 /// you can run this example, and see the logcat without open AndroidStudio/IDEA
@@ -19,9 +17,7 @@ static EVENT_LISTENER: EventPrinter = EventPrinter;
 #[cfg_attr(target_os = "android", ndk_glue::main(backtrace = "on"))]
 #[allow(dead_code)]
 fn main() {
-    ezlog::InitBuilder::new()
-        .with_event_listener(&EVENT_LISTENER)
-        .init();
+    ezlog::InitBuilder::new().debug(true).init();
     ezlog::set_boxed_callback(Box::new(SimpleCallback {}));
     let log_config = get_config();
     ezlog::create_log(log_config);

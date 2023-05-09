@@ -35,7 +35,7 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeInit(
     j_enable_trace: jboolean,
 ) {
     let mut builder = crate::InitBuilder::new();
-    let enable_trace = j_enable_trace as u8;
+    let enable_trace = j_enable_trace;
     if enable_trace as i8 > 0 {
         static EVENT: EventPrinter = EventPrinter {};
         builder = builder.with_event_listener(&EVENT);
@@ -73,8 +73,8 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeCreateLogger<'local>(
     let compress: CompressKind = CompressKind::from(j_compress as u8);
     let compress_level: CompressLevel = CompressLevel::from(j_compress_level as u8);
     let cipher: CipherKind = CipherKind::from(j_cipher as u8);
-    let cipher_key = &env.convert_byte_array(&j_cipher_key).unwrap_or_default();
-    let cipher_nonce = &env.convert_byte_array(&j_cipher_nonce).unwrap_or_default();
+    let cipher_key = &env.convert_byte_array(j_cipher_key).unwrap_or_default();
+    let cipher_nonce = &env.convert_byte_array(j_cipher_nonce).unwrap_or_default();
     let extra: String = env
         .get_string(&j_extra)
         .map(|s| s.into())
@@ -150,8 +150,8 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeFlushAll(_: JNIEnv, _: JClass) {
 }
 
 #[no_mangle]
-pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeFlush<'local>(
-    mut env: JNIEnv<'local>,
+pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeFlush(
+    mut env: JNIEnv,
     _: JClass,
     j_log_name: JString,
 ) {
@@ -169,8 +169,8 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeTrim(_env: JNIEnv, _: JClass) {
 
 // todo thread safe
 #[no_mangle]
-pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeRegisterCallback<'local>(
-    env: JNIEnv<'local>,
+pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeRegisterCallback(
+    env: JNIEnv,
     _jclass: JClass,
     j_callback: JObject,
 ) {
@@ -187,8 +187,8 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeRegisterCallback<'local>(
 }
 
 #[no_mangle]
-pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeRequestLogFilesForDate<'local>(
-    mut env: JNIEnv<'local>,
+pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeRequestLogFilesForDate(
+    mut env: JNIEnv,
     _: JClass,
     j_log_name: JString,
     j_date: JString,
