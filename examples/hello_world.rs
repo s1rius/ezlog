@@ -11,16 +11,14 @@ use ezlog::{
 };
 use ezlog::{EZLogger, EZMsg};
 use log::{debug, error, info, trace, warn, LevelFilter};
-use log::{Metadata, Record};
 use rand::Rng;
 use time::OffsetDateTime;
 
-static LOGGER: SimpleLogger = SimpleLogger;
 static EVENT_LISTENER: EventPrinter = EventPrinter;
 
 pub fn main() {
     println!("start");
-    ezlog::InitBuilder::new()
+    let log = ezlog::InitBuilder::new()
         .with_layer_fn(|msg| {
             if let EZMsg::Record(recode) = msg {
                 println!("{}", ezlog::format(&recode));
@@ -28,8 +26,8 @@ pub fn main() {
         })
         .with_event_listener(&EVENT_LISTENER)
         .with_request_callback(SimpleCallback)
-        .init();
-    log::set_logger(&LOGGER)
+        .build();
+    log::set_logger(Box::leak(Box::new(log)))
         .map(|()| log::set_max_level(LevelFilter::Trace))
         .expect("log set error");
 
@@ -118,22 +116,6 @@ fn read_log_file_rewrite() {
         &header,
     )
     .unwrap();
-}
-
-struct SimpleLogger;
-
-impl log::Log for SimpleLogger {
-    fn enabled(&self, _metadata: &Metadata) -> bool {
-        true
-    }
-
-    fn log(&self, record: &Record) {
-        if self.enabled(record.metadata()) {
-            ezlog::log(record.into())
-        }
-    }
-
-    fn flush(&self) {}
 }
 
 struct SimpleCallback;
