@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
-members = ["ezlog-cli", "ezlog-core", "examples/android_preview"]
+members = ["ezlog-cli", "ezlog-core", "examples/android_preview", "examples/nest_log"]
 
 # https://github.com/johnthagen/min-sized-rust
 [profile.release]

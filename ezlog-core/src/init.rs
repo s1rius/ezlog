@@ -196,6 +196,11 @@ impl InitBuilder {
         self
     }
 
+    pub fn build(self) -> EZLog {
+        self.init();
+        EZLog {}
+    }
+
     /// real init ezlog
     pub fn init(self) {
         if let Some(listener) = self.listener {
@@ -295,4 +300,23 @@ impl Formatter for FormatterProxy {
     fn format(&self, msg: &EZRecord) -> std::result::Result<Vec<u8>, crate::LogError> {
         Ok((self.op)(msg))
     }
+}
+
+#[cfg(feature = "log")]
+use log::{Metadata, Record};
+
+#[cfg(feature = "log")]
+pub struct EZLog {}
+
+#[cfg(feature = "log")]
+impl log::Log for EZLog {
+    fn enabled(&self, _metadata: &Metadata) -> bool {
+        true
+    }
+
+    fn log(&self, record: &Record) {
+        crate::log(record.into())
+    }
+
+    fn flush(&self) {}
 }

@@ -26,7 +26,7 @@ pub const DATE_FORMAT: &str = "[year]_[month]_[day]";
 pub struct EZLogConfig {
     /// max log level
     ///
-    /// if record level is less than this, it will be ignored
+    /// if record level is greater than this, it will be ignored
     pub level: Level,
     /// EZLog version
     ///
