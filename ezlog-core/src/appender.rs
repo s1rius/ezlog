@@ -187,7 +187,7 @@ impl MmapAppendInner {
             (file_path, mmap) = config.create_mmap_file()?;
         }
 
-        let mmap_header = &mut mmap
+        let mmap_header = &mmap
             .get(0..Header::max_length())
             .ok_or_else(|| io::Error::new(ErrorKind::InvalidData, "mmap get header vec error"))?;
         let mut c = Cursor::new(mmap_header);
