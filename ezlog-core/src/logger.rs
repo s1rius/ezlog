@@ -399,9 +399,14 @@ impl Header {
     }
 
     pub fn encode_v2(&self, writer: &mut dyn Write) -> std::result::Result<(), io::Error> {
-        self.encode_v1(writer)?;
-        writer.write_u32::<BigEndian>(self.cihper_hash)?;
-        writer.write_i64::<BigEndian>(self.timestamp.unix_timestamp())
+        writer.write_all(crate::FILE_SIGNATURE)?;
+        writer.write_u8(self.version.into())?;
+        writer.write_u8(self.flag.bits())?;
+        writer.write_i64::<BigEndian>(self.timestamp.unix_timestamp())?;
+        writer.write_u32::<BigEndian>(self.recorder_position)?;
+        writer.write_u8(self.compress.into())?;
+        writer.write_u8(self.cipher.into())?;
+        writer.write_u32::<BigEndian>(self.cihper_hash)
     }
 
     pub fn decode(reader: &mut dyn Read) -> std::result::Result<Self, errors::LogError> {
@@ -409,6 +414,10 @@ impl Header {
         reader.read_exact(&mut signature)?;
         let version = Version::from(reader.read_u8()?);
         let flag = Flags::from_bits(reader.read_u8()?).unwrap_or(Flags::NONE);
+        let mut timestamp = OffsetDateTime::now_utc().unix_timestamp();
+        if version == Version::V2 {
+            timestamp = reader.read_i64::<BigEndian>()?
+        }
         let mut recorder_size = reader.read_u32::<BigEndian>()?;
         if recorder_size < Header::length_compat(&version) as u32 {
             recorder_size = Header::length_compat(&version) as u32;
@@ -417,10 +426,9 @@ impl Header {
         let compress = reader.read_u8()?;
         let cipher = reader.read_u8()?;
         let mut hash: u32 = 0;
-        let mut timestamp = OffsetDateTime::now_utc().unix_timestamp();
+        
         if version == Version::V2 {
             hash = reader.read_u32::<BigEndian>()?;
-            timestamp = reader.read_i64::<BigEndian>()?
         }
         Ok(Header {
             version,
