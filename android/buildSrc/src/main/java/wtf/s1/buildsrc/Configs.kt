@@ -1,10 +1,10 @@
 package wtf.s1.buildsrc
 
 object Versions {
-    const val kotlin = "1.5.30"
+    const val kotlin = "1.8.20"
     const val ktx = "1.0.0"
     const val coroutines = "1.5.2"
-    const val gradlePlugin = "7.1.2"
+    const val gradlePlugin = "7.3.1"
     const val lifecycle = "2.2.0"
     const val minSdkVersion = 21
     const val targetSdkVersion = 33
@@ -13,10 +13,10 @@ object Versions {
     const val libVersion = "0.2.0-alpha.2"
     const val benchmarkVersion = "1.1.0"
     const val androidxTestVersion = "1.4.0"
-    const val espressoCoreVersion = "3.4.0"
+    const val espressoCoreVersion = "3.5."
     const val jUnitVersion = "4.13.2"
-    const val testExtVersion = "1.1.3"
-    const val macro = "1.1.1"
+    const val testExtVersion = "1.1.5"
+    const val macro = "1.2.0-alpha10"
 }
 
 object Plugins {
@@ -59,6 +59,8 @@ object Deps {
         const val junit = "junit:junit:${Versions.jUnitVersion}"
 
         const val espresso =  "androidx.test.espresso:espresso-core:${Versions.espressoCoreVersion}"
+        const val profileinstaller = "androidx.profileinstaller:profileinstaller:1.3.1"
+        const val uiautomator = "androidx.test.uiautomator:uiautomator:2.2.0"
     }
 
     val ezlogOnline = "wtf.s1.ezlog:ezlog:${Versions.libVersion}"
