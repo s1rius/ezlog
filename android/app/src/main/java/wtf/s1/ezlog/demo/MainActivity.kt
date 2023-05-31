@@ -8,6 +8,7 @@ import wtf.s1.ezlog.EZLog
 import wtf.s1.ezlog.EZLogCallback
 import wtf.s1.ezlog.benchmarkable.LogController
 import wtf.s1.ezlog.benchmarkable.AppEZLog
+import wtf.s1.ezlog.benchmarkable.AppLogcat
 import wtf.s1.ezlog.benchmarkable.ezlogDemoConfig
 import java.io.File
 import java.util.*
@@ -42,6 +43,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         logController = LogController(AppEZLog(ezlogDemoConfig(this)))
+
+        intent?.getBooleanExtra("ezlog", false)?.let {init->
+            if (init) {
+                logController.init()
+                Log.i("ezlog", "init.")
+            }
+        }
     }
 
     private fun registerCallback() {

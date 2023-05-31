@@ -1,4 +1,4 @@
-package wtf.s1.ezlog.benchmark
+package wtf.s1.ezlog.macrobenchmark
 
 import androidx.benchmark.macro.StartupMode
 import androidx.benchmark.macro.StartupTimingMetric
@@ -21,12 +21,12 @@ import org.junit.runner.RunWith
  * for investigating your app's performance.
  */
 @RunWith(AndroidJUnit4::class)
-class BenchmarkAppStartup {
+class ExampleStartupBenchmark {
     @get:Rule
     val benchmarkRule = MacrobenchmarkRule()
 
     @Test
-    fun benchmark_startup() = benchmarkRule.measureRepeated(
+    fun startup() = benchmarkRule.measureRepeated(
         packageName = "wtf.s1.ezlog.demo",
         metrics = listOf(StartupTimingMetric()),
         iterations = 10,
@@ -36,4 +36,16 @@ class BenchmarkAppStartup {
         startActivityAndWait()
     }
 
+    @Test
+    fun startupWithEZLog() = benchmarkRule.measureRepeated(
+        packageName = "wtf.s1.ezlog.demo",
+        metrics = listOf(StartupTimingMetric()),
+        iterations = 10,
+        startupMode = StartupMode.COLD
+    ) {
+        pressHome()
+        startActivityAndWait {
+            it.putExtra("ezlog", true)
+        }
+    }
 }

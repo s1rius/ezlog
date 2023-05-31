@@ -1,5 +1,6 @@
 rootProject.name = "ezlog"
 include ':app'
 include ':lib-ezlog'
-include ':benchmark'
+include ':microbenchmark'
 include ':benchmarkable'
+include ':macrobenchmark'
