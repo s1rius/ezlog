@@ -62,6 +62,6 @@ abstract class EZLogFlutterPlatform extends PlatformInterface {
   }
 
   void trim() {
-    throw UnimplementedError('trimAll() has not been implemented.');
+    throw UnimplementedError('trim() has not been implemented.');
   }
 }
