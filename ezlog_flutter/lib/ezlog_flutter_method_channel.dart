@@ -72,4 +72,8 @@ class MethodChannelEzlogFlutter extends EZLogFlutterPlatform {
       "date": date,
     });
   }
+
+  void trim() {
+    methodChannel.invokeMapMethod("trim");
+  }
 }

@@ -36,61 +36,74 @@ public class EzlogFlutterPlugin implements FlutterPlugin, MethodCallHandler {
 
     @Override
     public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
-        if (call.method.equals("init")) {
-            EZLog.initNoDefault(Boolean.TRUE.equals(call.arguments()));
-        } else if (call.method.equals("createLogger")) {
-            String name = call.argument("logName");
-            String dirPath = call.argument("dirPath");
+        switch (call.method) {
+            case "init":
+                EZLog.initNoDefault(Boolean.TRUE.equals(call.arguments()));
+                break;
+            case "createLogger": {
+                String name = call.argument("logName");
+                String dirPath = call.argument("dirPath");
 
-            if (TextUtils.isEmpty(name) || TextUtils.isEmpty(dirPath)) {
-                return;
+                if (TextUtils.isEmpty(name) || TextUtils.isEmpty(dirPath)) {
+                    return;
+                }
+
+                EZLogConfig.Builder builder = new EZLogConfig.Builder(name, dirPath);
+                EZLogConfig config = builder.maxLevel(argumentOrDefault(call, "maxLevel", EZLog.ERROR))
+                        .keepDays(argumentOrDefault(call, "keepDays", 7))
+                        .compress(argumentOrDefault(call, "compress", EZLog.CompressZlib))
+                        .compressLevel(argumentOrDefault(call, "compressLevel", EZLog.CompressDefault))
+                        .cipher(argumentOrDefault(call, "cipher", 0))
+                        .cipherKey(argumentOrDefault(call, "cipherKey", new byte[]{}))
+                        .cipherNonce(argumentOrDefault(call, "cipherNonce", new byte[]{}))
+                        .rotateHours(argumentOrDefault(call, "rotateHours", 24))
+                        .extra(argumentOrDefault(call, "extra", ""))
+                        .build();
+                EZLog.createLogger(config);
+
+                break;
             }
+            case "log": {
+                String name = argumentOrDefault(call, "logName", "");
+                int level = argumentOrDefault(call, "level", EZLog.VERBOSE);
+                String tag = argumentOrDefault(call, "tag", "");
+                String msg = argumentOrDefault(call, "msg", "");
 
-            EZLogConfig.Builder builder = new EZLogConfig.Builder(name, dirPath);
-            EZLogConfig config = builder.maxLevel(argumentOrDefault(call, "maxLevel", EZLog.ERROR))
-                    .keepDays(argumentOrDefault(call, "keepDays", 7))
-                    .compress(argumentOrDefault(call, "compress", EZLog.CompressZlib))
-                    .compressLevel(argumentOrDefault(call, "compressLevel", EZLog.CompressDefault))
-                    .cipher(argumentOrDefault(call, "cipher", 0))
-                    .cipherKey(argumentOrDefault(call, "cipherKey", new byte[]{}))
-                    .cipherNonce(argumentOrDefault(call, "cipherNonce", new byte[]{}))
-                    .rotateHours(argumentOrDefault(call, "rotateHours", 24))
-                    .extra(argumentOrDefault(call, "extra", ""))
-                    .build();
-            EZLog.createLogger(config);
+                if (TextUtils.isEmpty(name) || TextUtils.isEmpty(msg)) {
+                    return;
+                }
 
-        } else if (call.method.equals("log")) {
-            String name = argumentOrDefault(call, "logName", "");
-            int level = argumentOrDefault(call, "level", EZLog.VERBOSE);
-            String tag = argumentOrDefault(call, "tag", "");
-            String msg = argumentOrDefault(call, "msg", "");
-
-            if (TextUtils.isEmpty(name) || TextUtils.isEmpty(msg)) {
-                return;
+                EZLog.log(name, level, tag, msg);
+                result.success(null);
+                break;
             }
-
-            EZLog.log(name, level, tag, msg);
-            result.success(null);
-        } else if (call.method.equals("flush")) {
-            String name = argumentOrDefault(call, "logName", "");
-            if (TextUtils.isEmpty(name)) {
-                return;
+            case "flush": {
+                String name = argumentOrDefault(call, "logName", "");
+                if (TextUtils.isEmpty(name)) {
+                    return;
+                }
+                EZLog.flush(name);
+                result.success(null);
+                break;
             }
-            EZLog.flush(name);
-            result.success(null);
-        } else if (call.method.equals("requestLogFilesForDate")) {
-            String name = argumentOrDefault(call, "logName", "");
-            String date = argumentOrDefault(call, "date", "");
-            resultHolder.update(name, result);
-            resultHolder.bind();
-            EZLog.requestLogFilesForDate(name, date);
-        } else if (call.method.equals("flush")) {
-            EZLog.flush();
-            result.success(null);
-        } else if (call.method.equals("trim")) {
-            EZLog.trim();
-        } else {
-            result.notImplemented();
+            case "requestLogFilesForDate": {
+                String name = argumentOrDefault(call, "logName", "");
+                String date = argumentOrDefault(call, "date", "");
+                resultHolder.update(name, result);
+                resultHolder.bind();
+                EZLog.requestLogFilesForDate(name, date);
+                break;
+            }
+            case "flushAll":
+                EZLog.flush();
+                result.success(null);
+                break;
+            case "trim":
+                EZLog.trim();
+                break;
+            default:
+                result.notImplemented();
+                break;
         }
     }
 
