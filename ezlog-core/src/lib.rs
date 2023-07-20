@@ -211,7 +211,7 @@ fn init_log_channel() -> Sender<EZMsg> {
                                 event!(
                                     Event::RecordError,
                                     &record.t_id(),
-                                    &LogError::IllegalArgument("no logger found".into())
+                                    &LogError::Illegal("no logger found".into())
                                 );
                                 continue;
                             }
@@ -257,7 +257,7 @@ fn init_log_channel() -> Sender<EZMsg> {
                                 event!(
                                     Event::FlushError,
                                     &name,
-                                    &LogError::IllegalArgument("no logger found".into())
+                                    &LogError::Illegal("no logger found".into())
                                 );
                             }
                         });
@@ -290,7 +290,7 @@ fn init_log_channel() -> Sender<EZMsg> {
                                 event!(
                                     Event::RequestLog,
                                     "fetchLog",
-                                    &LogError::IllegalArgument(format!(
+                                    &LogError::Illegal(format!(
                                         "no logger found {}",
                                         task.name
                                     ))

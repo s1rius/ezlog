@@ -14,7 +14,7 @@ pub struct Aes256GcmSiv {
 impl Aes256GcmSiv {
     pub fn new(key: &[u8], nonce: &[u8]) -> crate::Result<Self> {
         if nonce.len() != 12 {
-            return Err(LogError::IllegalArgument(format!(
+            return Err(LogError::Illegal(format!(
                 "nonce must be 12 bytes, but current is {}",
                 nonce.len()
             )));
@@ -24,7 +24,7 @@ impl Aes256GcmSiv {
                 nonce: nonce.to_owned(),
                 cipher,
             }),
-            Err(e) => Err(LogError::IllegalArgument(format!(
+            Err(e) => Err(LogError::Illegal(format!(
                 "key length invalid {}",
                 e
             ))),
@@ -66,7 +66,7 @@ pub struct Aes128GcmSiv {
 impl Aes128GcmSiv {
     pub fn new(key: &[u8], nonce: &[u8]) -> crate::Result<Self> {
         if nonce.len() != 12 {
-            return Err(LogError::IllegalArgument(format!(
+            return Err(LogError::Illegal(format!(
                 "nonce must be 12 bytes, but current is {}",
                 nonce.len()
             )));
@@ -76,7 +76,7 @@ impl Aes128GcmSiv {
                 nonce: nonce.to_owned(),
                 cipher,
             }),
-            Err(e) => Err(LogError::IllegalArgument(format!(
+            Err(e) => Err(LogError::Illegal(format!(
                 "key length invalid {}",
                 e
             ))),
@@ -120,7 +120,7 @@ pub struct Aes256Gcm {
 impl Aes256Gcm {
     pub fn new(key: &[u8], nonce: &[u8]) -> crate::Result<Self> {
         if nonce.len() != 12 {
-            return Err(LogError::IllegalArgument(format!(
+            return Err(LogError::Illegal(format!(
                 "nonce must be 12 bytes, but current is {}",
                 nonce.len()
             )));
@@ -130,7 +130,7 @@ impl Aes256Gcm {
                 nonce: nonce.to_owned(),
                 cipher,
             }),
-            Err(e) => Err(LogError::IllegalArgument(format!(
+            Err(e) => Err(LogError::Illegal(format!(
                 "key length invalid {}",
                 e
             ))),
@@ -176,7 +176,7 @@ pub struct Aes128Gcm {
 impl Aes128Gcm {
     pub fn new(key: &[u8], nonce: &[u8]) -> crate::Result<Self> {
         if nonce.len() != 12 {
-            return Err(LogError::IllegalArgument(format!(
+            return Err(LogError::Illegal(format!(
                 "nonce must be 12 bytes, but current is {}",
                 nonce.len()
             )));
@@ -187,7 +187,7 @@ impl Aes128Gcm {
                 nonce: nonce.to_owned(),
                 cipher,
             }),
-            Err(e) => Err(LogError::IllegalArgument(format!(
+            Err(e) => Err(LogError::Illegal(format!(
                 "key length invalid {}",
                 e
             ))),

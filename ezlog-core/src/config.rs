@@ -158,18 +158,18 @@ impl EZLogConfig {
     pub(crate) fn read_file_name_as_date(&self, file_name: &str) -> crate::Result<OffsetDateTime> {
         const SAMPLE: &str = "2022_02_22";
         if file_name == format!("{}.{}", &self.name, &self.file_suffix) {
-            return Err(LogError::IllegalArgument(
+            return Err(LogError::Illegal(
                 "The file is logging file".to_string(),
             ));
         }
         if !file_name.starts_with(format!("{}_", &self.name).as_str()) {
-            return Err(LogError::IllegalArgument(format!(
+            return Err(LogError::Illegal(format!(
                 "file name is not start with name {}",
                 file_name
             )));
         }
         if file_name.len() < self.name.len() + 1 + SAMPLE.len() {
-            return Err(LogError::IllegalArgument(format!(
+            return Err(LogError::Illegal(format!(
                 "file name length is not right {}",
                 file_name
             )));
@@ -238,10 +238,10 @@ impl EZLogConfig {
 
     pub fn check_valid(&self) -> crate::Result<()> {
         if self.dir_path.is_empty() {
-            return Err(LogError::IllegalArgument("dir_path is empty".to_string()));
+            return Err(LogError::Illegal("dir_path is empty".to_string()));
         }
         if self.name.is_empty() {
-            return Err(LogError::IllegalArgument("name is empty".to_string()));
+            return Err(LogError::Illegal("name is empty".to_string()));
         }
         Ok(())
     }

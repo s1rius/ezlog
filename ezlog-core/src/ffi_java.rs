@@ -98,7 +98,7 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeCreateLogger<'local>(
         event!(
             CreateLoggerError,
             "create logger config error",
-            &LogError::IllegalArgument(format!("{:?}", config))
+            &LogError::Illegal(format!("{:?}", config))
         );
         return;
     }
