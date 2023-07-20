@@ -13,8 +13,8 @@ pub enum LogError {
     Crypto(String),
     #[error("compress error: {0}")]
     Compress(#[source] io::Error),
-    #[error("illegal argument {0}")]
-    IllegalArgument(String),
+    #[error("illegal argument or state {0}")]
+    Illegal(String),
     #[error("ffi error: {0}")]
     FFi(String),
     #[error("unknown error: {0}")]

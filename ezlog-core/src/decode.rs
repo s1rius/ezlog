@@ -34,7 +34,7 @@ pub fn decode_logs_count(
                         break;
                     }
                 }
-                LogError::IllegalArgument(_) => break,
+                LogError::Illegal(_) => break,
                 _ => continue,
             },
         }
@@ -67,7 +67,7 @@ pub fn decode_body_and_write(
                         break;
                     }
                 }
-                LogError::IllegalArgument(_) => break,
+                LogError::Illegal(_) => break,
                 _ => continue,
             },
         }
@@ -103,7 +103,7 @@ pub(crate) fn decode_record_to_content(
     let mut buf = Vec::new();
     let nums = reader.read_until(RECORD_SIGNATURE_START, &mut buf)?;
     if nums == 0 {
-        return Err(LogError::IllegalArgument(
+        return Err(LogError::Illegal(
             "has no record start signature".to_string(),
         ));
     }
@@ -133,7 +133,7 @@ pub(crate) fn decode_record_size(mut reader: &mut dyn BufRead, version: &Version
             let size: usize = reader.read_varint()?;
             Ok(size)
         }
-        Version::UNKNOWN => Err(LogError::IllegalArgument(format!(
+        Version::UNKNOWN => Err(LogError::Illegal(format!(
             "unknow version {:?}",
             version
         ))),
