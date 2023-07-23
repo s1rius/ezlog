@@ -1,1 +1,1 @@
-# ezlog
+../docs/src/platform/android.md

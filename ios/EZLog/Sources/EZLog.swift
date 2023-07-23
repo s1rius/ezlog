@@ -114,7 +114,7 @@ public func wrapCallback(success: @escaping (String, String, [String]) -> Void,
          logs: UnsafePointer<UnsafePointer<Int8>>,
          size: Int32) in
         
-        let successWrapper:WrapClosure<(String,String,[String]) -> Void> = Unmanaged.fromOpaque(s).takeRetainedValue()
+        let successWrapper:WrapClosure<(String,String,[String]) -> Void> = Unmanaged.fromOpaque(s).takeUnretainedValue()
         
         var strings: [String] = []
         let bufPoint = Array(UnsafeBufferPointer(start: logs, count: Int(size)))
@@ -136,7 +136,7 @@ public func wrapCallback(success: @escaping (String, String, [String]) -> Void,
          date: UnsafePointer<CChar>,
          err: UnsafePointer<CChar>) in
         
-        let failWrapper: WrapClosure<(String, String, String) -> Void> = Unmanaged.fromOpaque(f).takeRetainedValue()
+        let failWrapper: WrapClosure<(String, String, String) -> Void> = Unmanaged.fromOpaque(f).takeUnretainedValue()
         failWrapper.closure(String(cString: logName), String(cString: date), String(cString: err))
     }
     return Callback(successPoint: successPoint, onLogsFetchSuccess: success, failPoint: failPoint, onLogsFetchFail: fail)
