@@ -11,6 +11,8 @@ pub struct InitBuilder {
     layers: Vec<Box<dyn MsgHandler>>,
     callback: Option<Box<dyn EZLogCallback>>,
     formatter: Option<Box<dyn Formatter>>,
+    #[cfg(feature = "log")]
+    as_default: bool,
 }
 
 impl InitBuilder {
@@ -21,6 +23,8 @@ impl InitBuilder {
             layers: vec![],
             callback: None,
             formatter: None,
+            #[cfg(feature = "log")]
+            as_default: true,
         }
     }
 
@@ -34,6 +38,20 @@ impl InitBuilder {
     /// ```
     pub fn debug(mut self, debug: bool) -> Self {
         self.debug = debug;
+        self
+    }
+
+    /// set as the rust default logger or not
+    ///
+    /// # Example
+    /// ```
+    /// ezlog::InitBuilder::new()
+    ///     .as_default(true)
+    ///     .init();
+    /// ```
+    #[cfg(feature = "log")]
+    pub fn as_default(mut self, as_default: bool) -> Self {
+        self.as_default = as_default;
         self
     }
 
@@ -197,12 +215,12 @@ impl InitBuilder {
     }
 
     pub fn build(self) -> EZLog {
-        self.init();
-        EZLog {}
+        self.init()
     }
 
     /// real init ezlog
-    pub fn init(self) {
+    pub fn init(self) -> EZLog {
+        hook_panic();
         if let Some(listener) = self.listener {
             crate::set_event_listener(listener);
         } else if self.debug {
@@ -233,7 +251,17 @@ impl InitBuilder {
             ptr::write(crate::LOG_SERVICE.as_mut_ptr(), service);
         });
 
-        hook_panic();
+        let ezlog = EZLog {};
+        #[cfg(feature = "log")]
+        {
+            if self.as_default {
+                use crate::events::event;
+                log::set_logger(Box::leak(Box::new(ezlog)))
+                    .map(|_| log::set_max_level(log::LevelFilter::Trace))
+                    .unwrap_or_else(|e| event!(crate::Event::InitError, &e.to_string()));
+            }
+        }
+        ezlog
     }
 }
 
@@ -302,11 +330,11 @@ impl Formatter for FormatterProxy {
     }
 }
 
-#[cfg(feature = "log")]
-use log::{Metadata, Record};
+#[derive(Clone, Copy)]
+pub struct EZLog {}
 
 #[cfg(feature = "log")]
-pub struct EZLog {}
+use log::{Metadata, Record};
 
 #[cfg(feature = "log")]
 impl log::Log for EZLog {

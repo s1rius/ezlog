@@ -474,6 +474,7 @@ impl Level {
     /// assert_eq!(Some(Level::Error), levels.next());
     /// assert_eq!(Some(Level::Trace), levels.last());
     /// ```
+    #[cfg(feature = "log")]
     pub fn iter() -> impl Iterator<Item = Self> {
         (1..6).map(|i| Self::from_usize(i).unwrap_or(Level::Error))
     }

@@ -13,11 +13,11 @@ readme = "README.md"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [features]
-default = ["log"]
+default = []
 backtrace = ["dep:backtrace"]
 log = ["dep:log"]
 decode = ["dep:aes-gcm"]
-android_logger = ["dep:android_logger"]
+android_logger = ["log","dep:android_logger"]
 
 [dependencies]
 libc = "0.2"

@@ -226,11 +226,13 @@ impl EZRecordBuilder {
         self
     }
 
+    #[cfg(feature = "log")]
     fn line(&mut self, line: u32) -> &mut Self {
         self.record.line = Some(line);
         self
     }
 
+    #[cfg(feature = "log")]
     fn file(&mut self, file: &str) -> &mut Self {
         self.record.file = Some(file.to_string());
         self
@@ -261,6 +263,7 @@ impl Default for EZRecordBuilder {
     }
 }
 
+#[cfg(feature = "log")]
 impl From<&Record<'_>> for EZRecord {
     fn from(record: &Record) -> Self {
         EZRecord::from(record)

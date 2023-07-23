@@ -113,7 +113,7 @@ impl EZLogger {
         let nonce_fn: NonceGenFn = self.gen_nonce();
         let mut buf = self.format(record)?;
         if buf.is_empty() {
-            return Ok(buf)
+            return Ok(buf);
         }
         if self.config.version == Version::V1 {
             if let Some(encryptor) = &self.cryptor {
@@ -143,11 +143,14 @@ impl EZLogger {
             if let Some(encryptor) = &self.cryptor {
                 event!(Event::Encrypt, &record.t_id());
                 buf = encryptor.encrypt(&buf, nonce_fn)?;
-                event!(Event::EncryptEnd, &format!(
-                    "{} process ratio = {} ",
-                    &record.t_id(),
-                    buf.len() as f64 / len as f64
-                ));
+                event!(
+                    Event::EncryptEnd,
+                    &format!(
+                        "{} process ratio = {} ",
+                        &record.t_id(),
+                        buf.len() as f64 / len as f64
+                    )
+                );
             }
         }
         Ok(buf)
@@ -426,7 +429,7 @@ impl Header {
         let compress = reader.read_u8()?;
         let cipher = reader.read_u8()?;
         let mut hash: u32 = 0;
-        
+
         if version == Version::V2 {
             hash = reader.read_u32::<BigEndian>()?;
         }
