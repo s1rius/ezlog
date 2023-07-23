@@ -26,7 +26,7 @@ pub fn main() {
         })
         .with_event_listener(&EVENT_LISTENER)
         .with_request_callback(SimpleCallback)
-        .build();
+        .init();
 
     let log_config = get_config();
 

@@ -13,8 +13,7 @@ pub fn main() {
         .build();
     let ezlog = ezlog::InitBuilder::new()
         .debug(true)
-        .as_default(false)
-        .build();
+        .init();
 
     struct MyLog {
         list: Vec<Box<dyn log::Log>>,
