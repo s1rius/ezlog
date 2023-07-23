@@ -38,3 +38,35 @@ impl Decompression for ZlibCodec {
         Ok(out)
     }
 }
+
+pub struct ZstdCodec {
+    level: zstd::zstd_safe::CompressionLevel,
+}
+
+impl ZstdCodec {
+    pub fn new(level: &CompressLevel) -> Self {
+        match level {
+            CompressLevel::Fast => Self {
+                level: zstd::zstd_safe::min_c_level(),
+            },
+            CompressLevel::Default => Self {
+                level: zstd::zstd_safe::CompressionLevel::default(),
+            },
+            CompressLevel::Best => Self {
+                level: zstd::zstd_safe::max_c_level(),
+            },
+        }
+    }
+}
+
+impl Compression for ZstdCodec {
+    fn compress(&self, data: &[u8]) -> std::io::Result<Vec<u8>> {
+        zstd::encode_all(data, self.level)
+    }
+}
+
+impl Decompression for ZstdCodec {
+    fn decompress(&self, data: &[u8]) -> std::io::Result<Vec<u8>> {
+        zstd::decode_all(data)
+    }
+}

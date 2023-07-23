@@ -786,6 +786,8 @@ pub enum CompressKind {
     /// ZLIB compression
     /// we use [flate2](https://github.com/rust-lang/flate2-rs) to implement this
     ZLIB,
+    /// ZSTD compression
+    ZSTD,
     /// No compression
     NONE,
     /// Unknown compression
@@ -807,6 +809,7 @@ impl From<CompressKind> for u8 {
         match orig {
             CompressKind::NONE => 0x00,
             CompressKind::ZLIB => 0x01,
+            CompressKind::ZSTD => 0x02,
             CompressKind::UNKNOWN => 0xff,
         }
     }

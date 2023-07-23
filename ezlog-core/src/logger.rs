@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::{fs, io};
 use std::{io::Write, rc::Rc};
 
+use crate::compress::ZstdCodec;
 use crate::crypto::{Aes128GcmSiv, Aes256GcmSiv};
 use crate::events::Event::{self};
 use crate::{
@@ -83,6 +84,7 @@ impl EZLogger {
     pub fn create_compress(config: &EZLogConfig) -> Option<Box<dyn Compress>> {
         match config.compress {
             CompressKind::ZLIB => Some(Box::new(ZlibCodec::new(&config.compress_level))),
+            CompressKind::ZSTD => Some(Box::new(ZstdCodec::new(&config.compress_level))),
             CompressKind::NONE => None,
             CompressKind::UNKNOWN => None,
         }

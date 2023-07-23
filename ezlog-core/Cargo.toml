@@ -38,6 +38,7 @@ backtrace = { version = "0.3", optional = true }
 integer-encoding = "3.0"
 bitflags = "2.0.1"
 android_logger = { version = "0.13", optional = true }
+zstd = "0.12"
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.21.0"
