@@ -10,7 +10,7 @@ use ezlog::{
     EventPrinter, Header,
 };
 use ezlog::{EZLogger, EZMsg};
-use log::{debug, error, info, trace, warn, LevelFilter};
+use log::{debug, error, info, trace, warn};
 use rand::Rng;
 use time::OffsetDateTime;
 
@@ -18,7 +18,7 @@ static EVENT_LISTENER: EventPrinter = EventPrinter;
 
 pub fn main() {
     println!("start");
-    let log = ezlog::InitBuilder::new()
+    ezlog::InitBuilder::new()
         .with_layer_fn(|msg| {
             if let EZMsg::Record(recode) = msg {
                 println!("{}", ezlog::format(&recode));
@@ -27,9 +27,6 @@ pub fn main() {
         .with_event_listener(&EVENT_LISTENER)
         .with_request_callback(SimpleCallback)
         .build();
-    log::set_logger(Box::leak(Box::new(log)))
-        .map(|()| log::set_max_level(LevelFilter::Trace))
-        .expect("log set error");
 
     let log_config = get_config();
 
@@ -61,7 +58,7 @@ fn get_config() -> EZLogConfig {
     EZLogConfigBuilder::new()
         .level(Level::Trace)
         .dir_path(
-            dirs::download_dir()
+            dirs::cache_dir()
                 .unwrap()
                 .into_os_string()
                 .into_string()

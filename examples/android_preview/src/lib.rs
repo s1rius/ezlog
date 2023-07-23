@@ -11,7 +11,7 @@ use rand::Rng;
 ///
 /// ```shell
 /// cargo install cargo-apk
-/// cargo apk run -p ezlog_android_preview -Zbuild-std
+/// cargo apk run -p ezlog_android_preview
 /// adb logcat --pid=$(adb shell pidof -s rust.ezlog_android_preview)
 /// ```
 #[cfg_attr(target_os = "android", ndk_glue::main(backtrace = "on"))]
