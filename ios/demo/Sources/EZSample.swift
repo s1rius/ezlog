@@ -31,8 +31,9 @@ func ezlogSampleInit() {
     
     addCallback(callback: EZCallback( success: {name, date, logs in
         if !logs.isEmpty {
+            print("name:" + name + " date:" + date + "\n")
             for log in logs {
-                print("name:" + name + " date:" + date + " log:" + log);
+                print("log:" + log + "\n");
             }
         } else {
             print("no log found at that time")

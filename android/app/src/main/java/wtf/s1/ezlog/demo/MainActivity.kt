@@ -15,7 +15,7 @@ import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
-    lateinit var logController: LogController
+    private val logController: LogController by lazy { LogController(AppEZLog(ezlogDemoConfig(this))) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,8 +41,6 @@ class MainActivity : AppCompatActivity() {
             registerCallback()
             requestLog()
         }
-
-        logController = LogController(AppEZLog(ezlogDemoConfig(this)))
 
         intent?.getBooleanExtra("ezlog", false)?.let {init->
             if (init) {

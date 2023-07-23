@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::errors::LogError;
 use crate::events::Event::{self, *};
 use crate::{
-    event, events::EventPrinter, set_boxed_callback, thread_name, CipherKind, CompressKind,
+    event, set_boxed_callback, thread_name, CipherKind, CompressKind,
     CompressLevel, EZLogConfigBuilder, EZRecordBuilder, Level,
 };
 use jni::objects::{JByteArray, JObjectArray, JValueGen};
@@ -34,13 +34,8 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeInit(
     _: JClass,
     j_enable_trace: jboolean,
 ) {
-    let mut builder = crate::InitBuilder::new();
     let enable_trace = j_enable_trace;
-    if enable_trace as i8 > 0 {
-        static EVENT: EventPrinter = EventPrinter {};
-        builder = builder.with_event_listener(&EVENT);
-    }
-    builder.init();
+    crate::InitBuilder::new().debug(enable_trace > 0).init();
 }
 
 #[no_mangle]
