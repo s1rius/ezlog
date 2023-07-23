@@ -1,0 +1,758 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: ezlog documentation\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: 2023-05-14 21:00+0800\n"
+"Last-Translator: al dmgmgw <s1rius.noone@gmail.com>\n"
+"Language-Team: Chinese\n"
+"Language: zh\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: src/SUMMARY.md:3
+msgid "Introduction"
+msgstr "简介"
+
+#: src/SUMMARY.md:5
+msgid "Quick Start"
+msgstr "快速开始"
+
+#: src/SUMMARY.md:7
+msgid "Flutter"
+msgstr ""
+
+#: src/SUMMARY.md:8
+msgid "Android"
+msgstr ""
+
+#: src/SUMMARY.md:9
+msgid "iOS"
+msgstr ""
+
+#: src/SUMMARY.md:10
+msgid "Rust"
+msgstr ""
+
+#: src/SUMMARY.md:12
+msgid "Benchmark"
+msgstr "性能"
+
+#: src/SUMMARY.md:14
+msgid "Architecture"
+msgstr "架构设计"
+
+#: src/SUMMARY.md:16
+msgid "Build"
+msgstr "本地构建"
+
+#: src/introduction.md:1
+msgid "# ezlog"
+msgstr ""
+
+#: src/introduction.md:3
+msgid "## What is ezlog?"
+msgstr "## 介绍"
+
+#: src/introduction.md:5
+msgid "ezlog is a high-performance cross-platform file logging library."
+msgstr "ezlog是一个高性能的跨平台文件日志库。"
+
+#: src/introduction.md:7
+msgid "It can be used in Flutter, Android, iOS, Windows, Linux, MacOS."
+msgstr "可以用在Flutter，android，iOS，Windows，Linux，MacOS。"
+
+#: src/introduction.md:9
+msgid ""
+"It is inspired by [Xlog](https://github.com/Tencent/mars) and [Logan]"
+"(https://github.com/Meituan-Dianping/Logan), rewrite in Rust."
+msgstr ""
+"本项目参考了[Xlog](https://github.com/Tencent/mars)和[Logan](https://github."
+"com/Meituan-Dianping/Logan), 使用[Rust](https://www.rust-lang.org/)重写。"
+
+#: src/introduction.md:11
+msgid "## Features"
+msgstr "## 特性"
+
+#: src/introduction.md:12
+msgid ""
+"- multi platform: Flutter, Android, iOS, Windows, Linux, MacOS\n"
+"- map file into memory by [mmap](https://man7.org/linux/man-pages/man2/"
+"mmap.2.html).\n"
+"- compression support, eg: [zlib](https://en.wikipedia.org/wiki/Zlib).\n"
+"- encryption support, eg: [AEAD encryption](https://en.wikipedia.org/wiki/"
+"Authenticated_encryption).\n"
+"- fetch log by callback.\n"
+"- trim out of date files.\n"
+"- command line parser support."
+msgstr ""
+"- 多平台支持 Flutter, iOS, Android, Windows, Linux, MacOS\n"
+"- 使用[mmap](https://man7.org/linux/man-pages/man2/mmap.2.html)做日志映射\n"
+"- 支持压缩，如[zilb](https://en.wikipedia.org/wiki/Zlib)\n"
+"- 支持加密，如[AEAD](https://en.wikipedia.org/wiki/"
+"Authenticated_encryption)\n"
+"- 日志回捞\n"
+"- 日志清理\n"
+"- 命令行解析工具\n"
+
+#: src/introduction.md:20
+msgid "## License"
+msgstr ""
+
+#: src/introduction.md:22
+msgid ""
+"See [LICENSE-MIT](../../LICENSE-MIT), [LICENSE-APACHE](../../LICENSE-"
+"APACHE), "
+msgstr ""
+
+#: src/platform/flutter.md:1
+msgid "# Flutter ezlog"
+msgstr ""
+
+#: src/platform/flutter.md:3
+msgid "### Add ezlog_flutter as a dependency in your pubspec.yaml file."
+msgstr "### 在pubspec.yaml中添加ezlog_flutter依赖"
+
+#: src/platform/flutter.md:5
+msgid ""
+"```yaml\n"
+"dependencies:\n"
+"  ezlog_flutter: ^0.2.0\n"
+"```"
+msgstr ""
+
+#: src/platform/flutter.md:10 src/platform/rust.md:13
+msgid "### Example"
+msgstr "### 示例"
+
+#: src/platform/flutter.md:12
+msgid ""
+"```dart\n"
+"import 'dart:io';\n"
+"import 'package:flutter/material.dart';\n"
+"import 'dart:async';\n"
+"import 'package:ezlog_flutter/ezlog_flutter.dart';\n"
+"import 'package:path_provider/path_provider.dart';\n"
+"\n"
+"void main() {\n"
+"  runApp(const MyApp());\n"
+"}\n"
+"\n"
+"class MyApp extends StatefulWidget {\n"
+"  const MyApp({Key? key}) : super(key: key);\n"
+"\n"
+"  @override\n"
+"  State<MyApp> createState() => _MyAppState();\n"
+"}\n"
+"\n"
+"class _MyAppState extends State<MyApp> {\n"
+"\n"
+"  @override\n"
+"  void initState() {\n"
+"    super.initState();\n"
+"    initEZLog();\n"
+"  }\n"
+"\n"
+"  Future<void> initEZLog() async {\n"
+"    EZLog.init(true);\n"
+"    Directory appDocDir = await getApplicationSupportDirectory();\n"
+"    String logDir = '${appDocDir.path}/ezlog';\n"
+"\n"
+"    var logger = EZLogger.config(\n"
+"        EZLogConfig.plaintext(\"main\", Level.trace.id, logDir, 7));\n"
+"    \n"
+"    logger.d(\"init\", \"success\");\n"
+"\n"
+"    var logs = await EZLog.requestLogFilesForDate(\"main\", "
+"\"2022_08_25\");\n"
+"  }\n"
+"}\n"
+"```"
+msgstr ""
+
+#: src/platform/android.md:1
+msgid "# Android ezlog"
+msgstr ""
+
+#: src/platform/android.md:3
+msgid "### Add ezlog to dependencies"
+msgstr "### 添加ezlog依赖"
+
+#: src/platform/android.md:5
+msgid "Open top-level `build.gradle`, add `mavenCentral` to repositories."
+msgstr "打开项目`build.gradle`文件，添加`mavenCentral`仓库"
+
+#: src/platform/android.md:7
+msgid ""
+"```groovy\n"
+"buildscript {\n"
+"    repositories {\n"
+"        ...\n"
+"        mavenCentral()\n"
+"        ...\n"
+"    }\n"
+"}\n"
+"\n"
+"allprojects {\n"
+"    repositories {\n"
+"        ...\n"
+"        mavenCentral()\n"
+"        ...\n"
+"    }\n"
+"}\n"
+"```"
+msgstr ""
+
+#: src/platform/android.md:25
+msgid "Open app level `build.gradle`, add `ezlog`"
+msgstr "在App层级的`build.gradle`添加ezlog依赖"
+
+#: src/platform/android.md:27
+msgid ""
+"```groovy\n"
+"dependencies {\n"
+"    implementation \"wtf.s1.ezlog:ezlog:0.1.7\"\n"
+"}\n"
+"```"
+msgstr ""
+
+#: src/platform/android.md:33
+msgid "Sync gradle"
+msgstr "同步gradle"
+
+#: src/platform/android.md:35
+msgid "### Setup in application"
+msgstr "### 在应用中初始化"
+
+#: src/platform/android.md:37
+msgid ""
+"```kotlin\n"
+"override fun onCreate() {\n"
+"    super.onCreate()\n"
+"\n"
+"    val path = File(filesDir, \"ezlog\").absolutePath\n"
+"    val config = EZLogConfig.Builder(\"demo\", path)\n"
+"        .compress(EZLog.CompressZlib)\n"
+"        .compressLevel(EZLog.CompressFast)\n"
+"        .cipher(EZLog.Aes128Gcm)\n"
+"        .cipherKey(\"a secret key!!!!\".toByteArray())\n"
+"        .cipherNonce(\"unique nonce\".toByteArray())\n"
+"        .enableTrace(BuildConfig.DEBUG)\n"
+"        .build()\n"
+"    EZLog.initWith(config)\n"
+"\n"
+"    EZLog.v(\"ezlog\", \"first blood\")\n"
+"\n"
+"    EZLog.registerCallback(object : Callback {\n"
+"        override fun onLogsFetchSuccess(\n"
+"            logName: String?,\n"
+"            date: String?,\n"
+"            logs: Array<out String>?\n"
+"        ) {\n"
+"            Log.i(\"ezlog\", \"$logName $date ${logs.contentToString()}\")\n"
+"            logs?.let {\n"
+"                logs.getOrNull(0)?.let { log ->\n"
+"                    Log.i(\"ezlog\", \"check file exists ${File(log)."
+"exists()}\")\n"
+"                }\n"
+"            }\n"
+"        }\n"
+"\n"
+"        override fun onLogsFetchFail(logName: String?, date: String?, err: "
+"String?) {\n"
+"            Log.i(\"ezlog\", \"$logName $date $err\")\n"
+"        }\n"
+"    })\n"
+"}\n"
+"\n"
+"```"
+msgstr ""
+
+#: src/platform/ios.md:1
+msgid "# iOS ezlog"
+msgstr ""
+
+#: src/platform/ios.md:3
+msgid "### Add ezlog"
+msgstr "### 添加ezlog依赖"
+
+#: src/platform/ios.md:5
+msgid "Add dependency to Podfile"
+msgstr "在Podfile中添加依赖"
+
+#: src/platform/ios.md:7
+msgid ""
+"```shell\n"
+"pod 'EZLog', '~> 0.1'\n"
+"```"
+msgstr ""
+
+#: src/platform/ios.md:10
+msgid "then"
+msgstr ""
+
+#: src/platform/ios.md:12
+msgid ""
+"```shell\n"
+"pod update\n"
+"```"
+msgstr ""
+
+#: src/platform/ios.md:15
+msgid "### Open Xcode, add sample code"
+msgstr "### 打开Xcode，添加示例代码"
+
+#: src/platform/ios.md:17
+msgid ""
+"```swift\n"
+"import EZLog\n"
+"\n"
+"init() {\n"
+"    pthread_setname_np(\"main\")\n"
+"    #if DEBUG\n"
+"    ezlogInitWithTrace()\n"
+"    #else\n"
+"    ezlogInit()\n"
+"    #endif\n"
+"    \n"
+"    let dirPath = URL.documents.appendingPathComponent(\"ezlog\")."
+"relativePath\n"
+"\n"
+"    let config = EZLogConfig(level: Level.trace,\n"
+"                                dirPath: dirPath,\n"
+"                                name: \"demo\",\n"
+"                                keepDays: 7,\n"
+"                                maxSize: 150*1024,\n"
+"                                compress: CompressKind.ZLIB,\n"
+"                                compressLevel: CompressLevel.DEFAULT,\n"
+"                                cipher: Cipher.AES128GCM,\n"
+"                                cipherKey: [UInt8](\"a secret key!!!!\"."
+"utf8),\n"
+"                                cipherNonce: [UInt8](\"unique nonce\"."
+"utf8))\n"
+"    let logger = EZLogger(config: config)\n"
+"\n"
+"    ezlogRegisterCallback(success: {name, date, logs in\n"
+"        if !logs.isEmpty {\n"
+"            for log in logs {\n"
+"                print(\"name:\" + name + \" date:\" + date + \" log:\" + "
+"log);\n"
+"            }\n"
+"        } else {\n"
+"            print(\"no log found at that time\")\n"
+"        }\n"
+"        \n"
+"    }, fail: {name, date, err in\n"
+"        print(\"name:\" + name + \" date:\" + date + \" err:\" + err);\n"
+"    })\n"
+"    \n"
+"    logger.debug(\"first blood\")\n"
+"}\n"
+"```"
+msgstr ""
+
+#: src/platform/ios.md:58
+msgid "click run and see console ouput."
+msgstr "点击运行，查看控制台输出"
+
+#: src/platform/rust.md:1
+msgid "# Rust ezlog"
+msgstr "# Rust ezlog"
+
+#: src/platform/rust.md:3
+msgid "### Usage"
+msgstr "### 使用"
+
+#: src/platform/rust.md:5
+msgid "Add this to your Cargo.toml"
+msgstr "在Cargo.toml中添加依赖"
+
+#: src/platform/rust.md:7
+msgid ""
+"```toml\n"
+"[dependencies]\n"
+"ezlog = \"0.2\"\n"
+"```"
+msgstr ""
+
+#: src/platform/rust.md:15
+msgid ""
+"```rust\n"
+"use ezlog::EZLogConfigBuilder;\n"
+"use ezlog::Level;\n"
+"use log::{error, info, warn};\n"
+"use log::{LevelFilter, Log};\n"
+"\n"
+"ezlog::InitBuilder::new().init();\n"
+"\n"
+"let config = EZLogConfigBuilder::new()\n"
+"        .level(Level::Trace)\n"
+"        .dir_path(\n"
+"            dirs::download_dir()\n"
+"                .unwrap()\n"
+"                .into_os_string()\n"
+"                .into_string()\n"
+"                .expect(\"dir path error\"),\n"
+"        )\n"
+"        .build();\n"
+"ezlog::create_log(config);\n"
+"\n"
+"info!(\"hello ezlog\");\n"
+"\n"
+"```"
+msgstr ""
+
+#: src/platform/rust.md:39
+msgid "see more examples in examples dir."
+msgstr "在examples文件夹中查看更多示例"
+
+#: src/benchmark.md:1
+msgid "# Benchmark"
+msgstr "# 性能"
+
+#: src/benchmark.md:3
+msgid "## Android Benchmark"
+msgstr "## Android平台性能测试"
+
+#: src/benchmark.md:5
+msgid "### measure log method"
+msgstr "### 单条日志格式"
+
+#: src/benchmark.md:7
+msgid ""
+"| Library | Time (ns) | Allocations |\n"
+"|---------|-----------|-------------|\n"
+"| logcat  | 2,427     | 7           |\n"
+"| logan   | 4,726     | 14          |\n"
+"| ezlog   | 8,404     | 7           |\n"
+"| xlog    | 12,459    | 7           |"
+msgstr ""
+"| Library | Time (ns) | Allocations |\n"
+"|---------|-----------|-------------|\n"
+"| logcat  | 2,427     | 7           |\n"
+"| logan   | 4,726     | 14          |\n"
+"| ezlog   | 8,404     | 7           |\n"
+"| xlog    | 12,459    | 7           |"
+
+#: src/benchmark.md:14
+msgid "### startup time"
+msgstr "### 启动时间"
+
+#: src/benchmark.md:16
+msgid "startup baseline"
+msgstr "启动时间基线"
+
+#: src/benchmark.md:17
+msgid ""
+"```\n"
+"min 206.4,   median 218.5,   max 251.9\n"
+"```"
+msgstr ""
+"```\n"
+"min 206.4,   median 218.5,   max 251.9\n"
+"```"
+
+#: src/benchmark.md:21
+msgid "startup with ezlog time:"
+msgstr "启动时初始化ezlog"
+
+#: src/benchmark.md:22
+msgid ""
+"```\n"
+"min 206.8,   median 216.6,   max 276.6\n"
+"```"
+msgstr ""
+"```\n"
+"min 206.8,   median 216.6,   max 276.6\n"
+"```"
+
+#: src/architecture.md:1
+msgid "# Architecture"
+msgstr "# 架构设计"
+
+#: src/architecture.md:3
+msgid "## Code structure"
+msgstr "## 代码结构"
+
+#: src/architecture.md:5
+msgid ""
+"```\n"
+"├── android\n"
+"│   ├── app # android demo app\n"
+"│   └── lib-ezlog # ezlog android library\n"
+"├── examples # Rust examples\n"
+"├── ezlog_flutter # Flutter plugin\n"
+"├── ezlog-cli # Rust command line tool\n"
+"├── ezlog-core # Rust core library\n"
+"├── ios\n"
+"│   ├── EZLog # ezlog iOS library\n"
+"│   ├── demo # iOS demo app\n"
+"│   └── framework # ezlog XCFramework\n"
+"```"
+msgstr ""
+
+#: src/architecture.md:19
+msgid "## Log file format"
+msgstr "## 日志文件格式"
+
+#: src/architecture.md:21
+msgid "### Header "
+msgstr "### 文件头"
+
+#: src/architecture.md:23
+msgid ""
+"| Bytes Offset | Meaning                            |\n"
+"|--------|------------------------------------------|\n"
+"| 0-1    | 'ez'                                     |\n"
+"| 2      | Version number                           |\n"
+"| 3      | Flag bits                                |\n"
+"| 4-7    | Offset of recorder position in bytes     |\n"
+"| 8-15   | Unix timestamp (big-endian)              |\n"
+"| 16     | Compression type                         |\n"
+"| 17     | Encryption type                          |\n"
+"| 18-21  | Encryption key hash                      |"
+msgstr ""
+"| 字节范围 | 内容                                     |\n"
+"|--------|------------------------------------------|\n"
+"| 0-1    | 'ez'固定字符                              |\n"
+"| 2      | 版本号                                    |\n"
+"| 3      | Flag位                                   |\n"
+"| 4-7    | 日志的当前下标                              |\n"
+"| 8-15   | Unix时间戳(大端)                          |\n"
+"| 16     | 压缩算法                                 |\n"
+"| 17     | 加密算法                                  |\n"
+"| 18-21  | 密钥哈希                                  |"
+
+#: src/architecture.md:34
+msgid "### Per log record"
+msgstr "### 单条日志格式"
+
+#: src/architecture.md:36
+msgid ""
+"| Byte Offset | Field Name| Description  |\n"
+"|----------|-----------|-----------------|\n"
+"| 0| Start Byte| Always 0x3b indicating the start|\n"
+"| 1-varint|Record Length| A variable-length integer that specifies the "
+"length|\n"
+"| varint+1-varint+n | Record Content | The actual log record content |\n"
+"| varint+n+1| End Byte| Always 0x21 indicating the start |"
+msgstr ""
+"|字节范围       |字段名称       | 描述            |\n"
+"|----------|-----------|-----------------|\n"
+"| 0| 开始标记| 0x3b|\n"
+"| 1-可变下标|日志长度| 描述日志内容长度的字节数|\n"
+"| 可变下标+1-可变下标+日志长度 | 日志内容 | 日志内容|\n"
+"| 可变下标+日志长度+1   | 结束标记 | 0x21|\n"
+
+#: src/architecture.md:43
+msgid "## Compression"
+msgstr "## 压缩算法"
+
+#: src/architecture.md:45
+msgid "We use zlib as the compression algorithm."
+msgstr "我们使用zlib作为默认压缩算法"
+
+#: src/architecture.md:47
+msgid "## Encryption"
+msgstr "## 加密算法"
+
+#: src/architecture.md:49
+msgid "### We use AES-GCM-SIV as the encryption algorithm."
+msgstr "### 我们使用AES-GCM-SIV作为默认加密算法"
+
+#: src/architecture.md:51
+msgid ""
+"AES-GCM-SIV, as a symmetric encryption algorithm, is more efficient compared "
+"to asymmetric encryption. As an AEAD, When compared to AES-CFB, it is more "
+"secure, and when compared to AES-GCM, AES-GCM-SIV is nonce-misuse-resistant."
+msgstr ""
+"AES-GCM-SIV 是一种对称加密算法，与非对称加密相比更高效。作为一种 AEAD 算法，"
+"与 AES-CFB 相比，它更安全；与 AES-GCM 相比，AES-GCM-SIV 具有抗重复口令攻击的"
+"特点。"
+
+#: src/architecture.md:53
+msgid "### Make nonce not repeat"
+msgstr "### 确保 nonce 不重复"
+
+#: src/architecture.md:55
+msgid ""
+"First of all, we need an init nonce, which is generated randomly when the "
+"logger is created. Then, we get the timestamp of the log file creation. When "
+"we write a log record, we know the current index of the log file, and we can "
+"calculate the nonce of the current log record by the following formula:"
+msgstr ""
+"首先，我们需要一个初始nonce，在创建记录器时随机生成。然后，我们获取日志文件创"
+"建时的时间戳。当我们写入日志记录时，我们知道当前日志文件的索引，并且我们可以"
+"使用以下公式计算当前日志记录的nonce："
+
+#: src/architecture.md:57
+msgid ""
+"```\n"
+"nonce = init_nonce ^ timestamp.extend(index)\n"
+"\n"
+"```"
+msgstr ""
+
+#: src/build.md:1
+msgid "# Build"
+msgstr "# 本地构建"
+
+#: src/build.md:3
+msgid "- install and config rust"
+msgstr "- 安装并配置 rust"
+
+#: src/build.md:5
+msgid ""
+"```shell\n"
+"curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh\n"
+"source $HOME/.cargo/env\n"
+"```"
+msgstr ""
+
+#: src/build.md:10
+msgid "- use rust nightly"
+msgstr "- 使用nightly版本的rust"
+
+#: src/build.md:12
+msgid ""
+"```shell\n"
+"rustup default nightly-2022-08-10\n"
+"```"
+msgstr ""
+
+#: src/build.md:16
+msgid ""
+"we use [build-std](https://doc.rust-lang.org/nightly/cargo/reference/"
+"unstable.html#build-std) feature, so add nightly src component"
+msgstr ""
+"我们使用 [build-std](https://doc.rust-lang.org/nightly/cargo/reference/"
+"unstable.html#build-std) 特性，所以需要添加 nightly src 组件"
+
+#: src/build.md:18
+msgid ""
+"```shell\n"
+"rustup component add rust-src --toolchain nightly-x86_64-apple-darwin\n"
+"```"
+msgstr ""
+
+#: src/build.md:22
+msgid "clone repository and open in command line tool. then run"
+msgstr "clone 仓库并在命令行工具中打开。然后运行"
+
+#: src/build.md:24
+msgid ""
+"```shell\n"
+"cargo check\n"
+"```"
+msgstr ""
+
+#: src/build.md:28
+msgid "wait crates download..."
+msgstr "等待依赖下载..."
+
+#: src/build.md:30
+msgid ""
+"```shell\n"
+"cargo build -p ezlog\n"
+"```"
+msgstr ""
+
+#: src/build.md:34
+msgid "## for Flutter build"
+msgstr "## Flutter 构建"
+
+#: src/build.md:36
+msgid ""
+"```dart\n"
+"flutter packages get\n"
+"\n"
+"flutter packages upgrade\n"
+"```"
+msgstr ""
+
+#: src/build.md:42
+msgid "## For android build"
+msgstr "## Android 构建"
+
+#: src/build.md:44
+msgid "- add android targets"
+msgstr "- 添加 android targets"
+
+#: src/build.md:46
+msgid ""
+"```shell\n"
+"rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-"
+"android x86_64-linux-android\n"
+"```"
+msgstr ""
+
+#: src/build.md:50
+msgid "we use `cargo-ndk` to build dylib"
+msgstr "我们使用 `cargo-ndk` 来构建 dylib"
+
+#: src/build.md:52
+msgid ""
+"```shell\n"
+"cargo install cargo-ndk\n"
+"```"
+msgstr ""
+
+#: src/build.md:56
+msgid "cd android"
+msgstr ""
+
+#: src/build.md:58
+msgid ""
+"```shell\n"
+"sh b_android.sh\n"
+"```"
+msgstr ""
+
+#: src/build.md:62
+msgid "then open current workspace in AndroidStudio"
+msgstr "然后在 AndroidStudio 中打开当前工作区"
+
+#: src/build.md:64
+msgid "## For iOS build"
+msgstr "## iOS 构建"
+
+#: src/build.md:66
+msgid "- add iOS targets"
+msgstr "- 添加 iOS targets"
+
+#: src/build.md:68
+msgid ""
+"```shell\n"
+"rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios\n"
+"```"
+msgstr ""
+
+#: src/build.md:73
+msgid "install `cbindgen`"
+msgstr "安装 `cbindgen`"
+
+#: src/build.md:75
+msgid ""
+"```shell\n"
+"cargo install --force cbindgen\n"
+"```"
+msgstr ""
+
+#: src/build.md:79
+msgid "cd ios dir"
+msgstr ""
+
+#: src/build.md:81
+msgid ""
+"```shell\n"
+"sh b_ios.sh\n"
+"```"
+msgstr ""
+
+#: src/build.md:85
+msgid "open the `ios/EZlog.xcworkspace` in Xcode"
+msgstr "在 Xcode 中打开 `ios/EZlog.xcworkspace`"
+
+#~ msgid "Example"
+#~ msgstr "示例"

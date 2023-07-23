@@ -1,0 +1,25 @@
+[book]
+authors = ["s1rius"]
+language = "en"
+multilingual = false
+src = "src"
+title = "ezlog documentation"
+
+[preprocessor.gettext]
+after = ["links"]
+
+[build]
+extra-watch-dirs = ["po"]
+
+[output.html]
+curly-quotes = true
+additional-css = ["language-picker.css"]
+site-url = "/ezlog/"
+git-repository-url = "https://github.com/s1rius/ezlog"
+
+[output.html.fold]
+enable = true
+level = 0
+
+[output.html.playground]
+line-numbers = true

@@ -1,1 +1,1 @@
-../README.md
+../docs/src/platform/rust.md
