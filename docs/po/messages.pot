@@ -1,0 +1,713 @@
+
+msgid ""
+msgstr ""
+"Project-Id-Version: ezlog documentation\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: en\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: src/SUMMARY.md:3
+msgid "Introduction"
+msgstr ""
+
+#: src/SUMMARY.md:5
+msgid "Quick Start"
+msgstr ""
+
+#: src/SUMMARY.md:7
+msgid "Flutter"
+msgstr ""
+
+#: src/SUMMARY.md:8
+msgid "Android"
+msgstr ""
+
+#: src/SUMMARY.md:9
+msgid "iOS"
+msgstr ""
+
+#: src/SUMMARY.md:10
+msgid "Rust"
+msgstr ""
+
+#: src/SUMMARY.md:12
+msgid "Benchmark"
+msgstr ""
+
+#: src/SUMMARY.md:14
+msgid "Architecture"
+msgstr ""
+
+#: src/SUMMARY.md:16
+msgid "Build"
+msgstr ""
+
+#: src/introduction.md:1
+msgid "# ezlog"
+msgstr ""
+
+#: src/introduction.md:3
+msgid "## What is ezlog?"
+msgstr ""
+
+#: src/introduction.md:5
+msgid "ezlog is a high-performance cross-platform file logging library."
+msgstr ""
+
+#: src/introduction.md:7
+msgid "It can be used in Flutter, Android, iOS, Windows, Linux, MacOS."
+msgstr ""
+
+#: src/introduction.md:9
+msgid ""
+"It is inspired by [Xlog](https://github.com/Tencent/mars) and "
+"[Logan](https://github.com/Meituan-Dianping/Logan), rewrite in Rust."
+msgstr ""
+
+#: src/introduction.md:11
+msgid "## Features"
+msgstr ""
+
+#: src/introduction.md:12
+msgid ""
+"- multi platform: Flutter, Android, iOS, Windows, Linux, MacOS\n"
+"- map file into memory by "
+"[mmap](https://man7.org/linux/man-pages/man2/mmap.2.html).\n"
+"- compression support, eg: [zlib](https://en.wikipedia.org/wiki/Zlib).\n"
+"- encryption support, eg: [AEAD "
+"encryption](https://en.wikipedia.org/wiki/Authenticated_encryption).\n"
+"- fetch log by callback.\n"
+"- trim out of date files.\n"
+"- command line parser support."
+msgstr ""
+
+#: src/introduction.md:20
+msgid "## License"
+msgstr ""
+
+#: src/introduction.md:22
+msgid ""
+"See [LICENSE-MIT](../../LICENSE-MIT), "
+"[LICENSE-APACHE](../../LICENSE-APACHE), "
+msgstr ""
+
+#: src/platform/flutter.md:1
+msgid "# Flutter ezlog"
+msgstr ""
+
+#: src/platform/flutter.md:3
+msgid "### Add ezlog_flutter as a dependency in your pubspec.yaml file."
+msgstr ""
+
+#: src/platform/flutter.md:5
+msgid ""
+"```yaml\n"
+"dependencies:\n"
+"  ezlog_flutter: ^0.2.0\n"
+"```"
+msgstr ""
+
+#: src/platform/flutter.md:10
+#: src/platform/rust.md:13
+msgid "### Example"
+msgstr ""
+
+#: src/platform/flutter.md:12
+msgid ""
+"```dart\n"
+"import 'dart:io';\n"
+"import 'package:flutter/material.dart';\n"
+"import 'dart:async';\n"
+"import 'package:ezlog_flutter/ezlog_flutter.dart';\n"
+"import 'package:path_provider/path_provider.dart';\n"
+"\n"
+"void main() {\n"
+"  runApp(const MyApp());\n"
+"}\n"
+"\n"
+"class MyApp extends StatefulWidget {\n"
+"  const MyApp({Key? key}) : super(key: key);\n"
+"\n"
+"  @override\n"
+"  State<MyApp> createState() => _MyAppState();\n"
+"}\n"
+"\n"
+"class _MyAppState extends State<MyApp> {\n"
+"\n"
+"  @override\n"
+"  void initState() {\n"
+"    super.initState();\n"
+"    initEZLog();\n"
+"  }\n"
+"\n"
+"  Future<void> initEZLog() async {\n"
+"    EZLog.init(true);\n"
+"    Directory appDocDir = await getApplicationSupportDirectory();\n"
+"    String logDir = '${appDocDir.path}/ezlog';\n"
+"\n"
+"    var logger = EZLogger.config(\n"
+"        EZLogConfig.plaintext(\"main\", Level.trace.id, logDir, 7));\n"
+"    \n"
+"    logger.d(\"init\", \"success\");\n"
+"\n"
+"    var logs = await EZLog.requestLogFilesForDate(\"main\", "
+"\"2022_08_25\");\n"
+"  }\n"
+"}\n"
+"```"
+msgstr ""
+
+#: src/platform/android.md:1
+msgid "# Android ezlog"
+msgstr ""
+
+#: src/platform/android.md:3
+msgid "### Add ezlog to dependencies"
+msgstr ""
+
+#: src/platform/android.md:5
+msgid "Open top-level `build.gradle`, add `mavenCentral` to repositories."
+msgstr ""
+
+#: src/platform/android.md:7
+msgid ""
+"```groovy\n"
+"buildscript {\n"
+"    repositories {\n"
+"        ...\n"
+"        mavenCentral()\n"
+"        ...\n"
+"    }\n"
+"}\n"
+"\n"
+"allprojects {\n"
+"    repositories {\n"
+"        ...\n"
+"        mavenCentral()\n"
+"        ...\n"
+"    }\n"
+"}\n"
+"```"
+msgstr ""
+
+#: src/platform/android.md:25
+msgid "Open app level `build.gradle`, add `ezlog`"
+msgstr ""
+
+#: src/platform/android.md:27
+msgid ""
+"```groovy\n"
+"dependencies {\n"
+"    implementation \"wtf.s1.ezlog:ezlog:0.1.7\"\n"
+"}\n"
+"```"
+msgstr ""
+
+#: src/platform/android.md:33
+msgid "Sync gradle"
+msgstr ""
+
+#: src/platform/android.md:35
+msgid "### Setup in application"
+msgstr ""
+
+#: src/platform/android.md:37
+msgid ""
+"```kotlin\n"
+"override fun onCreate() {\n"
+"    super.onCreate()\n"
+"\n"
+"    val path = File(filesDir, \"ezlog\").absolutePath\n"
+"    val config = EZLogConfig.Builder(\"demo\", path)\n"
+"        .compress(EZLog.CompressZlib)\n"
+"        .compressLevel(EZLog.CompressFast)\n"
+"        .cipher(EZLog.Aes128Gcm)\n"
+"        .cipherKey(\"a secret key!!!!\".toByteArray())\n"
+"        .cipherNonce(\"unique nonce\".toByteArray())\n"
+"        .enableTrace(BuildConfig.DEBUG)\n"
+"        .build()\n"
+"    EZLog.initWith(config)\n"
+"\n"
+"    EZLog.v(\"ezlog\", \"first blood\")\n"
+"\n"
+"    EZLog.registerCallback(object : Callback {\n"
+"        override fun onLogsFetchSuccess(\n"
+"            logName: String?,\n"
+"            date: String?,\n"
+"            logs: Array<out String>?\n"
+"        ) {\n"
+"            Log.i(\"ezlog\", \"$logName $date ${logs.contentToString()}\")\n"
+"            logs?.let {\n"
+"                logs.getOrNull(0)?.let { log ->\n"
+"                    Log.i(\"ezlog\", \"check file exists "
+"${File(log).exists()}\")\n"
+"                }\n"
+"            }\n"
+"        }\n"
+"\n"
+"        override fun onLogsFetchFail(logName: String?, date: String?, err: "
+"String?) {\n"
+"            Log.i(\"ezlog\", \"$logName $date $err\")\n"
+"        }\n"
+"    })\n"
+"}\n"
+"\n"
+"```"
+msgstr ""
+
+#: src/platform/ios.md:1
+msgid "# iOS ezlog"
+msgstr ""
+
+#: src/platform/ios.md:3
+msgid "### Add ezlog"
+msgstr ""
+
+#: src/platform/ios.md:5
+msgid "Add dependency to Podfile"
+msgstr ""
+
+#: src/platform/ios.md:7
+msgid ""
+"```shell\n"
+"pod 'EZLog', '~> 0.1'\n"
+"```"
+msgstr ""
+
+#: src/platform/ios.md:10
+msgid "then"
+msgstr ""
+
+#: src/platform/ios.md:12
+msgid ""
+"```shell\n"
+"pod update\n"
+"```"
+msgstr ""
+
+#: src/platform/ios.md:15
+msgid "### Open Xcode, add sample code"
+msgstr ""
+
+#: src/platform/ios.md:17
+msgid ""
+"```swift\n"
+"import EZLog\n"
+"\n"
+"init() {\n"
+"    pthread_setname_np(\"main\")\n"
+"    #if DEBUG\n"
+"    ezlogInitWithTrace()\n"
+"    #else\n"
+"    ezlogInit()\n"
+"    #endif\n"
+"    \n"
+"    let dirPath = "
+"URL.documents.appendingPathComponent(\"ezlog\").relativePath\n"
+"\n"
+"    let config = EZLogConfig(level: Level.trace,\n"
+"                                dirPath: dirPath,\n"
+"                                name: \"demo\",\n"
+"                                keepDays: 7,\n"
+"                                maxSize: 150*1024,\n"
+"                                compress: CompressKind.ZLIB,\n"
+"                                compressLevel: CompressLevel.DEFAULT,\n"
+"                                cipher: Cipher.AES128GCM,\n"
+"                                cipherKey: [UInt8](\"a secret "
+"key!!!!\".utf8),\n"
+"                                cipherNonce: [UInt8](\"unique "
+"nonce\".utf8))\n"
+"    let logger = EZLogger(config: config)\n"
+"\n"
+"    ezlogRegisterCallback(success: {name, date, logs in\n"
+"        if !logs.isEmpty {\n"
+"            for log in logs {\n"
+"                print(\"name:\" + name + \" date:\" + date + \" log:\" + "
+"log);\n"
+"            }\n"
+"        } else {\n"
+"            print(\"no log found at that time\")\n"
+"        }\n"
+"        \n"
+"    }, fail: {name, date, err in\n"
+"        print(\"name:\" + name + \" date:\" + date + \" err:\" + err);\n"
+"    })\n"
+"    \n"
+"    logger.debug(\"first blood\")\n"
+"}\n"
+"```"
+msgstr ""
+
+#: src/platform/ios.md:58
+msgid "click run and see console ouput."
+msgstr ""
+
+#: src/platform/rust.md:1
+msgid "# Rust ezlog"
+msgstr ""
+
+#: src/platform/rust.md:3
+msgid "### Usage"
+msgstr ""
+
+#: src/platform/rust.md:5
+msgid "Add this to your Cargo.toml"
+msgstr ""
+
+#: src/platform/rust.md:7
+msgid ""
+"```toml\n"
+"[dependencies]\n"
+"ezlog = \"0.2\"\n"
+"```"
+msgstr ""
+
+#: src/platform/rust.md:15
+msgid ""
+"```rust\n"
+"use ezlog::EZLogConfigBuilder;\n"
+"use ezlog::Level;\n"
+"use log::{error, info, warn};\n"
+"use log::{LevelFilter, Log};\n"
+"\n"
+"ezlog::InitBuilder::new().init();\n"
+"\n"
+"let config = EZLogConfigBuilder::new()\n"
+"        .level(Level::Trace)\n"
+"        .dir_path(\n"
+"            dirs::download_dir()\n"
+"                .unwrap()\n"
+"                .into_os_string()\n"
+"                .into_string()\n"
+"                .expect(\"dir path error\"),\n"
+"        )\n"
+"        .build();\n"
+"ezlog::create_log(config);\n"
+"\n"
+"info!(\"hello ezlog\");\n"
+"\n"
+"```"
+msgstr ""
+
+#: src/platform/rust.md:39
+msgid "see more examples in examples dir."
+msgstr ""
+
+#: src/benchmark.md:1
+msgid "# Benchmark"
+msgstr ""
+
+#: src/benchmark.md:3
+msgid "## Android Benchmark"
+msgstr ""
+
+#: src/benchmark.md:5
+msgid "### measure log method"
+msgstr ""
+
+#: src/benchmark.md:7
+msgid ""
+"| Library | Time (ns) | Allocations |\n"
+"|---------|-----------|-------------|\n"
+"| logcat  | 2,427     | 7           |\n"
+"| logan   | 4,726     | 14          |\n"
+"| ezlog   | 8,404     | 7           |\n"
+"| xlog    | 12,459    | 7           |"
+msgstr ""
+
+#: src/benchmark.md:14
+msgid "### startup time"
+msgstr ""
+
+#: src/benchmark.md:16
+msgid "startup baseline"
+msgstr ""
+
+#: src/benchmark.md:17
+msgid ""
+"```\n"
+"min 206.4,   median 218.5,   max 251.9\n"
+"```"
+msgstr ""
+
+#: src/benchmark.md:21
+msgid "startup with ezlog time:"
+msgstr ""
+
+#: src/benchmark.md:22
+msgid ""
+"```\n"
+"min 206.8,   median 216.6,   max 276.6\n"
+"```"
+msgstr ""
+
+#: src/architecture.md:1
+msgid "# Architecture"
+msgstr ""
+
+#: src/architecture.md:3
+msgid "## Code structure"
+msgstr ""
+
+#: src/architecture.md:5
+msgid ""
+"```\n"
+"├── android\n"
+"│   ├── app # android demo app\n"
+"│   └── lib-ezlog # ezlog android library\n"
+"├── examples # Rust examples\n"
+"├── ezlog_flutter # Flutter plugin\n"
+"├── ezlog-cli # Rust command line tool\n"
+"├── ezlog-core # Rust core library\n"
+"├── ios\n"
+"│   ├── EZLog # ezlog iOS library\n"
+"│   ├── demo # iOS demo app\n"
+"│   └── framework # ezlog XCFramework\n"
+"```"
+msgstr ""
+
+#: src/architecture.md:19
+msgid "## Log file format"
+msgstr ""
+
+#: src/architecture.md:21
+msgid "### Header "
+msgstr ""
+
+#: src/architecture.md:23
+msgid ""
+"| Bytes Offset | Meaning                            |\n"
+"|--------|------------------------------------------|\n"
+"| 0-1    | 'ez'                                     |\n"
+"| 2      | Version number                           |\n"
+"| 3      | Flag bits                                |\n"
+"| 4-7    | Offset of recorder position in bytes     |\n"
+"| 8-15   | Unix timestamp (big-endian)              |\n"
+"| 16     | Compression type                         |\n"
+"| 17     | Encryption type                          |\n"
+"| 18-21  | Encryption key hash                      |"
+msgstr ""
+
+#: src/architecture.md:34
+msgid "### Per log record"
+msgstr ""
+
+#: src/architecture.md:36
+msgid ""
+"| Byte Offset | Field Name| Description  |\n"
+"|----------|-----------|-----------------|\n"
+"| 0| Start Byte| Always 0x3b indicating the start|\n"
+"| 1-varint|Record Length| A variable-length integer that specifies the "
+"length|\n"
+"| varint+1-varint+n | Record Content | The actual log record content |\n"
+"| varint+n+1| End Byte| Always 0x21 indicating the start |"
+msgstr ""
+
+#: src/architecture.md:43
+msgid "## Compression"
+msgstr ""
+
+#: src/architecture.md:45
+msgid "We use zlib as the compression algorithm."
+msgstr ""
+
+#: src/architecture.md:47
+msgid "## Encryption"
+msgstr ""
+
+#: src/architecture.md:49
+msgid "### We use AES-GCM-SIV as the encryption algorithm."
+msgstr ""
+
+#: src/architecture.md:51
+msgid ""
+"AES-GCM-SIV, as a symmetric encryption algorithm, is more efficient compared "
+"to asymmetric encryption. As an AEAD, When compared to AES-CFB, it is more "
+"secure, and when compared to AES-GCM, AES-GCM-SIV is nonce-misuse-resistant."
+msgstr ""
+
+#: src/architecture.md:53
+msgid "### Make nonce not repeat"
+msgstr ""
+
+#: src/architecture.md:55
+msgid ""
+"First of all, we need an init nonce, which is generated randomly when the "
+"logger is created. Then, we get the timestamp of the log file creation. When "
+"we write a log record, we know the current index of the log file, and we can "
+"calculate the nonce of the current log record by the following formula:"
+msgstr ""
+
+#: src/architecture.md:57
+msgid ""
+"```\n"
+"nonce = init_nonce ^ timestamp.extend(index)\n"
+"\n"
+"```"
+msgstr ""
+
+#: src/build.md:1
+msgid "# Build"
+msgstr ""
+
+#: src/build.md:3
+msgid "- install and config rust"
+msgstr ""
+
+#: src/build.md:5
+msgid ""
+"```shell\n"
+"curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh\n"
+"source $HOME/.cargo/env\n"
+"```"
+msgstr ""
+
+#: src/build.md:10
+msgid "- use rust nightly"
+msgstr ""
+
+#: src/build.md:12
+msgid ""
+"```shell\n"
+"rustup default nightly-2022-08-10\n"
+"```"
+msgstr ""
+
+#: src/build.md:16
+msgid ""
+"we use "
+"[build-std](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#build-std) "
+"feature, so add nightly src component"
+msgstr ""
+
+#: src/build.md:18
+msgid ""
+"```shell\n"
+"rustup component add rust-src --toolchain nightly-x86_64-apple-darwin\n"
+"```"
+msgstr ""
+
+#: src/build.md:22
+msgid "clone repository and open in command line tool. then run"
+msgstr ""
+
+#: src/build.md:24
+msgid ""
+"```shell\n"
+"cargo check\n"
+"```"
+msgstr ""
+
+#: src/build.md:28
+msgid "wait crates download..."
+msgstr ""
+
+#: src/build.md:30
+msgid ""
+"```shell\n"
+"cargo build -p ezlog\n"
+"```"
+msgstr ""
+
+#: src/build.md:34
+msgid "## for Flutter build"
+msgstr ""
+
+#: src/build.md:36
+msgid ""
+"```dart\n"
+"flutter packages get\n"
+"\n"
+"flutter packages upgrade\n"
+"```"
+msgstr ""
+
+#: src/build.md:42
+msgid "## For android build"
+msgstr ""
+
+#: src/build.md:44
+msgid "- add android targets"
+msgstr ""
+
+#: src/build.md:46
+msgid ""
+"```shell\n"
+"rustup target add aarch64-linux-android armv7-linux-androideabi "
+"i686-linux-android x86_64-linux-android\n"
+"```"
+msgstr ""
+
+#: src/build.md:50
+msgid "we use `cargo-ndk` to build dylib"
+msgstr ""
+
+#: src/build.md:52
+msgid ""
+"```shell\n"
+"cargo install cargo-ndk\n"
+"```"
+msgstr ""
+
+#: src/build.md:56
+msgid "cd android"
+msgstr ""
+
+#: src/build.md:58
+msgid ""
+"```shell\n"
+"sh b_android.sh\n"
+"```"
+msgstr ""
+
+#: src/build.md:62
+msgid "then open current workspace in AndroidStudio"
+msgstr ""
+
+#: src/build.md:64
+msgid "## For iOS build"
+msgstr ""
+
+#: src/build.md:66
+msgid "- add iOS targets"
+msgstr ""
+
+#: src/build.md:68
+msgid ""
+"```shell\n"
+"rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios\n"
+"```"
+msgstr ""
+
+#: src/build.md:73
+msgid "install `cbindgen`"
+msgstr ""
+
+#: src/build.md:75
+msgid ""
+"```shell\n"
+"cargo install --force cbindgen\n"
+"```"
+msgstr ""
+
+#: src/build.md:79
+msgid "cd ios dir"
+msgstr ""
+
+#: src/build.md:81
+msgid ""
+"```shell\n"
+"sh b_ios.sh\n"
+"```"
+msgstr ""
+
+#: src/build.md:85
+msgid "open the `ios/EZlog.xcworkspace` in Xcode"
+msgstr ""
+

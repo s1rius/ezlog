@@ -1,0 +1,23 @@
+@import 'css/variables.css';
+
+#language-list {
+  left: 100px;
+  right: auto;
+}
+
+#language-list a {
+  color: inherit;
+}
+
+.ic_language {
+    vertical-align: middle;
+}
+
+.ic_language svg {
+    fill: var(--icons);
+}
+
+.ic_language:hover svg path {
+    border-color: var(--icons-hover);
+    fill: var(--icons-hover);
+}

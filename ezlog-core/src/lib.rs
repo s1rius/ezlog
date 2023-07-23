@@ -1,6 +1,46 @@
 #![warn(clippy::unwrap_used)]
 #![warn(clippy::expect_used)]
-#![doc = include_str!("../README.md")]
+
+//! ezlog is a high efficiency cross-platform logging library.
+//! 
+//! It is inspired by [Xlog](https://github.com/Tencent/mars) and [Loagan](https://github.com/Meituan-Dianping/Logan), rewrite in Rust.
+//! 
+//! Guide level documentation is found on the [website](https://s1rius.github.io/ezlog).
+//! 
+//! ## Features
+//! - multi platform: Flutter, Android, iOS, Windows, Linux, MacOS
+//! - map file into memory by [mmap](https://man7.org/linux/man-pages/man2/mmap.2.html).
+//! - compression support, eg: [zlib](https://en.wikipedia.org/wiki/Zlib).
+//! - encryption support, eg: [AEAD encryption](https://en.wikipedia.org/wiki/Authenticated_encryption).
+//! - fetch log by callback.
+//! - trim out of date files.
+//! - command line parser support.
+//! 
+//! ## example
+//! 
+//! ```
+//! use ezlog::EZLogConfigBuilder;
+//! use ezlog::Level;
+//! use log::trace;
+//! 
+//! 
+//! ezlog::InitBuilder::new().debug(true).init();
+//! 
+//! let config: ezlog::EZLogConfig = EZLogConfigBuilder::new()
+//!     .level(Level::Trace)
+//!     .dir_path(
+//!         dirs::cache_dir()
+//!             .unwrap()
+//!             .into_os_string()
+//!             .into_string()
+//!             .expect("dir path error"),
+//!     )
+//!     .build();
+//! ezlog::create_log(config);
+//! 
+//! trace!("hello ezlog");
+//! ```
+//! 
 
 mod appender;
 mod compress;
