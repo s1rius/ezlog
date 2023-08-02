@@ -88,8 +88,8 @@ public func trim() {
     ezlog_trim()
 }
 
-public func requestLogsForDate(logName: String, date: String) {
-    ezlog_request_log_files_for_date(logName, date)
+public func requestLogsForDate(logName: String, start: Int64, end: Int64) {
+    ezlog_request_log_files_for_date(logName, start, end)
 }
 
 private class WrapClosure<T> {

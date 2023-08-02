@@ -98,9 +98,9 @@ public class SwiftEzlogFlutterPlugin: NSObject, FlutterPlugin {
             }
             let arguments = call.arguments as? [String: Any] ?? [String: Any]()
             let logName = arguments["logName"] as? String ?? ""
-            let date = arguments["date"] as? String ?? ""
+            let date = arguments["date"] as? Int64 ?? 0
             resultDict[logName] = result
-            requestLogsForDate(logName:logName, date:date)
+            requestLogsForDate(logName:logName, start:date, end:date)
             break
         case "trim":
             trim()

@@ -18,7 +18,7 @@ class EZLog {
   }
 
   static Future<List<Object?>?> requestLogFilesForDate(
-      String name, String date) {
+      String name, DateTime date) {
     return EZLogFlutterPlatform.instance.requestLogFilesForDate(name, date);
   }
 

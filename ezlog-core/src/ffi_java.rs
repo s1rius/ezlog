@@ -3,10 +3,11 @@ use std::sync::Arc;
 use crate::errors::LogError;
 use crate::events::Event::{self, *};
 use crate::{
-    event, set_boxed_callback, thread_name, CipherKind, CompressKind,
-    CompressLevel, EZLogConfigBuilder, EZRecordBuilder, Level,
+    event, set_boxed_callback, thread_name, CipherKind, CompressKind, CompressLevel,
+    EZLogConfigBuilder, EZRecordBuilder, Level,
 };
 use jni::objects::{JByteArray, JObjectArray, JValueGen};
+use jni::sys::jlong;
 use jni::{
     errors::JniError,
     objects::{GlobalRef, JClass, JObject, JString, JValue},
@@ -16,7 +17,7 @@ use jni::{
 };
 use libc::c_void;
 use once_cell::sync::OnceCell;
-use time::Duration;
+use time::{Duration, OffsetDateTime};
 
 static JVM: OnceCell<Arc<JavaVM>> = OnceCell::new();
 
@@ -186,19 +187,36 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeRequestLogFilesForDate(
     mut env: JNIEnv,
     _: JClass,
     j_log_name: JString,
-    j_date: JString,
+    j_start: jlong,
+    j_end: jlong,
 ) {
     let log_name: String = env
         .get_string(&j_log_name)
         .map(|name| name.into())
         .unwrap_or_default();
 
-    let date: String = env
-        .get_string(&j_date)
-        .map(|jstr| jstr.into())
-        .unwrap_or_default();
+    let start = match OffsetDateTime::from_unix_timestamp_nanos((j_start as i128) * 1_000_000) {
+        Ok(time) => time,
+        Err(_) => {
+            event!(
+                Event::RequestLogError,
+                &format!("start time illegal {}", j_start)
+            );
+            return;
+        }
+    };
+    let end = match OffsetDateTime::from_unix_timestamp_nanos((j_end as i128) * 1_000_000) {
+        Ok(time) => time,
+        Err(_) => {
+            event!(
+                Event::RequestLogError,
+                &format!("end time illegal {}", j_end)
+            );
+            return;
+        }
+    };
 
-    crate::request_log_files_for_date(&log_name, &date);
+    crate::request_log_files_for_date(&log_name, start, end);
 }
 
 struct AndroidCallback {

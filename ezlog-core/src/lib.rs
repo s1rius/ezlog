@@ -2,11 +2,11 @@
 #![warn(clippy::expect_used)]
 
 //! ezlog is a high efficiency cross-platform logging library.
-//! 
+//!
 //! It is inspired by [Xlog](https://github.com/Tencent/mars) and [Loagan](https://github.com/Meituan-Dianping/Logan), rewrite in Rust.
-//! 
+//!
 //! Guide level documentation is found on the [website](https://s1rius.github.io/ezlog).
-//! 
+//!
 //! ## Features
 //! - multi platform: Flutter, Android, iOS, Windows, Linux, MacOS
 //! - map file into memory by [mmap](https://man7.org/linux/man-pages/man2/mmap.2.html).
@@ -15,17 +15,17 @@
 //! - fetch log by callback.
 //! - trim out of date files.
 //! - command line parser support.
-//! 
+//!
 //! ## example
-//! 
+//!
 //! ```
 //! use ezlog::EZLogConfigBuilder;
 //! use ezlog::Level;
 //! use log::trace;
-//! 
-//! 
+//!
+//!
 //! ezlog::InitBuilder::new().debug(true).init();
-//! 
+//!
 //! let config: ezlog::EZLogConfig = EZLogConfigBuilder::new()
 //!     .level(Level::Trace)
 //!     .dir_path(
@@ -37,10 +37,10 @@
 //!     )
 //!     .build();
 //! ezlog::create_log(config);
-//! 
+//!
 //! trace!("hello ezlog");
 //! ```
-//! 
+//!
 
 mod appender;
 mod compress;
@@ -81,6 +81,7 @@ pub(crate) use self::events::event;
 
 use crossbeam_channel::{Sender, TrySendError};
 use memmap2::MmapMut;
+use time::Duration;
 use time::OffsetDateTime;
 
 use std::error::Error;
@@ -330,57 +331,41 @@ fn init_log_channel() -> Sender<EZMsg> {
                                 event!(
                                     Event::RequestLog,
                                     "fetchLog",
-                                    &LogError::Illegal(format!(
-                                        "no logger found {}",
-                                        task.name
-                                    ))
+                                    &LogError::Illegal(format!("no logger found {}", task.name))
                                 );
                                 continue;
                             }
                         };
-                        match config::parse_date_from_str(
-                            &task.date,
-                            "date format error in fetch logs",
-                        ) {
-                            Ok(date) => {
-                                let now = OffsetDateTime::now_utc();
-                                if now.year() == date.year()
-                                    && now.month() == date.month()
-                                    && now.day() == date.day()
-                                {
-                                    logger
-                                        .rotate_if_not_empty()
-                                        .map_err(|e| {
-                                            event!(
-                                                Event::RotateFileError,
-                                                "logger rorate error ",
-                                                &e
-                                            )
-                                        })
-                                        .ok();
-                                }
 
-                                let logs = logger.query_log_files_for_date(date);
-                                task.task_sender
-                                    .try_send(FetchResult {
-                                        name: task.name,
-                                        date: task.date,
-                                        logs: Some(logs),
-                                        error: None,
-                                    })
-                                    .unwrap_or_else(ffi_err_handle);
-                            }
-                            Err(e) => {
-                                task.task_sender
-                                    .try_send(FetchResult {
-                                        name: task.name,
-                                        date: task.date,
-                                        logs: None,
-                                        error: Some(e.to_string()),
-                                    })
-                                    .unwrap_or_else(ffi_err_handle);
-                            }
+                        let now = OffsetDateTime::now_utc();
+                        if (now < task.end || now < task.start + Duration::days(1))
+                            && now > task.start
+                        {
+                            logger
+                                .rotate_if_not_empty()
+                                .map_err(|e| {
+                                    event!(Event::RotateFileError, "logger rorate error ", &e)
+                                })
+                                .ok();
                         }
+
+                        let mut logs: Vec<PathBuf> = Vec::new();
+
+                        let days = (task.end - task.start).whole_days();
+                        for day in 0..=days {
+                            let mut query =
+                                logger.query_log_files_for_date(task.start + Duration::days(day));
+                            logs.append(&mut query);
+                        }
+
+                        task.task_sender
+                            .try_send(FetchResult {
+                                name: task.name,
+                                date: task.start.date().to_string(),
+                                logs: Some(logs),
+                                error: None,
+                            })
+                            .unwrap_or_else(ffi_err_handle);
                     }
                 },
                 Err(err) => {
@@ -457,7 +442,7 @@ pub fn flush_all() {
 }
 
 /// Request logs file path array at the date which [EZLogger]'s name is define in the parameter
-pub fn request_log_files_for_date(log_name: &str, date_str: &str) {
+pub fn request_log_files_for_date(log_name: &str, start: OffsetDateTime, end: OffsetDateTime) {
     let sender = match get_fetch_sender() {
         Ok(sender) => sender,
         Err(e) => {
@@ -467,7 +452,8 @@ pub fn request_log_files_for_date(log_name: &str, date_str: &str) {
     };
     let msg = FetchReq {
         name: log_name.to_string(),
-        date: date_str.to_string(),
+        start,
+        end,
         task_sender: sender.clone(),
     };
 
@@ -582,6 +568,29 @@ impl EZLogCallback for NopCallback {
     fn on_fetch_fail(&self, _name: &str, _date: &str, _err: &str) {}
 }
 
+type SuccessCallback = Box<dyn Fn(&str, &str, &[&str])>;
+type FailCallback = Box<dyn Fn(&str, &str, &str)>;
+
+#[allow(dead_code)]
+fn set_callback_fn(success: SuccessCallback, fail: FailCallback) {
+    set_boxed_callback(Box::new(EZLogCallbackFn { success, fail }))
+}
+
+struct EZLogCallbackFn {
+    success: SuccessCallback,
+    fail: FailCallback,
+}
+
+impl EZLogCallback for EZLogCallbackFn {
+    fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
+        (self.success)(name, date, logs)
+    }
+
+    fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
+        (self.fail)(name, date, err)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum EZMsg {
     CreateLogger(EZLogConfig),
@@ -600,7 +609,8 @@ pub enum EZMsg {
 #[derive(Debug, Clone)]
 pub struct FetchReq {
     name: String,
-    date: String,
+    start: OffsetDateTime,
+    end: OffsetDateTime,
     task_sender: Sender<FetchResult>,
 }
 
@@ -903,6 +913,7 @@ mod tests {
     use crate::recorder::EZRecordBuilder;
     use flate2::{bufread::ZlibDecoder, write::ZlibEncoder, Compression};
     use std::io::{Read, Write};
+    use time::OffsetDateTime;
 
     use crate::Header;
     use crate::{
@@ -910,42 +921,10 @@ mod tests {
     };
 
     #[cfg(feature = "decode")]
-    use crate::decode;
-    #[cfg(feature = "decode")]
-    use crate::EZLogger;
-    #[cfg(feature = "decode")]
     use aead::{Aead, KeyInit};
-    #[cfg(feature = "decode")]
-    use std::io::Cursor;
 
     fn create_config() -> EZLogConfig {
         EZLogConfig::default()
-    }
-
-    #[cfg(feature = "decode")]
-    fn create_all_feature_config() -> EZLogConfig {
-        use crate::CipherKind;
-        use crate::CompressKind;
-
-        let key = b"an example very very secret key.";
-        let nonce = b"unique nonce";
-        EZLogConfigBuilder::new()
-            .dir_path(
-                dirs::cache_dir()
-                    .unwrap()
-                    .join("ezlog_test")
-                    .into_os_string()
-                    .into_string()
-                    .unwrap(),
-            )
-            .name(String::from("all_feature"))
-            .file_suffix(String::from("mmap"))
-            .max_size(150 * 1024)
-            .compress(CompressKind::ZLIB)
-            .cipher(CipherKind::AES256GCMSIV)
-            .cipher_key(key.to_vec())
-            .cipher_nonce(nonce.to_vec())
-            .build()
     }
 
     #[test]
@@ -1009,15 +988,6 @@ mod tests {
         create_config();
     }
 
-    #[cfg(feature = "decode")]
-    #[test]
-    fn test_record_len() {
-        let chunk = EZLogger::create_size_chunk(1000).unwrap();
-        let mut cursor = Cursor::new(chunk);
-        let size = decode::decode_record_size(&mut cursor, &crate::Version::V2).unwrap();
-        assert_eq!(1000, size)
-    }
-
     #[test]
     fn test_record_truncks() {
         let config = EZLogConfigBuilder::new().max_size(6).build();
@@ -1028,59 +998,38 @@ mod tests {
         assert_eq!(trunks[1].content(), "圳");
     }
 
-    #[cfg(feature = "decode")]
     #[test]
-    fn teset_encode_decode_trunk() {
-        let vec = "hello world".as_bytes();
-        let encode = EZLogger::encode_content(vec.to_owned()).unwrap();
-        let mut cursor = Cursor::new(encode);
-        let decode = decode::decode_record_to_content(&mut cursor, &crate::Version::V2).unwrap();
-        assert_eq!(vec, decode)
-    }
+    fn test_request_logs() {
+        let mut cache_dir = dirs::cache_dir().unwrap();
+        cache_dir.push("test");
+        std::fs::create_dir_all(&cache_dir).unwrap();
+        let dir_clone = cache_dir.clone();
+        crate::InitBuilder::new().debug(true).init();
+        let config = EZLogConfigBuilder::new()
+            .dir_path(cache_dir.into_os_string().into_string().unwrap())
+            .name("test".to_owned())
+            .build();
+        crate::create_log(config);
 
-    #[cfg(feature = "decode")]
-    #[test]
-    fn teset_encode_decode_file() {
-        use crate::EZLogger;
-        use std::fs;
-        use std::io::BufReader;
-
-        let config = create_all_feature_config();
-        fs::remove_dir_all(&config.dir_path).unwrap_or_default();
-        let mut logger = EZLogger::new(config.clone()).unwrap();
-
-        let log_count = 10;
-        for i in 0..log_count {
-            logger
-                .append(
-                    &EZRecordBuilder::default()
-                        .content(format!("hello world {}", i))
-                        .build(),
-                )
-                .unwrap();
-        }
-        logger.flush().unwrap();
-
-        let (path, _mmap) = &config.create_mmap_file().unwrap();
-        let file = fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(&path)
-            .unwrap();
-        let mut buf = Vec::<u8>::new();
-        let mut reader = BufReader::new(file);
-        reader.read_to_end(&mut buf).unwrap();
-        let mut cursor = Cursor::new(buf);
-        let mut header = Header::decode(&mut cursor).unwrap();
-        header.recorder_position = header.length().try_into().unwrap();
-        let mut new_header = Header::create(&logger.config);
-        new_header.timestamp = header.timestamp.clone();
-        new_header.rotate_time = header.rotate_time.clone();
-        new_header.recorder_position = Header::length_compat(&config.version) as u32;
-        assert_eq!(header, new_header);
-        let count = decode::decode_logs_count(&mut logger, &mut cursor, &header).unwrap();
-        assert_eq!(count, log_count);
-        fs::remove_dir_all(&config.dir_path).unwrap_or_default();
+        crate::log(
+            EZRecordBuilder::new()
+                .log_name("test".to_owned())
+                .content("test log".to_string())
+                .build(),
+        );
+        let (tx, tv) = crossbeam_channel::bounded::<usize>(1);
+        let success_call: Box<dyn Fn(&str, &str, &[&str])> =
+            Box::new(move |_name, _datee, logs| {
+                tx.send(logs.len()).unwrap();
+            });
+        crate::set_callback_fn(success_call, Box::new(|_name, _date, _err| {}));
+        crate::request_log_files_for_date(
+            "test",
+            OffsetDateTime::now_utc(),
+            OffsetDateTime::now_utc(),
+        );
+        let count = tv.recv().unwrap();
+        std::fs::remove_dir_all(dir_clone).unwrap();
+        assert!(count == 1)
     }
 }

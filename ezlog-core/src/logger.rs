@@ -15,12 +15,31 @@ use crate::{
 use crate::{errors, event, NonceGenFn, V1_LOG_HEADER_SIZE};
 use crate::{Version, V2_LOG_HEADER_SIZE};
 use byteorder::ReadBytesExt;
-use time::{Date, OffsetDateTime};
+use time::OffsetDateTime;
 
 #[cfg(feature = "decode")]
 use crate::crypto::{Aes128Gcm, Aes256Gcm};
 
 type Result<T> = std::result::Result<T, LogError>;
+
+#[inline]
+pub(crate) fn create_size_chunk(size: usize) -> Result<Vec<u8>> {
+    let mut chunk: Vec<u8> = Vec::new();
+    chunk.write_varint(size)?;
+    Ok(chunk)
+}
+
+#[inline]
+pub(crate) fn encode_content(mut buf: Vec<u8>) -> Result<Vec<u8>> {
+    let mut chunk: Vec<u8> = Vec::new();
+    chunk.push(RECORD_SIGNATURE_START);
+    let size = buf.len();
+    let mut size_chunk = create_size_chunk(size)?;
+    chunk.append(&mut size_chunk);
+    chunk.append(&mut buf);
+    chunk.push(RECORD_SIGNATURE_END);
+    Ok(chunk)
+}
 
 pub struct EZLogger {
     pub(crate) config: Rc<EZLogConfig>,
@@ -178,26 +197,7 @@ impl EZLogger {
     #[inline]
     pub fn encode_as_block(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
         let buf = self.encode(record)?;
-        Self::encode_content(buf)
-    }
-
-    #[inline]
-    pub(crate) fn encode_content(mut buf: Vec<u8>) -> Result<Vec<u8>> {
-        let mut chunk: Vec<u8> = Vec::new();
-        chunk.push(RECORD_SIGNATURE_START);
-        let size = buf.len();
-        let mut size_chunk = Self::create_size_chunk(size)?;
-        chunk.append(&mut size_chunk);
-        chunk.append(&mut buf);
-        chunk.push(RECORD_SIGNATURE_END);
-        Ok(chunk)
-    }
-
-    #[inline]
-    pub(crate) fn create_size_chunk(size: usize) -> Result<Vec<u8>> {
-        let mut chunk: Vec<u8> = Vec::new();
-        chunk.write_varint(size)?;
-        Ok(chunk)
+        encode_content(buf)
     }
 
     fn format(&self, record: &EZRecord) -> Result<Vec<u8>> {
@@ -243,12 +243,17 @@ impl EZLogger {
         }
     }
 
-    pub fn query_log_files_for_date(&self, date: Date) -> Vec<PathBuf> {
+    pub fn query_log_files_for_date(&self, date: OffsetDateTime) -> Vec<PathBuf> {
         self.config.query_log_files_for_date(date)
     }
 
     pub(crate) fn rotate_if_not_empty(&mut self) -> Result<()> {
-        if self.appender.inner.header().is_empty() {
+        if self
+            .appender
+            .inner
+            .header()
+            .has_record_exclude_extra(&self.config)
+        {
             self.appender.rotate()
         } else {
             Ok(())
@@ -474,6 +479,18 @@ impl Header {
 
     pub fn has_record(&self) -> bool {
         self.recorder_position > self.length() as u32
+    }
+
+    pub fn has_record_exclude_extra(&self, config: &EZLogConfig) -> bool {
+        let extra_len = match &config.extra {
+            Some(e) => {
+                let record = Vec::from(e.to_owned());
+                encode_content(record).map(|r| r.len()).unwrap_or(0)
+            }
+            None => 0,
+        };
+        // extra write as record
+        self.recorder_position > (self.length() + extra_len) as u32
     }
 
     pub fn version(&self) -> &Version {

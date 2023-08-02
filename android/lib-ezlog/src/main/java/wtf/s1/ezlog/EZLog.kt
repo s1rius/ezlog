@@ -138,14 +138,8 @@ object EZLog {
     }
 
     @JvmStatic
-    @Deprecated("use EZLog.requestLogFilesForDate instead", ReplaceWith("requestLogFilesForDate"))
-    fun _requestLogFilesForDate(logName: String, date: String) {
-        requestLogFilesForDate(logName, date)
-    }
-
-    @JvmStatic
-    fun requestLogFilesForDate(logName: String, date: String) {
-        nativeRequestLogFilesForDate(logName, date)
+    fun requestLogFilesForDate(logName: String, start: Long, end: Long) {
+        nativeRequestLogFilesForDate(logName, start, end)
     }
 
     @JvmStatic
@@ -156,9 +150,7 @@ object EZLog {
 
     @JvmStatic
     fun requestLogFilesForDate(logName: String, date: Date) {
-        val formatter = SimpleDateFormat("yyyy_MM_dd", Locale.getDefault())
-        formatter.timeZone = TimeZone.getTimeZone("UTC")
-        nativeRequestLogFilesForDate(logName, formatter.format(date))
+        requestLogFilesForDate(logName, date.time, date.time)
     }
 
     /**
@@ -304,9 +296,10 @@ object EZLog {
 
     /**
      * @param logName target log name
-     * @param date    target log date
+     * @param startTimestamp log create after the time
+     * @param endTimeStamp log create before the time
      */
-    private external fun nativeRequestLogFilesForDate(logName: String, date: String)
+    private external fun nativeRequestLogFilesForDate(logName: String, startTimestamp: Long, endTimeStamp: Long)
 
     /**
      * trim log files

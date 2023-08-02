@@ -47,8 +47,8 @@ pub trait AppenderInner: Write {
                 if extra.is_empty() {
                     return Ok(());
                 }
-                let content = logger::EZLogger::encode_content((extra.as_bytes()).to_vec())
-                    .unwrap_or_default();
+                let content =
+                    logger::encode_content((extra.as_bytes()).to_vec()).unwrap_or_default();
                 self.write_all(&content)?;
             }
         }

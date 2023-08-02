@@ -133,10 +133,7 @@ pub(crate) fn decode_record_size(mut reader: &mut dyn BufRead, version: &Version
             let size: usize = reader.read_varint()?;
             Ok(size)
         }
-        Version::UNKNOWN => Err(LogError::Illegal(format!(
-            "unknow version {:?}",
-            version
-        ))),
+        Version::UNKNOWN => Err(LogError::Illegal(format!("unknow version {:?}", version))),
     }
 }
 
@@ -169,4 +166,103 @@ pub fn decode_record_content(
     }
 
     Ok(buf)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::decode::decode_logs_count;
+    use crate::{decode, EZLogger, EZRecordBuilder, Header};
+    use std::fs;
+    use std::io::{BufReader, Cursor, Read};
+
+    #[cfg(feature = "decode")]
+    fn create_all_feature_config() -> crate::EZLogConfig {
+        use crate::CipherKind;
+        use crate::CompressKind;
+
+        let key = b"an example very very secret key.";
+        let nonce = b"unique nonce";
+        crate::EZLogConfigBuilder::new()
+            .dir_path(
+                dirs::cache_dir()
+                    .unwrap()
+                    .join("ezlog_test")
+                    .into_os_string()
+                    .into_string()
+                    .unwrap(),
+            )
+            .name(String::from("all_feature"))
+            .file_suffix(String::from("mmap"))
+            .max_size(150 * 1024)
+            .compress(CompressKind::ZLIB)
+            .cipher(CipherKind::AES256GCMSIV)
+            .cipher_key(key.to_vec())
+            .cipher_nonce(nonce.to_vec())
+            .build()
+    }
+
+    #[cfg(feature = "decode")]
+    #[test]
+    fn test_record_len() {
+        use crate::logger::create_size_chunk;
+
+        let chunk = create_size_chunk(1000).unwrap();
+        let mut cursor = Cursor::new(chunk);
+        let size = decode::decode_record_size(&mut cursor, &crate::Version::V2).unwrap();
+        assert_eq!(1000, size)
+    }
+
+    #[cfg(feature = "decode")]
+    #[test]
+    fn teset_encode_decode_trunk() {
+        use crate::logger::encode_content;
+
+        let vec = "hello world".as_bytes();
+        let encode = encode_content(vec.to_owned()).unwrap();
+        let mut cursor = Cursor::new(encode);
+        let decode = decode::decode_record_to_content(&mut cursor, &crate::Version::V2).unwrap();
+        assert_eq!(vec, decode)
+    }
+
+    #[cfg(feature = "decode")]
+    #[test]
+    fn teset_encode_decode_file() {
+        let config = create_all_feature_config();
+        fs::remove_dir_all(&config.dir_path).unwrap_or_default();
+        let mut logger = EZLogger::new(config.clone()).unwrap();
+
+        let log_count = 10;
+        for i in 0..log_count {
+            logger
+                .append(
+                    &EZRecordBuilder::default()
+                        .content(format!("hello world {}", i))
+                        .build(),
+                )
+                .unwrap();
+        }
+        logger.flush().unwrap();
+
+        let (path, _mmap) = &config.create_mmap_file().unwrap();
+        let file = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(&path)
+            .unwrap();
+        let mut buf = Vec::<u8>::new();
+        let mut reader = BufReader::new(file);
+        reader.read_to_end(&mut buf).unwrap();
+        let mut cursor = Cursor::new(buf);
+        let mut header = Header::decode(&mut cursor).unwrap();
+        header.recorder_position = header.length().try_into().unwrap();
+        let mut new_header = Header::create(&logger.config);
+        new_header.timestamp = header.timestamp.clone();
+        new_header.rotate_time = header.rotate_time.clone();
+        new_header.recorder_position = Header::length_compat(&config.version) as u32;
+        assert_eq!(header, new_header);
+        let count = decode_logs_count(&mut logger, &mut cursor, &header).unwrap();
+        assert_eq!(count, log_count);
+        fs::remove_dir_all(&config.dir_path).unwrap_or_default();
+    }
 }

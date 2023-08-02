@@ -201,18 +201,18 @@ impl InitBuilder {
         crate::LOG_SERVICE_INIT.call_once(|| unsafe {
             hook_panic();
             #[cfg(all(target_os = "android", feature = "android_logger"))]
-            if self.debug {                
-                    android_logger::init_once(
-                        android_logger::Config::default()
-                            .with_max_level(log::LevelFilter::Trace)
-                            .with_log_buffer(android_logger::LogId::Main),
-                    );
+            if self.debug {
+                android_logger::init_once(
+                    android_logger::Config::default()
+                        .with_max_level(log::LevelFilter::Trace)
+                        .with_log_buffer(android_logger::LogId::Main),
+                );
             }
-            
+
             // if debug, set a default event listener
-            if self.debug && self.listener.is_none(){
+            if self.debug && self.listener.is_none() {
                 static EVENT: EventPrinter = EventPrinter {};
-                crate::set_event_listener(&EVENT);    
+                crate::set_event_listener(&EVENT);
             }
 
             if let Some(listener) = self.listener {

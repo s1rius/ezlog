@@ -56,7 +56,7 @@ abstract class EZLogFlutterPlatform extends PlatformInterface {
     throw UnimplementedError('flush() has not been implemented.');
   }
 
-  Future<List<Object?>?> requestLogFilesForDate(String name, String date) {
+  Future<List<Object?>?> requestLogFilesForDate(String name, DateTime date) {
     throw UnimplementedError(
         'requestLogFilesForDate() has not been implemented.');
   }

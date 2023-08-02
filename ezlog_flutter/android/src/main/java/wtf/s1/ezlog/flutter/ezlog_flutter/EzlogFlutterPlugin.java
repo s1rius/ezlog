@@ -88,10 +88,10 @@ public class EzlogFlutterPlugin implements FlutterPlugin, MethodCallHandler {
             }
             case "requestLogFilesForDate": {
                 String name = argumentOrDefault(call, "logName", "");
-                String date = argumentOrDefault(call, "date", "");
+                long date = argumentOrDefault(call, "date", 0l);
                 resultHolder.update(name, result);
                 resultHolder.bind();
-                EZLog.requestLogFilesForDate(name, date);
+                EZLog.requestLogFilesForDate(name, date, date);
                 break;
             }
             case "flushAll":

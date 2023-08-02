@@ -1,6 +1,7 @@
 use ezlog::Event;
 use ezlog::LogError;
 use ezlog::{EZLogConfigBuilder, EZRecord};
+use time::OffsetDateTime;
 
 #[test]
 fn test_ezlog_init() {
@@ -88,5 +89,5 @@ fn test_ezlog_flush() {
 #[test]
 fn test_ezlog_request() {
     test_logger_create();
-    ezlog::request_log_files_for_date("test", "2023-01-01");
+    ezlog::request_log_files_for_date("test", OffsetDateTime::now_utc(), OffsetDateTime::now_utc());
 }
