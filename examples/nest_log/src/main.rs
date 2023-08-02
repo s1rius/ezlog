@@ -11,9 +11,7 @@ pub fn main() {
     let logger = env_logger::builder()
         .filter_level(LevelFilter::Trace)
         .build();
-    let ezlog = ezlog::InitBuilder::new()
-        .debug(true)
-        .init();
+    let ezlog = ezlog::InitBuilder::new().debug(true).init();
 
     struct MyLog {
         list: Vec<Box<dyn log::Log>>,

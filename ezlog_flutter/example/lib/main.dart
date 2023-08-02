@@ -36,7 +36,7 @@ class _MyAppState extends State<MyApp> {
         EZLogConfig.plaintext("main", Level.trace.id, logDir, 7));
     logger.d("init", "success");
 
-    var logs = await EZLog.requestLogFilesForDate("main", "2022_08_25");
+    var logs = await EZLog.requestLogFilesForDate("main", DateTime.now());
     _initState = "init ok";
     if (logs != null) {
       setState(() {

@@ -215,9 +215,32 @@ impl Drop for Callback {
 #[no_mangle]
 pub unsafe extern "C" fn ezlog_request_log_files_for_date(
     c_log_name: *const c_char,
-    c_date: *const c_char,
+    c_start_time: i64,
+    c_end_time: i64,
 ) {
     let log_name = CStr::from_ptr(c_log_name).to_string_lossy().into_owned();
-    let date = CStr::from_ptr(c_date).to_string_lossy().into_owned();
-    crate::request_log_files_for_date(&log_name, &date);
+
+    let start = match OffsetDateTime::from_unix_timestamp_nanos((c_start_time as i128) * 1_000_000)
+    {
+        Ok(time) => time,
+        Err(_) => {
+            event!(
+                Event::RequestLogError,
+                &format!("start time illegal {}", c_start_time)
+            );
+            return;
+        }
+    };
+    let end = match OffsetDateTime::from_unix_timestamp_nanos((c_end_time as i128) * 1_000_000) {
+        Ok(time) => time,
+        Err(_) => {
+            event!(
+                Event::RequestLogError,
+                &format!("end time illegal {}", c_end_time)
+            );
+            return;
+        }
+    };
+
+    crate::request_log_files_for_date(&log_name, start, end);
 }

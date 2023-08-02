@@ -61,15 +61,8 @@ func logInOtherThread() {
     }
 }
 
-func reqeustLogs(date: String) {
-    requestLogsForDate(logName: "demo", date: date)
-    ezlog_trim()
-}
-
 func requestLogsByDate(date: Date) {
-    let date = Date()
-    let df = DateFormatter()
-    df.dateFormat = "yyyy_MM_dd"
-    let dateString = df.string(from: date)
-    reqeustLogs(date: dateString)
+    let millis = Int64((date.timeIntervalSince1970 * 1000.0).rounded())
+    requestLogsForDate(logName: "demo", start: millis, end: millis)
+    ezlog_trim()
 }

@@ -45,10 +45,8 @@ final class EZLogBenchMark: XCTestCase, LogCase {
     
     func testRequestLogFiles() throws {
         let date = Date()
-        let df = DateFormatter()
-        df.dateFormat = "yyyy_MM_dd"
-        let dateString = df.string(from: date)
-        requestLogsForDate(logName: "demo", date: dateString)
+        let millis = Int64((date.timeIntervalSince1970 * 1000.0).rounded())
+        requestLogsForDate(logName: "demo", start: millis, end: millis)
     }
     
 }

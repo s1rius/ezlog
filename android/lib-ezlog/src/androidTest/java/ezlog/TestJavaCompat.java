@@ -36,7 +36,6 @@ public class TestJavaCompat {
             }
         });
         EZLog._requestLogFilesForDate("", new Date());
-        EZLog._requestLogFilesForDate("", "");
         EZLog._flush("");
     }
 

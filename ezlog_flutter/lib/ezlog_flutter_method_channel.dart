@@ -65,11 +65,11 @@ class MethodChannelEzlogFlutter extends EZLogFlutterPlatform {
   }
 
   @override
-  Future<List<Object?>?> requestLogFilesForDate(String name, String date) {
+  Future<List<Object?>?> requestLogFilesForDate(String name, DateTime date) {
     return methodChannel
         .invokeMethod("requestLogFilesForDate", <String, dynamic>{
       "logName": name,
-      "date": date,
+      "date": date.millisecondsSinceEpoch,
     });
   }
 

@@ -24,10 +24,7 @@ impl Aes256GcmSiv {
                 nonce: nonce.to_owned(),
                 cipher,
             }),
-            Err(e) => Err(LogError::Illegal(format!(
-                "key length invalid {}",
-                e
-            ))),
+            Err(e) => Err(LogError::Illegal(format!("key length invalid {}", e))),
         }
     }
 }
@@ -76,10 +73,7 @@ impl Aes128GcmSiv {
                 nonce: nonce.to_owned(),
                 cipher,
             }),
-            Err(e) => Err(LogError::Illegal(format!(
-                "key length invalid {}",
-                e
-            ))),
+            Err(e) => Err(LogError::Illegal(format!("key length invalid {}", e))),
         }
     }
 }
@@ -130,10 +124,7 @@ impl Aes256Gcm {
                 nonce: nonce.to_owned(),
                 cipher,
             }),
-            Err(e) => Err(LogError::Illegal(format!(
-                "key length invalid {}",
-                e
-            ))),
+            Err(e) => Err(LogError::Illegal(format!("key length invalid {}", e))),
         }
     }
 }
@@ -187,10 +178,7 @@ impl Aes128Gcm {
                 nonce: nonce.to_owned(),
                 cipher,
             }),
-            Err(e) => Err(LogError::Illegal(format!(
-                "key length invalid {}",
-                e
-            ))),
+            Err(e) => Err(LogError::Illegal(format!("key length invalid {}", e))),
         }
     }
 }

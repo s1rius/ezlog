@@ -3,6 +3,7 @@ use ezlog::{
     DEFAULT_LOG_NAME,
 };
 use rand::Rng;
+use time::OffsetDateTime;
 
 /// Quick run example on android device
 /// you can run this example, and see the logcat without open AndroidStudio/IDEA
@@ -24,7 +25,11 @@ fn main() {
     let record = EZRecordBuilder::new().content("12345".to_string()).build();
     ezlog::log(record);
     ezlog::flush(ezlog::DEFAULT_LOG_NAME);
-    ezlog::request_log_files_for_date(DEFAULT_LOG_NAME, "2022_07_11");
+    ezlog::request_log_files_for_date(
+        DEFAULT_LOG_NAME,
+        OffsetDateTime::now_utc(),
+        OffsetDateTime::now_utc(),
+    );
 
     for i in 0..10 {
         ezlog::log(

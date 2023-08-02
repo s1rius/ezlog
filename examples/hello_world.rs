@@ -43,9 +43,11 @@ pub fn main() {
     }
 
     ezlog::flush(ezlog::DEFAULT_LOG_NAME);
-    let format = time::format_description::parse("[year]_[month]_[day]").unwrap();
-    let date_str = OffsetDateTime::now_utc().format(&format).unwrap();
-    ezlog::request_log_files_for_date(ezlog::DEFAULT_LOG_NAME, &date_str);
+    ezlog::request_log_files_for_date(
+        ezlog::DEFAULT_LOG_NAME,
+        OffsetDateTime::now_utc(),
+        OffsetDateTime::now_utc(),
+    );
     println!("end");
 
     thread::sleep(Duration::from_secs(1));

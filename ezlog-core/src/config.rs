@@ -158,9 +158,7 @@ impl EZLogConfig {
     pub(crate) fn read_file_name_as_date(&self, file_name: &str) -> crate::Result<OffsetDateTime> {
         const SAMPLE: &str = "2022_02_22";
         if file_name == format!("{}.{}", &self.name, &self.file_suffix) {
-            return Err(LogError::Illegal(
-                "The file is logging file".to_string(),
-            ));
+            return Err(LogError::Illegal("The file is logging file".to_string()));
         }
         if !file_name.starts_with(format!("{}_", &self.name).as_str()) {
             return Err(LogError::Illegal(format!(
@@ -186,14 +184,14 @@ impl EZLogConfig {
         target + self.trim_duration < now
     }
 
-    pub(crate) fn is_file_same_date(&self, file_name: &str, date: Date) -> bool {
+    pub(crate) fn is_file_same_date(&self, file_name: &str, date: OffsetDateTime) -> bool {
         if file_name == format!("{}.{}", &self.name, &self.file_suffix) {
             // ignore logging file
             return false;
         }
 
         self.read_file_name_as_date(file_name)
-            .map(|log_date| log_date.date() == date)
+            .map(|log_date| log_date.date() == date.date())
             .unwrap_or(false)
     }
 
@@ -201,7 +199,7 @@ impl EZLogConfig {
         self.max_size - Header::length_compat(&self.version) as u64
     }
 
-    pub fn query_log_files_for_date(&self, date: Date) -> Vec<PathBuf> {
+    pub fn query_log_files_for_date(&self, date: OffsetDateTime) -> Vec<PathBuf> {
         let mut logs = Vec::new();
         match fs::read_dir(&self.dir_path) {
             Ok(dir) => {
@@ -662,7 +660,7 @@ mod tests {
         appender.check_config_rolling(&config).unwrap();
         drop(appender);
 
-        let files = config.query_log_files_for_date(OffsetDateTime::now_utc().date());
+        let files = config.query_log_files_for_date(OffsetDateTime::now_utc());
 
         assert_eq!(files.len(), 1);
         if temp.exists() {
