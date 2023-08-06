@@ -39,7 +39,6 @@ pub enum Event {
     TrimEnd,
     FFiError,
     ChannelError,
-    Panic,
 }
 
 /// Every important log case make an event.

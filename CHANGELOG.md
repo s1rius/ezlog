@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Change
 - **Break** change the `request_log_files_for_date` function paramter to a time range https://github.com/s1rius/ezlog/pull/90
 - **Break** android:rename native function name, remove underline https://github.com/s1rius/ezlog/pull/26
+- remove global panic hook https://github.com/s1rius/ezlog/pull/91
 - Use varint to describe log's content length https://github.com/s1rius/ezlog/pull/32
 - Compress first then encrypt https://github.com/s1rius/ezlog/pull/40
 
