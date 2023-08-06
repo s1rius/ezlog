@@ -96,9 +96,6 @@ use std::{
     thread,
 };
 
-#[cfg(feature = "backtrace")]
-use backtrace::Backtrace;
-
 /// A [EZLogger] default name. current is "default".
 pub const DEFAULT_LOG_NAME: &str = "default";
 pub(crate) const FILE_SIGNATURE: &[u8; 2] = b"ez";
@@ -891,21 +888,6 @@ impl From<CompressLevel> for u8 {
             CompressLevel::Best => 0x02,
         }
     }
-}
-
-#[cfg(feature = "backtrace")]
-fn hook_panic() {
-    std::panic::set_hook(Box::new(|p| {
-        let bt = Backtrace::new();
-        event!(Event::Panic, &format!("ezlog: \n {p:?} \n{bt:?} \n"));
-    }));
-}
-
-#[cfg(not(feature = "backtrace"))]
-fn hook_panic() {
-    std::panic::set_hook(Box::new(|p| {
-        event!(Event::Panic, &format!("ezlog: \n {p:?}"));
-    }));
 }
 
 #[cfg(test)]

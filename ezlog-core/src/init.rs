@@ -1,7 +1,7 @@
 use std::{ptr, sync::Arc};
 
 use crate::{
-    hook_panic, EZLogCallback, EZMsg, EZRecord, EventListener, EventPrinter, Formatter, LogService,
+    EZLogCallback, EZMsg, EZRecord, EventListener, EventPrinter, Formatter, LogService,
 };
 
 /// InitBuilder is used to init ezlog
@@ -199,7 +199,6 @@ impl InitBuilder {
     /// real init ezlog
     pub fn init(self) -> EZLog {
         crate::LOG_SERVICE_INIT.call_once(|| unsafe {
-            hook_panic();
             #[cfg(all(target_os = "android", feature = "android_logger"))]
             if self.debug {
                 android_logger::init_once(
