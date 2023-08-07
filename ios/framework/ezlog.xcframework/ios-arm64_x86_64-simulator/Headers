@@ -76,8 +76,11 @@ void ezlog_register_callback(struct Callback callback);
  * Request logger's files path array by specified date
  * before call this function, you should register a callback
  * call
- * ```
+ *
+ * ```swift
  * ezlog_register_callback(callback);
  * ```
  */
-void ezlog_request_log_files_for_date(const char * _Nonnull c_log_name, const char * _Nonnull c_date);
+void ezlog_request_log_files_for_date(const char * _Nonnull c_log_name,
+                                      int64_t c_start_time,
+                                      int64_t c_end_time);
