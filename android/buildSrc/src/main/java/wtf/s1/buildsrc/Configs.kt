@@ -72,7 +72,7 @@ object ClassPaths {
     const val gradlePlugin = "com.android.tools.build:gradle:${Versions.gradlePlugin}"
     const val gradleApi = "com.android.tools.build:gradle-api:${Versions.gradlePlugin}"
     const val kotlinPlugin = "org.jetbrains.kotlin:kotlin-gradle-plugin:${Versions.kotlin}"
-    const val vanniktechMavenPublishPlugin = "com.vanniktech:gradle-maven-publish-plugin:0.21.0"
+    const val vanniktechMavenPublishPlugin = "com.vanniktech:gradle-maven-publish-plugin:0.25.3"
     const val dokaa = "org.jetbrains.dokka:dokka-gradle-plugin:1.6.10"
     const val benchmarkPlugin = "androidx.benchmark:benchmark-gradle-plugin:1.1.1"
 }
