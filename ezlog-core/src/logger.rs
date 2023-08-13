@@ -41,6 +41,49 @@ pub(crate) fn encode_content(mut buf: Vec<u8>) -> Result<Vec<u8>> {
     Ok(chunk)
 }
 
+#[allow(deprecated)]
+pub fn create_cryptor(config: &EZLogConfig) -> Result<Option<Box<dyn Cryptor>>> {
+    if let Some(key) = &config.cipher_key {
+        if let Some(nonce) = &config.cipher_nonce {
+            #[warn(unreachable_patterns)]
+            match config.cipher {
+                #[cfg(feature = "decode")]
+                CipherKind::AES128GCM => {
+                    let encryptor = Aes128Gcm::new(key, nonce)?;
+                    Ok(Some(Box::new(encryptor)))
+                }
+                #[cfg(feature = "decode")]
+                CipherKind::AES256GCM => {
+                    let encryptor = Aes256Gcm::new(key, nonce)?;
+                    Ok(Some(Box::new(encryptor)))
+                }
+                CipherKind::AES128GCMSIV => {
+                    let encryptor = Aes128GcmSiv::new(key, nonce)?;
+                    Ok(Some(Box::new(encryptor)))
+                }
+                CipherKind::AES256GCMSIV => {
+                    let encryptor = Aes256GcmSiv::new(key, nonce)?;
+                    Ok(Some(Box::new(encryptor)))
+                }
+                CipherKind::NONE => Ok(None),
+                unknown => Err(LogError::Crypto(format!("unknown cryption {}", unknown))),
+            }
+        } else {
+            Ok(None)
+        }
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn create_compress(config: &EZLogConfig) -> Option<Box<dyn Compress>> {
+    match config.compress {
+        CompressKind::ZLIB => Some(Box::new(ZlibCodec::new(&config.compress_level))),
+        CompressKind::NONE => None,
+        CompressKind::UNKNOWN => None,
+    }
+}
+
 pub struct EZLogger {
     pub(crate) config: Rc<EZLogConfig>,
     pub(crate) appender: EZAppender,
@@ -53,8 +96,8 @@ impl EZLogger {
         let rc_conf = Rc::new(config);
         let mut appender = EZAppender::new(Rc::clone(&rc_conf))?;
         appender.check_config_rolling(&rc_conf)?;
-        let compression = EZLogger::create_compress(&rc_conf);
-        let cryptor = EZLogger::create_cryptor(&rc_conf)?;
+        let compression = create_compress(&rc_conf);
+        let cryptor = create_cryptor(&rc_conf)?;
 
         Ok(Self {
             config: Rc::clone(&rc_conf),
@@ -62,49 +105,6 @@ impl EZLogger {
             compression,
             cryptor,
         })
-    }
-
-    #[allow(deprecated)]
-    pub fn create_cryptor(config: &EZLogConfig) -> Result<Option<Box<dyn Cryptor>>> {
-        if let Some(key) = &config.cipher_key {
-            if let Some(nonce) = &config.cipher_nonce {
-                #[warn(unreachable_patterns)]
-                match config.cipher {
-                    #[cfg(feature = "decode")]
-                    CipherKind::AES128GCM => {
-                        let encryptor = Aes128Gcm::new(key, nonce)?;
-                        Ok(Some(Box::new(encryptor)))
-                    }
-                    #[cfg(feature = "decode")]
-                    CipherKind::AES256GCM => {
-                        let encryptor = Aes256Gcm::new(key, nonce)?;
-                        Ok(Some(Box::new(encryptor)))
-                    }
-                    CipherKind::AES128GCMSIV => {
-                        let encryptor = Aes128GcmSiv::new(key, nonce)?;
-                        Ok(Some(Box::new(encryptor)))
-                    }
-                    CipherKind::AES256GCMSIV => {
-                        let encryptor = Aes256GcmSiv::new(key, nonce)?;
-                        Ok(Some(Box::new(encryptor)))
-                    }
-                    CipherKind::NONE => Ok(None),
-                    unknown => Err(LogError::Crypto(format!("unknown cryption {}", unknown))),
-                }
-            } else {
-                Ok(None)
-            }
-        } else {
-            Ok(None)
-        }
-    }
-
-    pub fn create_compress(config: &EZLogConfig) -> Option<Box<dyn Compress>> {
-        match config.compress {
-            CompressKind::ZLIB => Some(Box::new(ZlibCodec::new(&config.compress_level))),
-            CompressKind::NONE => None,
-            CompressKind::UNKNOWN => None,
-        }
     }
 
     pub(crate) fn append(&mut self, record: &EZRecord) -> Result<()> {

@@ -4,34 +4,10 @@ use std::{
     path::PathBuf,
 };
 
+use anyhow::Context;
 use clap::Parser;
 pub use ezlog::*;
 use serde::{Deserialize, Serialize};
-
-macro_rules! unwrap_or_return {
-    ( $e:expr, $e1:expr ) => {
-        match $e {
-            Ok(x) => x,
-            Err(e) => {
-                $e1;
-                println!("{}", e);
-                return;
-            }
-        }
-    };
-}
-
-macro_rules! some_or_return {
-    ( $e:expr, $e1:expr ) => {
-        match $e {
-            Some(x) => x,
-            None => {
-                $e1;
-                return;
-            }
-        }
-    };
-}
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -72,7 +48,7 @@ struct Config {
     nonce: String,
 }
 
-pub fn main() {
+pub fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     if cli.debug {
@@ -81,28 +57,34 @@ pub fn main() {
         println!("{:?}", cli);
     }
 
-    let input = some_or_return!(cli.input.as_deref(), println!("-i input file must set"));
+    let input = cli
+        .input
+        .as_deref()
+        .with_context(|| "-i input file must be set".to_string())?;
 
-    let input_file = unwrap_or_return!(
-        OpenOptions::new().read(true).open(input),
-        println!("-i input file open error")
-    );
+    let input_file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(input)
+        .with_context(|| "input file must valid".to_string())?;
 
-    let output = some_or_return!(cli.output.as_deref(), println!("-o output file must set"));
+    let output = cli
+        .output
+        .as_deref()
+        .with_context(|| "-o output file must be set".to_string())?;
 
-    let output_file = unwrap_or_return!(
-        OpenOptions::new().write(true).create(true).open(output),
-        println!("-o output file create error")
-    );
+    let output_file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(output)
+        .with_context(|| "output file create error".to_string())?;
 
     let mut buf = Vec::<u8>::new();
     let mut reader = BufReader::new(input_file);
     reader.read_to_end(&mut buf).unwrap();
     let mut cursor = Cursor::new(buf);
-    let header = unwrap_or_return!(
-        ezlog::Header::decode(&mut cursor),
-        println!("log file can not be recognized")
-    );
+    let header =
+        ezlog::Header::decode(&mut cursor).with_context(|| "header decode error".to_string())?;
 
     if cli.debug {
         println!();
@@ -119,10 +101,8 @@ pub fn main() {
                 .read_to_string(&mut json)
                 .is_ok()
             {
-                let config: Config = unwrap_or_return!(
-                    serde_json::from_str(&json),
-                    println!("parse config json error")
-                );
+                let config: Config = serde_json::from_str(&json)
+                    .with_context(|| "config file is not valid".to_string())?;
                 key = config.key.as_bytes().to_vec();
                 nonce = config.nonce.as_bytes().to_vec();
 
@@ -152,11 +132,9 @@ pub fn main() {
         .cipher_nonce(nonce)
         .build();
 
-    let compression = EZLogger::create_compress(&config);
-    let decryptor = unwrap_or_return!(
-        EZLogger::create_cryptor(&config),
-        println!("create cryptor error")
-    );
+    let compression = ezlog::create_compress(&config);
+    let decryptor =
+        ezlog::create_cryptor(&config).with_context(|| "create cryptor error".to_string())?;
 
     let mut plain_text_write = BufWriter::new(output_file);
 
@@ -169,11 +147,54 @@ pub fn main() {
         &header,
     )
     .unwrap();
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
+    use assert_cmd::prelude::{OutputAssertExt, OutputOkExt};
 
     #[test]
-    fn test_decode() {}
+    fn test_help() {
+        escargot::CargoBuild::new()
+            .bin("ezlog-cli")
+            .current_release()
+            .current_target()
+            .run()
+            .unwrap()
+            .command()
+            .arg("--help")
+            .unwrap().assert().success();
+    }
+
+    #[test]
+    fn test_decode() {
+        let bin_under_test = escargot::CargoBuild::new()
+            .bin("ezlog-cli")
+            .current_release()
+            .current_target()
+            .run()
+            .unwrap();
+
+        let mut input_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        input_file.push("resources/test/test.mmap");
+
+        let mut output_file = dirs::cache_dir().unwrap();
+        output_file.push("1.log");
+
+        let cmd = bin_under_test
+            .command()
+            .arg("-i")
+            .arg(input_file.into_os_string())
+            .arg("-o")
+            .arg(output_file.into_os_string())
+            .arg("-k")
+            .arg("an example very very secret key.")
+            .arg("-n")
+            .arg("unique nonce")
+            .unwrap();
+        cmd.assert().success();
+    }
 }
