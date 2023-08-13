@@ -1,15 +1,22 @@
 [package]
 name = "ezlog-cli"
-version = "0.2.0-beta.2"
+version = "0.2.0-beta.4"
 edition = "2021"
 description = "EZLog command line tool"
 homepage = "https://github.com/s1rius/ezlog"
 repository = "https://github.com/s1rius/ezlog"
 license = "MIT OR Apache-2.0"
 keywords = ["ezlog", "cli"]
+exclude = ["/resources"]
 
 [dependencies]
 ezlog = { version = "0.2.0-beta.2", path = "../ezlog-core", features = ["decode"] }
-clap = { version = "4.0.8", features = ["derive"] }
+clap = { version = "4.3.21", features = ["derive"] }
 serde = { version =  "1.0", features = ["derive"] }
 serde_json = "1.0"
+anyhow = "1.0.72"
+assert_cmd = "2.0.12"
+escargot = "0.5.8"
+
+[dev-dependencies]
+dirs = "5.0"

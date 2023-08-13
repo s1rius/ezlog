@@ -103,8 +103,8 @@ fn read_log_file_rewrite() {
 
     let mut writer = BufWriter::new(plaintext_log);
 
-    let mut compression = EZLogger::create_compress(&log_config);
-    let mut cryptor = EZLogger::create_cryptor(&log_config).unwrap();
+    let mut compression = ezlog::create_compress(&log_config);
+    let mut cryptor = ezlog::create_cryptor(&log_config).unwrap();
     let header = Header::decode(&mut cursor).unwrap();
     ezlog::decode::decode_body_and_write(
         &mut cursor,

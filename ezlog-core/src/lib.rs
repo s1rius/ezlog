@@ -74,6 +74,8 @@ pub use self::init::InitBuilder;
 pub use self::init::MsgHandler;
 pub use self::logger::EZLogger;
 pub use self::logger::Header;
+pub use self::logger::create_cryptor;
+pub use self::logger::create_compress;
 pub use self::recorder::EZRecord;
 pub use self::recorder::EZRecordBuilder;
 
