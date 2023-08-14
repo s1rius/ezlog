@@ -5,6 +5,9 @@ multilingual = false
 src = "src"
 title = "ezlog documentation"
 
+# [preprocessor.serie]
+# command = "cat ./src/introduction.md  ./src/platform/*.md ./src/architecture.md ./src/benchmark.md ./src/build.md >> ./../README.md;"
+
 [preprocessor.gettext]
 after = ["links"]
 

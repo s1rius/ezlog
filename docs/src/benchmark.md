@@ -1,8 +1,8 @@
-# Benchmark
+## Benchmark
 
-## Android Benchmark
+### Android Benchmark
 
-### measure log method
+#### measure log method
 
 | Library | Time (ns) | Allocations |
 |---------|-----------|-------------|
@@ -11,7 +11,7 @@
 | ezlog   | 8,404     | 7           |
 | xlog    | 12,459    | 7           |
 
-### startup time
+#### startup time
 
 startup baseline
 ```
