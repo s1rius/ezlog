@@ -1,6 +1,6 @@
-# Android ezlog
+### Android Usage
 
-### Add ezlog to dependencies
+#### Add ezlog to dependencies
 
 Open top-level `build.gradle`, add `mavenCentral` to repositories.
 
@@ -32,7 +32,7 @@ dependencies {
 
 Sync gradle
 
-### Setup in application
+#### Setup in application
 
 ```kotlin
 override fun onCreate() {

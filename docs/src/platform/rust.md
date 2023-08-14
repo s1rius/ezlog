@@ -1,6 +1,6 @@
-# Rust ezlog
+### Rust Usage
 
-### Usage
+#### Add ezlog
 
 Add this to your Cargo.toml
 
@@ -9,8 +9,7 @@ Add this to your Cargo.toml
 ezlog = "0.2"
 ```
 
-
-### Example
+#### Example
 
 ```rust
 use ezlog::EZLogConfigBuilder;

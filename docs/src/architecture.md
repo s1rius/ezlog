@@ -1,6 +1,6 @@
-# Architecture
+## Architecture
 
-## Code structure
+### Code structure
 
 ```
 ├── android
@@ -16,9 +16,9 @@
 │   └── framework # ezlog XCFramework
 ```
 
-## Log file format
+### Log file format
 
-### Header 
+#### Header 
 
 | Bytes Offset | Meaning                            |
 |--------|------------------------------------------|
@@ -31,7 +31,7 @@
 | 17     | Encryption type                          |
 | 18-21  | Encryption key hash                      |
 
-### Per log record
+#### Per log record
 
 | Byte Offset | Field Name| Description  |
 |----------|-----------|-----------------|
@@ -40,13 +40,13 @@
 | varint+1-varint+n | Record Content | The actual log record content |
 | varint+n+1| End Byte| Always 0x21 indicating the start |
 
-## Compression
+### Compression
 
 We use zlib as the compression algorithm.
 
-## Encryption
+### Encryption
 
-### We use AES-GCM-SIV as the encryption algorithm.
+#### We use AES-GCM-SIV as the encryption algorithm.
 
 AES-GCM-SIV, as a symmetric encryption algorithm, is more efficient compared to asymmetric encryption. As an AEAD, When compared to AES-CFB, it is more secure, and when compared to AES-GCM, AES-GCM-SIV is nonce-misuse-resistant.
 
@@ -58,5 +58,3 @@ First of all, we need an init nonce, which is generated randomly when the logger
 nonce = init_nonce ^ timestamp.extend(index)
 
 ```
-
-

@@ -52,18 +52,22 @@ msgid "# ezlog"
 msgstr ""
 
 #: src/introduction.md:3
+msgid "[中文介绍](https://s1rius.github.io/ezlog/zh/index.html)</p>"
+msgstr ""
+
+#: src/introduction.md:5
 msgid "## What is ezlog?"
 msgstr "## 介绍"
 
-#: src/introduction.md:5
+#: src/introduction.md:7
 msgid "ezlog is a high-performance cross-platform file logging library."
 msgstr "ezlog是一个高性能的跨平台文件日志库。"
 
-#: src/introduction.md:7
+#: src/introduction.md:9
 msgid "It can be used in Flutter, Android, iOS, Windows, Linux, MacOS."
 msgstr "可以用在Flutter，android，iOS，Windows，Linux，MacOS。"
 
-#: src/introduction.md:9
+#: src/introduction.md:11
 msgid ""
 "It is inspired by [Xlog](https://github.com/Tencent/mars) and [Logan]"
 "(https://github.com/Meituan-Dianping/Logan), rewrite in Rust."
@@ -71,11 +75,11 @@ msgstr ""
 "本项目参考了[Xlog](https://github.com/Tencent/mars)和[Logan](https://github."
 "com/Meituan-Dianping/Logan), 使用[Rust](https://www.rust-lang.org/)重写。"
 
-#: src/introduction.md:11
-msgid "## Features"
-msgstr "## 特性"
+#: src/introduction.md:13
+msgid "### Features"
+msgstr "### 特性"
 
-#: src/introduction.md:12
+#: src/introduction.md:14
 msgid ""
 "- multi platform: Flutter, Android, iOS, Windows, Linux, MacOS\n"
 "- map file into memory by [mmap](https://man7.org/linux/man-pages/man2/"
@@ -96,23 +100,22 @@ msgstr ""
 "- 日志清理\n"
 "- 命令行解析工具\n"
 
-#: src/introduction.md:20
-msgid "## License"
+#: src/introduction.md:22
+msgid "### License"
 msgstr ""
 
-#: src/introduction.md:22
+#: src/introduction.md:24
 msgid ""
-"See [LICENSE-MIT](../../LICENSE-MIT), [LICENSE-APACHE](../../LICENSE-"
-"APACHE), "
+"See [LICENSE-MIT](../../LICENSE-MIT), [LICENSE-APACHE](../../LICENSE-APACHE)"
 msgstr ""
 
 #: src/platform/flutter.md:1
-msgid "# Flutter ezlog"
-msgstr ""
+msgid "### Flutter Usage"
+msgstr "### Flutter 用例"
 
 #: src/platform/flutter.md:3
-msgid "### Add ezlog_flutter as a dependency in your pubspec.yaml file."
-msgstr "### 在pubspec.yaml中添加ezlog_flutter依赖"
+msgid "#### Add ezlog_flutter as a dependency in your pubspec.yaml file."
+msgstr "#### 在pubspec.yaml中添加ezlog_flutter依赖"
 
 #: src/platform/flutter.md:5
 msgid ""
@@ -122,9 +125,9 @@ msgid ""
 "```"
 msgstr ""
 
-#: src/platform/flutter.md:10 src/platform/rust.md:13
-msgid "### Example"
-msgstr "### 示例"
+#: src/platform/flutter.md:10 src/platform/rust.md:12
+msgid "#### Example"
+msgstr "#### 示例"
 
 #: src/platform/flutter.md:12
 msgid ""
@@ -172,12 +175,12 @@ msgid ""
 msgstr ""
 
 #: src/platform/android.md:1
-msgid "# Android ezlog"
-msgstr ""
+msgid "### Android Usage"
+msgstr "### Android用例"
 
 #: src/platform/android.md:3
-msgid "### Add ezlog to dependencies"
-msgstr "### 添加ezlog依赖"
+msgid "#### Add ezlog to dependencies"
+msgstr "#### 添加ezlog依赖"
 
 #: src/platform/android.md:5
 msgid "Open top-level `build.gradle`, add `mavenCentral` to repositories."
@@ -212,7 +215,7 @@ msgstr "在App层级的`build.gradle`添加ezlog依赖"
 msgid ""
 "```groovy\n"
 "dependencies {\n"
-"    implementation \"wtf.s1.ezlog:ezlog:0.1.7\"\n"
+"    implementation \"wtf.s1.ezlog:ezlog:0.2+\"\n"
 "}\n"
 "```"
 msgstr ""
@@ -222,8 +225,8 @@ msgid "Sync gradle"
 msgstr "同步gradle"
 
 #: src/platform/android.md:35
-msgid "### Setup in application"
-msgstr "### 在应用中初始化"
+msgid "#### Setup in application"
+msgstr "#### 在应用中初始化"
 
 #: src/platform/android.md:37
 msgid ""
@@ -270,12 +273,12 @@ msgid ""
 msgstr ""
 
 #: src/platform/ios.md:1
-msgid "# iOS ezlog"
-msgstr ""
+msgid "### iOS Usage"
+msgstr "### iOS用例"
 
-#: src/platform/ios.md:3
-msgid "### Add ezlog"
-msgstr "### 添加ezlog依赖"
+#: src/platform/ios.md:3 src/platform/rust.md:3
+msgid "#### Add ezlog"
+msgstr "#### 添加ezlog依赖"
 
 #: src/platform/ios.md:5
 msgid "Add dependency to Podfile"
@@ -300,8 +303,8 @@ msgid ""
 msgstr ""
 
 #: src/platform/ios.md:15
-msgid "### Open Xcode, add sample code"
-msgstr "### 打开Xcode，添加示例代码"
+msgid "#### Open Xcode, add sample code"
+msgstr "#### 打开Xcode，添加示例代码"
 
 #: src/platform/ios.md:17
 msgid ""
@@ -357,12 +360,8 @@ msgid "click run and see console ouput."
 msgstr "点击运行，查看控制台输出"
 
 #: src/platform/rust.md:1
-msgid "# Rust ezlog"
-msgstr "# Rust ezlog"
-
-#: src/platform/rust.md:3
-msgid "### Usage"
-msgstr "### 使用"
+msgid "### Rust Usage"
+msgstr "### Rust用例"
 
 #: src/platform/rust.md:5
 msgid "Add this to your Cargo.toml"
@@ -376,7 +375,7 @@ msgid ""
 "```"
 msgstr ""
 
-#: src/platform/rust.md:15
+#: src/platform/rust.md:14
 msgid ""
 "```rust\n"
 "use ezlog::EZLogConfigBuilder;\n"
@@ -403,21 +402,21 @@ msgid ""
 "```"
 msgstr ""
 
-#: src/platform/rust.md:39
+#: src/platform/rust.md:38
 msgid "see more examples in examples dir."
 msgstr "在examples文件夹中查看更多示例"
 
 #: src/benchmark.md:1
-msgid "# Benchmark"
-msgstr "# 性能"
+msgid "## Benchmark"
+msgstr "## 性能"
 
 #: src/benchmark.md:3
-msgid "## Android Benchmark"
-msgstr "## Android平台性能测试"
+msgid "### Android Benchmark"
+msgstr "### Android平台性能测试"
 
 #: src/benchmark.md:5
-msgid "### measure log method"
-msgstr "### 单条日志格式"
+msgid "#### measure log method"
+msgstr "#### 单条日志格式"
 
 #: src/benchmark.md:7
 msgid ""
@@ -436,8 +435,8 @@ msgstr ""
 "| xlog    | 12,459    | 7           |"
 
 #: src/benchmark.md:14
-msgid "### startup time"
-msgstr "### 启动时间"
+msgid "#### startup time"
+msgstr "#### 启动时间"
 
 #: src/benchmark.md:16
 msgid "startup baseline"
@@ -468,12 +467,12 @@ msgstr ""
 "```"
 
 #: src/architecture.md:1
-msgid "# Architecture"
-msgstr "# 架构设计"
+msgid "## Architecture"
+msgstr "## 架构设计"
 
 #: src/architecture.md:3
-msgid "## Code structure"
-msgstr "## 代码结构"
+msgid "### Code structure"
+msgstr "### 代码结构"
 
 #: src/architecture.md:5
 msgid ""
@@ -493,12 +492,12 @@ msgid ""
 msgstr ""
 
 #: src/architecture.md:19
-msgid "## Log file format"
-msgstr "## 日志文件格式"
+msgid "### Log file format"
+msgstr "### 日志文件格式"
 
 #: src/architecture.md:21
-msgid "### Header "
-msgstr "### 文件头"
+msgid "#### Header "
+msgstr "#### 文件头"
 
 #: src/architecture.md:23
 msgid ""
@@ -525,8 +524,8 @@ msgstr ""
 "| 18-21  | 密钥哈希                                  |"
 
 #: src/architecture.md:34
-msgid "### Per log record"
-msgstr "### 单条日志格式"
+msgid "#### Per log record"
+msgstr "#### 单条日志格式"
 
 #: src/architecture.md:36
 msgid ""
@@ -546,20 +545,20 @@ msgstr ""
 "| 可变下标+日志长度+1   | 结束标记 | 0x21|\n"
 
 #: src/architecture.md:43
-msgid "## Compression"
-msgstr "## 压缩算法"
+msgid "### Compression"
+msgstr "### 压缩算法"
 
 #: src/architecture.md:45
 msgid "We use zlib as the compression algorithm."
 msgstr "我们使用zlib作为默认压缩算法"
 
 #: src/architecture.md:47
-msgid "## Encryption"
-msgstr "## 加密算法"
+msgid "### Encryption"
+msgstr "### 加密算法"
 
 #: src/architecture.md:49
-msgid "### We use AES-GCM-SIV as the encryption algorithm."
-msgstr "### 我们使用AES-GCM-SIV作为默认加密算法"
+msgid "#### We use AES-GCM-SIV as the encryption algorithm."
+msgstr "#### 我们使用AES-GCM-SIV作为默认加密算法"
 
 #: src/architecture.md:51
 msgid ""
@@ -595,8 +594,8 @@ msgid ""
 msgstr ""
 
 #: src/build.md:1
-msgid "# Build"
-msgstr "# 本地构建"
+msgid "## Build"
+msgstr "## 本地构建"
 
 #: src/build.md:3
 msgid "- install and config rust"
@@ -659,8 +658,8 @@ msgid ""
 msgstr ""
 
 #: src/build.md:34
-msgid "## for Flutter build"
-msgstr "## Flutter 构建"
+msgid "### for Flutter build"
+msgstr "### Flutter 构建"
 
 #: src/build.md:36
 msgid ""
@@ -672,8 +671,8 @@ msgid ""
 msgstr ""
 
 #: src/build.md:42
-msgid "## For android build"
-msgstr "## Android 构建"
+msgid "### For android build"
+msgstr "### Android 构建"
 
 #: src/build.md:44
 msgid "- add android targets"
@@ -714,8 +713,8 @@ msgid "then open current workspace in AndroidStudio"
 msgstr "然后在 AndroidStudio 中打开当前工作区"
 
 #: src/build.md:64
-msgid "## For iOS build"
-msgstr "## iOS 构建"
+msgid "### For iOS build"
+msgstr "### iOS 构建"
 
 #: src/build.md:66
 msgid "- add iOS targets"

@@ -1,13 +1,13 @@
-# Flutter ezlog
+### Flutter Usage
 
-### Add ezlog_flutter as a dependency in your pubspec.yaml file.
+#### Add ezlog_flutter as a dependency in your pubspec.yaml file.
 
 ```yaml
 dependencies:
   ezlog_flutter: ^0.2.0
 ```
 
-### Example
+#### Example
 
 ```dart
 import 'dart:io';

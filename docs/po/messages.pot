@@ -53,28 +53,32 @@ msgid "# ezlog"
 msgstr ""
 
 #: src/introduction.md:3
-msgid "## What is ezlog?"
+msgid "[中文介绍](https://s1rius.github.io/ezlog/zh/index.html)</p>"
 msgstr ""
 
 #: src/introduction.md:5
-msgid "ezlog is a high-performance cross-platform file logging library."
+msgid "## What is ezlog?"
 msgstr ""
 
 #: src/introduction.md:7
-msgid "It can be used in Flutter, Android, iOS, Windows, Linux, MacOS."
+msgid "ezlog is a high-performance cross-platform file logging library."
 msgstr ""
 
 #: src/introduction.md:9
+msgid "It can be used in Flutter, Android, iOS, Windows, Linux, MacOS."
+msgstr ""
+
+#: src/introduction.md:11
 msgid ""
 "It is inspired by [Xlog](https://github.com/Tencent/mars) and "
 "[Logan](https://github.com/Meituan-Dianping/Logan), rewrite in Rust."
 msgstr ""
 
-#: src/introduction.md:11
-msgid "## Features"
+#: src/introduction.md:13
+msgid "### Features"
 msgstr ""
 
-#: src/introduction.md:12
+#: src/introduction.md:14
 msgid ""
 "- multi platform: Flutter, Android, iOS, Windows, Linux, MacOS\n"
 "- map file into memory by "
@@ -87,22 +91,21 @@ msgid ""
 "- command line parser support."
 msgstr ""
 
-#: src/introduction.md:20
-msgid "## License"
+#: src/introduction.md:22
+msgid "### License"
 msgstr ""
 
-#: src/introduction.md:22
+#: src/introduction.md:24
 msgid ""
-"See [LICENSE-MIT](../../LICENSE-MIT), "
-"[LICENSE-APACHE](../../LICENSE-APACHE), "
+"See [LICENSE-MIT](../../LICENSE-MIT), [LICENSE-APACHE](../../LICENSE-APACHE)"
 msgstr ""
 
 #: src/platform/flutter.md:1
-msgid "# Flutter ezlog"
+msgid "### Flutter Usage"
 msgstr ""
 
 #: src/platform/flutter.md:3
-msgid "### Add ezlog_flutter as a dependency in your pubspec.yaml file."
+msgid "#### Add ezlog_flutter as a dependency in your pubspec.yaml file."
 msgstr ""
 
 #: src/platform/flutter.md:5
@@ -114,8 +117,8 @@ msgid ""
 msgstr ""
 
 #: src/platform/flutter.md:10
-#: src/platform/rust.md:13
-msgid "### Example"
+#: src/platform/rust.md:12
+msgid "#### Example"
 msgstr ""
 
 #: src/platform/flutter.md:12
@@ -164,11 +167,11 @@ msgid ""
 msgstr ""
 
 #: src/platform/android.md:1
-msgid "# Android ezlog"
+msgid "### Android Usage"
 msgstr ""
 
 #: src/platform/android.md:3
-msgid "### Add ezlog to dependencies"
+msgid "#### Add ezlog to dependencies"
 msgstr ""
 
 #: src/platform/android.md:5
@@ -204,7 +207,7 @@ msgstr ""
 msgid ""
 "```groovy\n"
 "dependencies {\n"
-"    implementation \"wtf.s1.ezlog:ezlog:0.1.7\"\n"
+"    implementation \"wtf.s1.ezlog:ezlog:0.2+\"\n"
 "}\n"
 "```"
 msgstr ""
@@ -214,7 +217,7 @@ msgid "Sync gradle"
 msgstr ""
 
 #: src/platform/android.md:35
-msgid "### Setup in application"
+msgid "#### Setup in application"
 msgstr ""
 
 #: src/platform/android.md:37
@@ -262,11 +265,12 @@ msgid ""
 msgstr ""
 
 #: src/platform/ios.md:1
-msgid "# iOS ezlog"
+msgid "### iOS Usage"
 msgstr ""
 
 #: src/platform/ios.md:3
-msgid "### Add ezlog"
+#: src/platform/rust.md:3
+msgid "#### Add ezlog"
 msgstr ""
 
 #: src/platform/ios.md:5
@@ -292,7 +296,7 @@ msgid ""
 msgstr ""
 
 #: src/platform/ios.md:15
-msgid "### Open Xcode, add sample code"
+msgid "#### Open Xcode, add sample code"
 msgstr ""
 
 #: src/platform/ios.md:17
@@ -349,11 +353,7 @@ msgid "click run and see console ouput."
 msgstr ""
 
 #: src/platform/rust.md:1
-msgid "# Rust ezlog"
-msgstr ""
-
-#: src/platform/rust.md:3
-msgid "### Usage"
+msgid "### Rust Usage"
 msgstr ""
 
 #: src/platform/rust.md:5
@@ -368,7 +368,7 @@ msgid ""
 "```"
 msgstr ""
 
-#: src/platform/rust.md:15
+#: src/platform/rust.md:14
 msgid ""
 "```rust\n"
 "use ezlog::EZLogConfigBuilder;\n"
@@ -395,20 +395,20 @@ msgid ""
 "```"
 msgstr ""
 
-#: src/platform/rust.md:39
+#: src/platform/rust.md:38
 msgid "see more examples in examples dir."
 msgstr ""
 
 #: src/benchmark.md:1
-msgid "# Benchmark"
+msgid "## Benchmark"
 msgstr ""
 
 #: src/benchmark.md:3
-msgid "## Android Benchmark"
+msgid "### Android Benchmark"
 msgstr ""
 
 #: src/benchmark.md:5
-msgid "### measure log method"
+msgid "#### measure log method"
 msgstr ""
 
 #: src/benchmark.md:7
@@ -422,7 +422,7 @@ msgid ""
 msgstr ""
 
 #: src/benchmark.md:14
-msgid "### startup time"
+msgid "#### startup time"
 msgstr ""
 
 #: src/benchmark.md:16
@@ -448,11 +448,11 @@ msgid ""
 msgstr ""
 
 #: src/architecture.md:1
-msgid "# Architecture"
+msgid "## Architecture"
 msgstr ""
 
 #: src/architecture.md:3
-msgid "## Code structure"
+msgid "### Code structure"
 msgstr ""
 
 #: src/architecture.md:5
@@ -473,11 +473,11 @@ msgid ""
 msgstr ""
 
 #: src/architecture.md:19
-msgid "## Log file format"
+msgid "### Log file format"
 msgstr ""
 
 #: src/architecture.md:21
-msgid "### Header "
+msgid "#### Header "
 msgstr ""
 
 #: src/architecture.md:23
@@ -495,7 +495,7 @@ msgid ""
 msgstr ""
 
 #: src/architecture.md:34
-msgid "### Per log record"
+msgid "#### Per log record"
 msgstr ""
 
 #: src/architecture.md:36
@@ -510,7 +510,7 @@ msgid ""
 msgstr ""
 
 #: src/architecture.md:43
-msgid "## Compression"
+msgid "### Compression"
 msgstr ""
 
 #: src/architecture.md:45
@@ -518,11 +518,11 @@ msgid "We use zlib as the compression algorithm."
 msgstr ""
 
 #: src/architecture.md:47
-msgid "## Encryption"
+msgid "### Encryption"
 msgstr ""
 
 #: src/architecture.md:49
-msgid "### We use AES-GCM-SIV as the encryption algorithm."
+msgid "#### We use AES-GCM-SIV as the encryption algorithm."
 msgstr ""
 
 #: src/architecture.md:51
@@ -553,7 +553,7 @@ msgid ""
 msgstr ""
 
 #: src/build.md:1
-msgid "# Build"
+msgid "## Build"
 msgstr ""
 
 #: src/build.md:3
@@ -616,7 +616,7 @@ msgid ""
 msgstr ""
 
 #: src/build.md:34
-msgid "## for Flutter build"
+msgid "### for Flutter build"
 msgstr ""
 
 #: src/build.md:36
@@ -629,7 +629,7 @@ msgid ""
 msgstr ""
 
 #: src/build.md:42
-msgid "## For android build"
+msgid "### For android build"
 msgstr ""
 
 #: src/build.md:44
@@ -671,7 +671,7 @@ msgid "then open current workspace in AndroidStudio"
 msgstr ""
 
 #: src/build.md:64
-msgid "## For iOS build"
+msgid "### For iOS build"
 msgstr ""
 
 #: src/build.md:66

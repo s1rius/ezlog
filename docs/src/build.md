@@ -1,4 +1,4 @@
-# Build
+## Build
 
 - install and config rust
 
@@ -31,7 +31,7 @@ wait crates download...
 cargo build -p ezlog
 ```
 
-## for Flutter build
+### for Flutter build
 
 ```dart
 flutter packages get
@@ -39,7 +39,7 @@ flutter packages get
 flutter packages upgrade
 ```
 
-## For android build
+### For android build
 
 - add android targets
 
@@ -61,7 +61,7 @@ sh b_android.sh
 
 then open current workspace in AndroidStudio
 
-## For iOS build
+### For iOS build
 
 - add iOS targets
 

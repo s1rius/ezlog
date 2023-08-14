@@ -1,6 +1,6 @@
-# iOS ezlog
+### iOS Usage
 
-### Add ezlog
+#### Add ezlog
 
 Add dependency to Podfile
 
@@ -12,7 +12,7 @@ then
 ```shell
 pod update
 ```
-### Open Xcode, add sample code
+#### Open Xcode, add sample code
 
 ```swift
 import EZLog
