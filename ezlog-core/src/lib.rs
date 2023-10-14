@@ -88,7 +88,6 @@ use time::OffsetDateTime;
 
 use std::error::Error;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::{
     collections::HashMap,
     hash::Hash,
@@ -178,7 +177,7 @@ pub fn init_with_event(event: &'static dyn EventListener) {
 }
 
 struct LogService {
-    layers: Arc<Vec<Box<dyn MsgHandler>>>,
+    layers: Vec<Box<dyn MsgHandler>>,
     loggers: HashMap<String, EZLogger>,
     log_sender: Sender<EZMsg>,
     fetch_sender: Sender<FetchResult>,
@@ -187,7 +186,7 @@ struct LogService {
 impl LogService {
     fn new() -> Self {
         LogService {
-            layers: Arc::new(Vec::new()),
+            layers: Vec::new(),
             loggers: HashMap::new(),
             log_sender: init_log_channel(),
             fetch_sender: init_callback_channel(),

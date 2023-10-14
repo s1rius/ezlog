@@ -1,5 +1,5 @@
 [package]
-name = "ezlog-cli"
+name = "ezlogcli"
 version = "0.2.0-beta.4"
 edition = "2021"
 description = "EZLog command line tool"

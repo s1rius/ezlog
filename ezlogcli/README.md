@@ -1,7 +1,7 @@
 # EZLog command line tool
 
 ```
-Usage: ezlog-cli [OPTIONS]
+Usage: ezlogcli [OPTIONS]
 
 Options:
   -i, --input <FILE>

@@ -159,7 +159,7 @@ mod tests {
     #[test]
     fn test_help() {
         escargot::CargoBuild::new()
-            .bin("ezlog-cli")
+            .bin("ezlogcli")
             .current_release()
             .current_target()
             .run()
@@ -172,7 +172,7 @@ mod tests {
     #[test]
     fn test_decode() {
         let bin_under_test = escargot::CargoBuild::new()
-            .bin("ezlog-cli")
+            .bin("ezlogcli")
             .current_release()
             .current_target()
             .run()

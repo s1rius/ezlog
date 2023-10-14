@@ -1,4 +1,4 @@
-use std::{ptr, sync::Arc};
+use std::ptr;
 
 use crate::{
     EZLogCallback, EZMsg, EZRecord, EventListener, EventPrinter, Formatter, LogService,
@@ -226,7 +226,7 @@ impl InitBuilder {
                 crate::set_boxed_formatter(formatter);
             }
             let mut service = LogService::new();
-            service.layers = Arc::new(self.layers);
+            service.layers = self.layers;
             ptr::write(crate::LOG_SERVICE.as_mut_ptr(), service);
         });
         EZLog {}
