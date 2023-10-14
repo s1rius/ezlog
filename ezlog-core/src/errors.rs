@@ -1,6 +1,12 @@
-use std::{ffi::NulError, io};
+use std::{
+    ffi::NulError,
+    io,
+};
 
-use crossbeam_channel::{RecvError, TrySendError};
+use crossbeam_channel::{
+    RecvError,
+    TrySendError,
+};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -64,8 +70,9 @@ mod tests {
 
     #[test]
     fn test_error() {
-        use crate::errors::LogError;
         use std::io;
+
+        use crate::errors::LogError;
 
         let err = LogError::IoError(io::Error::new(io::ErrorKind::Other, "test"));
         assert_eq!(err.to_string(), "io error: test");

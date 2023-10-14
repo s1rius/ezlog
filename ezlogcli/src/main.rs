@@ -1,13 +1,21 @@
 use std::{
     fs::OpenOptions,
-    io::{BufReader, BufWriter, Cursor, Read},
+    io::{
+        BufReader,
+        BufWriter,
+        Cursor,
+        Read,
+    },
     path::PathBuf,
 };
 
 use anyhow::Context;
 use clap::Parser;
 pub use ezlog::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -154,7 +162,10 @@ pub fn main() -> anyhow::Result<()> {
 mod tests {
     use std::path::PathBuf;
 
-    use assert_cmd::prelude::{OutputAssertExt, OutputOkExt};
+    use assert_cmd::prelude::{
+        OutputAssertExt,
+        OutputOkExt,
+    };
 
     #[test]
     fn test_help() {
@@ -166,7 +177,9 @@ mod tests {
             .unwrap()
             .command()
             .arg("--help")
-            .unwrap().assert().success();
+            .unwrap()
+            .assert()
+            .success();
     }
 
     #[test]

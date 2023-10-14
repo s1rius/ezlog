@@ -1,6 +1,13 @@
-use std::io::{Read, Write};
+use std::io::{
+    Read,
+    Write,
+};
 
-use crate::{CompressLevel, Compression, Decompression};
+use crate::{
+    CompressLevel,
+    Compression,
+    Decompression,
+};
 
 pub struct ZlibCodec {
     level: flate2::Compression,

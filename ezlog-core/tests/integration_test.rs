@@ -1,6 +1,9 @@
 use ezlog::Event;
 use ezlog::LogError;
-use ezlog::{EZLogConfigBuilder, EZRecord};
+use ezlog::{
+    EZLogConfigBuilder,
+    EZRecord,
+};
 use time::OffsetDateTime;
 
 #[test]

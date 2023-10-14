@@ -1,13 +1,21 @@
 use std::{
     collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher},
+    hash::{
+        Hash,
+        Hasher,
+    },
     thread,
 };
 
-use crate::{EZLogConfig, Level, DEFAULT_LOG_NAME};
 #[cfg(feature = "log")]
 use log::Record;
 use time::OffsetDateTime;
+
+use crate::{
+    EZLogConfig,
+    Level,
+    DEFAULT_LOG_NAME,
+};
 
 /// Single Log record
 #[derive(Debug, Clone)]

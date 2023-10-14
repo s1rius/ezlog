@@ -1,11 +1,27 @@
-use std::io::{self, BufRead, Cursor, Write};
+use std::io::{
+    self,
+    BufRead,
+    Cursor,
+    Write,
+};
 
-use byteorder::{BigEndian, ReadBytesExt};
+use byteorder::{
+    BigEndian,
+    ReadBytesExt,
+};
 use integer_encoding::VarIntReader;
 
 use crate::{
-    errors::LogError, Compress, Cryptor, EZLogger, Header, NonceGenFn, Result, Version,
-    RECORD_SIGNATURE_END, RECORD_SIGNATURE_START,
+    errors::LogError,
+    Compress,
+    Cryptor,
+    EZLogger,
+    Header,
+    NonceGenFn,
+    Result,
+    Version,
+    RECORD_SIGNATURE_END,
+    RECORD_SIGNATURE_START,
 };
 
 #[inline]
@@ -170,10 +186,20 @@ pub fn decode_record_content(
 
 #[cfg(test)]
 mod tests {
-    use crate::decode::decode_logs_count;
-    use crate::{decode, EZLogger, EZRecordBuilder, Header};
     use std::fs;
-    use std::io::{BufReader, Cursor, Read};
+    use std::io::{
+        BufReader,
+        Cursor,
+        Read,
+    };
+
+    use crate::decode::decode_logs_count;
+    use crate::{
+        decode,
+        EZLogger,
+        EZRecordBuilder,
+        Header,
+    };
 
     #[cfg(feature = "decode")]
     fn create_all_feature_config() -> crate::EZLogConfig {

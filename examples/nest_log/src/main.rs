@@ -2,8 +2,15 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use ezlog::EZLogConfigBuilder;
-use log::{error, info, warn};
-use log::{LevelFilter, Log};
+use log::{
+    error,
+    info,
+    warn,
+};
+use log::{
+    LevelFilter,
+    Log,
+};
 
 extern crate log;
 
