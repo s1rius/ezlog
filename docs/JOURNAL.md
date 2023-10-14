@@ -91,7 +91,7 @@ Starting: Intent { act=android.intent.action.MAIN cmp=rust.ezlog_android_preview
 │   ├── app # android 示例工程
 │   └── lib-ezlog # EZLog android 库
 ├── examples # rust 示例
-├── ezlog-cli # 命令行工具
+├── ezlogcli # 命令行工具
 ├── ezlog-core # 核心库
 ├── ios
 │   ├── EZLog # EZLog iOS 库

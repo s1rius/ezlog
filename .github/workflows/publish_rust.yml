@@ -25,5 +25,5 @@ jobs:
           components: rustfmt, clippy
       - name: Publish ezlog on crates.io
         run: cargo +nightly publish --package ezlog --token ${CRATES_TOKEN}
-      - name: Publish ezlog-cli on crates.io
-        run: cargo +nightly publish --package ezlog-cli --token ${CRATES_TOKEN}
+      - name: Publish ezlogcli on crates.io
+        run: cargo +nightly publish --package ezlogcli --token ${CRATES_TOKEN}

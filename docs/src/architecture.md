@@ -8,7 +8,7 @@
 │   └── lib-ezlog # ezlog android library
 ├── examples # Rust examples
 ├── ezlog_flutter # Flutter plugin
-├── ezlog-cli # Rust command line tool
+├── ezlogcli # Rust command line tool
 ├── ezlog-core # Rust core library
 ├── ios
 │   ├── EZLog # ezlog iOS library
