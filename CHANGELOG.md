@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.2.0] (2023-10-14)
+
 ### Add
 - cli: Add key, nonce to cli options https://github.com/s1rius/ezlog/pull/29
 - Add create time info to file header https://github.com/s1rius/ezlog/pull/38
