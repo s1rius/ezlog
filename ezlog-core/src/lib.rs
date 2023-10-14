@@ -63,39 +63,46 @@ mod ffi_c;
 #[allow(non_snake_case)]
 mod ffi_java;
 
-pub use self::config::EZLogConfig;
-pub use self::config::EZLogConfigBuilder;
-pub use self::config::Level;
-pub use self::errors::LogError;
-pub use self::events::Event;
-pub use self::events::EventListener;
-pub use self::events::EventPrinter;
-pub use self::init::InitBuilder;
-pub use self::init::MsgHandler;
-pub use self::logger::EZLogger;
-pub use self::logger::Header;
-pub use self::logger::create_cryptor;
-pub use self::logger::create_compress;
-pub use self::recorder::EZRecord;
-pub use self::recorder::EZRecordBuilder;
-
-pub(crate) use self::events::event;
-
-use crossbeam_channel::{Sender, TrySendError};
-use memmap2::MmapMut;
-use time::Duration;
-use time::OffsetDateTime;
-
 use std::error::Error;
 use std::path::PathBuf;
 use std::{
     collections::HashMap,
     hash::Hash,
-    io::{self, Cursor, Read, Write},
+    io::{
+        self,
+        Cursor,
+        Read,
+        Write,
+    },
     mem::MaybeUninit,
     sync::Once,
     thread,
 };
+
+use crossbeam_channel::{
+    Sender,
+    TrySendError,
+};
+use memmap2::MmapMut;
+use time::Duration;
+use time::OffsetDateTime;
+
+pub use self::config::EZLogConfig;
+pub use self::config::EZLogConfigBuilder;
+pub use self::config::Level;
+pub use self::errors::LogError;
+pub(crate) use self::events::event;
+pub use self::events::Event;
+pub use self::events::EventListener;
+pub use self::events::EventPrinter;
+pub use self::init::InitBuilder;
+pub use self::init::MsgHandler;
+pub use self::logger::create_compress;
+pub use self::logger::create_cryptor;
+pub use self::logger::EZLogger;
+pub use self::logger::Header;
+pub use self::recorder::EZRecord;
+pub use self::recorder::EZRecordBuilder;
 
 /// A [EZLogger] default name. current is "default".
 pub const DEFAULT_LOG_NAME: &str = "default";
@@ -893,18 +900,31 @@ impl From<CompressLevel> for u8 {
 
 #[cfg(test)]
 mod tests {
-    use crate::recorder::EZRecordBuilder;
-    use flate2::{bufread::ZlibDecoder, write::ZlibEncoder, Compression};
-    use std::io::{Read, Write};
-    use time::OffsetDateTime;
-
-    use crate::Header;
-    use crate::{
-        config::EZLogConfigBuilder, EZLogConfig, RECORD_SIGNATURE_END, RECORD_SIGNATURE_START,
+    use std::io::{
+        Read,
+        Write,
     };
 
     #[cfg(feature = "decode")]
-    use aead::{Aead, KeyInit};
+    use aead::{
+        Aead,
+        KeyInit,
+    };
+    use flate2::{
+        bufread::ZlibDecoder,
+        write::ZlibEncoder,
+        Compression,
+    };
+    use time::OffsetDateTime;
+
+    use crate::recorder::EZRecordBuilder;
+    use crate::Header;
+    use crate::{
+        config::EZLogConfigBuilder,
+        EZLogConfig,
+        RECORD_SIGNATURE_END,
+        RECORD_SIGNATURE_START,
+    };
 
     fn create_config() -> EZLogConfig {
         EZLogConfig::default()

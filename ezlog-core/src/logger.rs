@@ -1,24 +1,55 @@
-use byteorder::{BigEndian, WriteBytesExt};
-use integer_encoding::VarIntWriter;
 use std::io::Read;
 use std::path::PathBuf;
-
-use std::{fs, io};
-use std::{io::Write, rc::Rc};
-
-use crate::crypto::{Aes128GcmSiv, Aes256GcmSiv};
-use crate::events::Event::{self};
-use crate::{
-    appender::EZAppender, compress::ZlibCodec, errors::LogError, CipherKind, Compress,
-    CompressKind, Cryptor, EZLogConfig, EZRecord, RECORD_SIGNATURE_END, RECORD_SIGNATURE_START,
+use std::{
+    fs,
+    io,
 };
-use crate::{errors, event, NonceGenFn, V1_LOG_HEADER_SIZE};
-use crate::{Version, V2_LOG_HEADER_SIZE};
+use std::{
+    io::Write,
+    rc::Rc,
+};
+
 use byteorder::ReadBytesExt;
+use byteorder::{
+    BigEndian,
+    WriteBytesExt,
+};
+use integer_encoding::VarIntWriter;
 use time::OffsetDateTime;
 
 #[cfg(feature = "decode")]
-use crate::crypto::{Aes128Gcm, Aes256Gcm};
+use crate::crypto::{
+    Aes128Gcm,
+    Aes256Gcm,
+};
+use crate::crypto::{
+    Aes128GcmSiv,
+    Aes256GcmSiv,
+};
+use crate::events::Event::{self,};
+use crate::{
+    appender::EZAppender,
+    compress::ZlibCodec,
+    errors::LogError,
+    CipherKind,
+    Compress,
+    CompressKind,
+    Cryptor,
+    EZLogConfig,
+    EZRecord,
+    RECORD_SIGNATURE_END,
+    RECORD_SIGNATURE_START,
+};
+use crate::{
+    errors,
+    event,
+    NonceGenFn,
+    V1_LOG_HEADER_SIZE,
+};
+use crate::{
+    Version,
+    V2_LOG_HEADER_SIZE,
+};
 
 type Result<T> = std::result::Result<T, LogError>;
 

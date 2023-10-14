@@ -2,20 +2,47 @@ use std::{
     cmp,
     collections::hash_map::DefaultHasher,
     fmt,
-    fs::{self, File, OpenOptions},
-    hash::{Hash, Hasher},
-    path::{Path, PathBuf},
+    fs::{
+        self,
+        File,
+        OpenOptions,
+    },
+    hash::{
+        Hash,
+        Hasher,
+    },
+    path::{
+        Path,
+        PathBuf,
+    },
 };
 
-use memmap2::{MmapMut, MmapOptions};
-use time::{format_description, Date, Duration, OffsetDateTime};
+use memmap2::{
+    MmapMut,
+    MmapOptions,
+};
+use time::{
+    format_description,
+    Date,
+    Duration,
+    OffsetDateTime,
+};
 
 use crate::events::Event;
 #[allow(unused_imports)]
 use crate::EZLogger;
 use crate::{
-    errors::LogError, events::event, logger::Header, CipherKind, CompressKind, CompressLevel,
-    Version, DEFAULT_LOG_FILE_SUFFIX, DEFAULT_LOG_NAME, DEFAULT_MAX_LOG_SIZE, LOG_LEVEL_NAMES,
+    errors::LogError,
+    events::event,
+    logger::Header,
+    CipherKind,
+    CompressKind,
+    CompressLevel,
+    Version,
+    DEFAULT_LOG_FILE_SUFFIX,
+    DEFAULT_LOG_NAME,
+    DEFAULT_MAX_LOG_SIZE,
+    LOG_LEVEL_NAMES,
     MIN_LOG_SIZE,
 };
 
@@ -548,10 +575,23 @@ impl fmt::Display for Level {
 #[cfg(test)]
 mod tests {
 
-    use std::fs::{self, OpenOptions};
+    use std::fs::{
+        self,
+        OpenOptions,
+    };
 
-    use crate::{appender::EZAppender, CipherKind, CompressKind, EZLogConfigBuilder};
-    use time::{macros::datetime, Duration, OffsetDateTime};
+    use time::{
+        macros::datetime,
+        Duration,
+        OffsetDateTime,
+    };
+
+    use crate::{
+        appender::EZAppender,
+        CipherKind,
+        CompressKind,
+        EZLogConfigBuilder,
+    };
 
     #[test]
     fn test_config_cipher_hash() {

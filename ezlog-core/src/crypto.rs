@@ -1,8 +1,14 @@
-use aead::{Aead, KeyInit};
+use aead::{
+    Aead,
+    KeyInit,
+};
 use aes_gcm_siv::Nonce;
 
 use crate::errors::LogError;
-use crate::{Decryptor, Encryptor};
+use crate::{
+    Decryptor,
+    Encryptor,
+};
 
 pub struct Aes256GcmSiv {
     // 96-bits; unique per message

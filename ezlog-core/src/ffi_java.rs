@@ -1,23 +1,52 @@
 use std::sync::Arc;
 
-use crate::errors::LogError;
-use crate::events::Event::{self, *};
-use crate::{
-    event, set_boxed_callback, thread_name, CipherKind, CompressKind, CompressLevel,
-    EZLogConfigBuilder, EZRecordBuilder, Level,
+use jni::objects::{
+    JByteArray,
+    JObjectArray,
+    JValueGen,
 };
-use jni::objects::{JByteArray, JObjectArray, JValueGen};
 use jni::sys::jlong;
 use jni::{
     errors::JniError,
-    objects::{GlobalRef, JClass, JObject, JString, JValue},
+    objects::{
+        GlobalRef,
+        JClass,
+        JObject,
+        JString,
+        JValue,
+    },
     strings::JNIString,
-    sys::{jboolean, jint, JNI_VERSION_1_6},
-    JNIEnv, JavaVM,
+    sys::{
+        jboolean,
+        jint,
+        JNI_VERSION_1_6,
+    },
+    JNIEnv,
+    JavaVM,
 };
 use libc::c_void;
 use once_cell::sync::OnceCell;
-use time::{Duration, OffsetDateTime};
+use time::{
+    Duration,
+    OffsetDateTime,
+};
+
+use crate::errors::LogError;
+use crate::events::Event::{
+    self,
+    *,
+};
+use crate::{
+    event,
+    set_boxed_callback,
+    thread_name,
+    CipherKind,
+    CompressKind,
+    CompressLevel,
+    EZLogConfigBuilder,
+    EZRecordBuilder,
+    Level,
+};
 
 static JVM: OnceCell<Arc<JavaVM>> = OnceCell::new();
 

@@ -1,16 +1,35 @@
 use std::fs::OpenOptions;
-use std::io::{BufReader, BufWriter, Cursor, Read};
-
+use std::io::{
+    BufReader,
+    BufWriter,
+    Cursor,
+    Read,
+};
 use std::thread;
 use std::time::Duration;
 
 use ezlog::Level;
 use ezlog::{
-    create_log, CipherKind, CompressKind, EZLogCallback, EZLogConfig, EZLogConfigBuilder,
-    EventPrinter, Header,
+    create_log,
+    CipherKind,
+    CompressKind,
+    EZLogCallback,
+    EZLogConfig,
+    EZLogConfigBuilder,
+    EventPrinter,
+    Header,
 };
-use ezlog::{EZLogger, EZMsg};
-use log::{debug, error, info, trace, warn};
+use ezlog::{
+    EZLogger,
+    EZMsg,
+};
+use log::{
+    debug,
+    error,
+    info,
+    trace,
+    warn,
+};
 use rand::Rng;
 use time::OffsetDateTime;
 

@@ -1,12 +1,22 @@
 use std::{
     fs::OpenOptions,
-    io::{BufReader, BufWriter, Error, ErrorKind},
+    io::{
+        BufReader,
+        BufWriter,
+        Error,
+        ErrorKind,
+    },
     path::PathBuf,
     rc::Rc,
 };
+
 use time::OffsetDateTime;
 
-use crate::{events::event, logger::Header, *};
+use crate::{
+    events::event,
+    logger::Header,
+    *,
+};
 
 pub trait AppenderInner: Write {
     /// check have enough space to write record
@@ -441,14 +451,21 @@ impl Write for NopInner {
 #[cfg(test)]
 mod tests {
 
-    use std::fs::{self, File, OpenOptions};
-    use std::io::{BufReader, Seek, SeekFrom};
+    use std::fs::{
+        self,
+        File,
+        OpenOptions,
+    };
+    use std::io::{
+        BufReader,
+        Seek,
+        SeekFrom,
+    };
 
     use time::Duration;
 
-    use crate::config::EZLogConfigBuilder;
-
     use super::*;
+    use crate::config::EZLogConfigBuilder;
 
     fn create_all_feature_config() -> EZLogConfigBuilder {
         let key = b"an example very very secret key.";

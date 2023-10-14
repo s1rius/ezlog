@@ -57,6 +57,7 @@ fn get_name() -> String {
 #[cfg(target_os = "windows")]
 fn get_name() -> String {
     use std::thread;
+
     use windows::core::HRESULT;
     use windows::core::PWSTR;
     use windows_sys::Win32::System::Threading;

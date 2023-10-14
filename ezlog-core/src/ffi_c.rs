@@ -1,3 +1,11 @@
+use core::slice;
+use std::ffi::CStr;
+use std::ffi::CString;
+use std::ffi::NulError;
+
+use libc::c_char;
+use libc::c_uchar;
+use libc::c_uint;
 use libc::c_void;
 use time::Duration;
 
@@ -5,13 +13,6 @@ use crate::config::Level;
 use crate::events::EventPrinter;
 use crate::recorder::EZRecordBuilder;
 use crate::*;
-use core::slice;
-use libc::c_char;
-use libc::c_uchar;
-use libc::c_uint;
-use std::ffi::CStr;
-use std::ffi::CString;
-use std::ffi::NulError;
 
 /// Init ezlog, must call before any other function
 #[no_mangle]

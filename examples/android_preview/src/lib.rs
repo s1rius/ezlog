@@ -1,5 +1,10 @@
 use ezlog::{
-    CipherKind, CompressKind, EZLogCallback, EZLogConfig, EZLogConfigBuilder, EZRecordBuilder,
+    CipherKind,
+    CompressKind,
+    EZLogCallback,
+    EZLogConfig,
+    EZLogConfigBuilder,
+    EZRecordBuilder,
     DEFAULT_LOG_NAME,
 };
 use rand::Rng;

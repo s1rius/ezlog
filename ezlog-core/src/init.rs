@@ -1,7 +1,13 @@
 use std::ptr;
 
 use crate::{
-    EZLogCallback, EZMsg, EZRecord, EventListener, EventPrinter, Formatter, LogService,
+    EZLogCallback,
+    EZMsg,
+    EZRecord,
+    EventListener,
+    EventPrinter,
+    Formatter,
+    LogService,
 };
 
 /// InitBuilder is used to init ezlog
@@ -302,7 +308,10 @@ impl Formatter for FormatterProxy {
 pub struct EZLog {}
 
 #[cfg(feature = "log")]
-use log::{Metadata, Record};
+use log::{
+    Metadata,
+    Record,
+};
 
 #[cfg(feature = "log")]
 impl log::Log for EZLog {
