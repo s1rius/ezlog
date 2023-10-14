@@ -11,6 +11,7 @@
 
 .ic_language {
     vertical-align: middle;
+    display: ruby;
 }
 
 .ic_language svg {
