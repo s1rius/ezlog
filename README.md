@@ -154,7 +154,7 @@ class _MyAppState extends State<MyApp> {
 Add dependency to Podfile
 
 ```shell
-pod 'EZLog', '~> 0.1'
+pod 'EZLog', '~> 0.2'
 ```
 then
 
@@ -301,7 +301,6 @@ First of all, we need an init nonce, which is generated randomly when the logger
 
 ```
 nonce = init_nonce ^ timestamp.extend(index)
-
 ```
 ## Benchmark
 

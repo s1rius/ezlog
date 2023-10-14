@@ -18,3 +18,7 @@ popd
 pushd android
 sh b_android.sh
 popd
+
+pushd docs
+cat ./src/introduction.md  ./src/platform/*.md ./src/architecture.md ./src/benchmark.md ./src/build.md >> ./../README.md
+popd
