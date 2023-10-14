@@ -56,5 +56,4 @@ First of all, we need an init nonce, which is generated randomly when the logger
 
 ```
 nonce = init_nonce ^ timestamp.extend(index)
-
 ```

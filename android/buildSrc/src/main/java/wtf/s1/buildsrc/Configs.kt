@@ -10,7 +10,7 @@ object Versions {
     const val targetSdkVersion = 33
     const val compileVersion = 33
     const val versionCode = 1
-    const val libVersion = "0.2.0-beta.2"
+    const val libVersion = "0.2.0"
     const val benchmarkVersion = "1.1.0"
     const val androidxTestVersion = "1.4.0"
     const val espressoCoreVersion = "3.5."

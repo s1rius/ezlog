@@ -5,7 +5,7 @@
 Add dependency to Podfile
 
 ```shell
-pod 'EZLog', '~> 0.1'
+pod 'EZLog', '~> 0.2'
 ```
 then
 
