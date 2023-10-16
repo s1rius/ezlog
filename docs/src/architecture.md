@@ -38,7 +38,7 @@
 | 0| Start Byte| Always 0x3b indicating the start|
 | 1-varint|Record Length| A variable-length integer that specifies the length|
 | varint+1-varint+n | Record Content | The actual log record content |
-| varint+n+1| End Byte| Always 0x21 indicating the start |
+| varint+n+1| End Byte| Always 0x21 indicating the end |
 
 ### Compression
 

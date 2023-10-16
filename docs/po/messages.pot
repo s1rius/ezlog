@@ -2,7 +2,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: ezlog documentation\n"
-"POT-Creation-Date: \n"
+"POT-Creation-Date: 2023-10-17T01:17:24+08:00\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -37,27 +37,31 @@ msgid "Rust"
 msgstr ""
 
 #: src/SUMMARY.md:12
+#: src/benchmark.md:1
 msgid "Benchmark"
 msgstr ""
 
 #: src/SUMMARY.md:14
+#: src/architecture.md:1
 msgid "Architecture"
 msgstr ""
 
 #: src/SUMMARY.md:16
+#: src/build.md:1
 msgid "Build"
 msgstr ""
 
 #: src/introduction.md:1
-msgid "# ezlog"
+#: src/benchmark.md:11
+msgid "ezlog"
 msgstr ""
 
 #: src/introduction.md:3
-msgid "[中文介绍](https://s1rius.github.io/ezlog/zh/index.html)</p>"
+msgid "[中文介绍](https://s1rius.github.io/ezlog/zh/index.html)"
 msgstr ""
 
 #: src/introduction.md:5
-msgid "## What is ezlog?"
+msgid "What is ezlog?"
 msgstr ""
 
 #: src/introduction.md:7
@@ -75,24 +79,43 @@ msgid ""
 msgstr ""
 
 #: src/introduction.md:13
-msgid "### Features"
+msgid "Features"
 msgstr ""
 
 #: src/introduction.md:14
+msgid "multi platform: Flutter, Android, iOS, Windows, Linux, MacOS"
+msgstr ""
+
+#: src/introduction.md:15
 msgid ""
-"- multi platform: Flutter, Android, iOS, Windows, Linux, MacOS\n"
-"- map file into memory by "
-"[mmap](https://man7.org/linux/man-pages/man2/mmap.2.html).\n"
-"- compression support, eg: [zlib](https://en.wikipedia.org/wiki/Zlib).\n"
-"- encryption support, eg: [AEAD "
-"encryption](https://en.wikipedia.org/wiki/Authenticated_encryption).\n"
-"- fetch log by callback.\n"
-"- trim out of date files.\n"
-"- command line parser support."
+"map file into memory by "
+"[mmap](https://man7.org/linux/man-pages/man2/mmap.2.html)."
+msgstr ""
+
+#: src/introduction.md:16
+msgid "compression support, eg: [zlib](https://en.wikipedia.org/wiki/Zlib)."
+msgstr ""
+
+#: src/introduction.md:17
+msgid ""
+"encryption support, eg: [AEAD "
+"encryption](https://en.wikipedia.org/wiki/Authenticated_encryption)."
+msgstr ""
+
+#: src/introduction.md:18
+msgid "fetch log by callback."
+msgstr ""
+
+#: src/introduction.md:19
+msgid "trim out of date files."
+msgstr ""
+
+#: src/introduction.md:20
+msgid "command line parser support."
 msgstr ""
 
 #: src/introduction.md:22
-msgid "### License"
+msgid "License"
 msgstr ""
 
 #: src/introduction.md:24
@@ -101,24 +124,16 @@ msgid ""
 msgstr ""
 
 #: src/platform/flutter.md:1
-msgid "### Flutter Usage"
+msgid "Flutter Usage"
 msgstr ""
 
 #: src/platform/flutter.md:3
-msgid "#### Add ezlog_flutter as a dependency in your pubspec.yaml file."
-msgstr ""
-
-#: src/platform/flutter.md:5
-msgid ""
-"```yaml\n"
-"dependencies:\n"
-"  ezlog_flutter: ^0.2.0\n"
-"```"
+msgid "Add ezlog_flutter as a dependency in your pubspec.yaml file."
 msgstr ""
 
 #: src/platform/flutter.md:10
 #: src/platform/rust.md:12
-msgid "#### Example"
+msgid "Example"
 msgstr ""
 
 #: src/platform/flutter.md:12
@@ -167,36 +182,15 @@ msgid ""
 msgstr ""
 
 #: src/platform/android.md:1
-msgid "### Android Usage"
+msgid "Android Usage"
 msgstr ""
 
 #: src/platform/android.md:3
-msgid "#### Add ezlog to dependencies"
+msgid "Add ezlog to dependencies"
 msgstr ""
 
 #: src/platform/android.md:5
 msgid "Open top-level `build.gradle`, add `mavenCentral` to repositories."
-msgstr ""
-
-#: src/platform/android.md:7
-msgid ""
-"```groovy\n"
-"buildscript {\n"
-"    repositories {\n"
-"        ...\n"
-"        mavenCentral()\n"
-"        ...\n"
-"    }\n"
-"}\n"
-"\n"
-"allprojects {\n"
-"    repositories {\n"
-"        ...\n"
-"        mavenCentral()\n"
-"        ...\n"
-"    }\n"
-"}\n"
-"```"
 msgstr ""
 
 #: src/platform/android.md:25
@@ -217,7 +211,7 @@ msgid "Sync gradle"
 msgstr ""
 
 #: src/platform/android.md:35
-msgid "#### Setup in application"
+msgid "Setup in application"
 msgstr ""
 
 #: src/platform/android.md:37
@@ -265,38 +259,24 @@ msgid ""
 msgstr ""
 
 #: src/platform/ios.md:1
-msgid "### iOS Usage"
+msgid "iOS Usage"
 msgstr ""
 
 #: src/platform/ios.md:3
 #: src/platform/rust.md:3
-msgid "#### Add ezlog"
+msgid "Add ezlog"
 msgstr ""
 
 #: src/platform/ios.md:5
 msgid "Add dependency to Podfile"
 msgstr ""
 
-#: src/platform/ios.md:7
-msgid ""
-"```shell\n"
-"pod 'EZLog', '~> 0.1'\n"
-"```"
-msgstr ""
-
 #: src/platform/ios.md:10
 msgid "then"
 msgstr ""
 
-#: src/platform/ios.md:12
-msgid ""
-"```shell\n"
-"pod update\n"
-"```"
-msgstr ""
-
 #: src/platform/ios.md:15
-msgid "#### Open Xcode, add sample code"
+msgid "Open Xcode, add sample code"
 msgstr ""
 
 #: src/platform/ios.md:17
@@ -353,7 +333,7 @@ msgid "click run and see console ouput."
 msgstr ""
 
 #: src/platform/rust.md:1
-msgid "### Rust Usage"
+msgid "Rust Usage"
 msgstr ""
 
 #: src/platform/rust.md:5
@@ -399,118 +379,226 @@ msgstr ""
 msgid "see more examples in examples dir."
 msgstr ""
 
-#: src/benchmark.md:1
-msgid "## Benchmark"
-msgstr ""
-
 #: src/benchmark.md:3
-msgid "### Android Benchmark"
+msgid "Android Benchmark"
 msgstr ""
 
 #: src/benchmark.md:5
-msgid "#### measure log method"
+msgid "measure log method"
 msgstr ""
 
 #: src/benchmark.md:7
-msgid ""
-"| Library | Time (ns) | Allocations |\n"
-"|---------|-----------|-------------|\n"
-"| logcat  | 2,427     | 7           |\n"
-"| logan   | 4,726     | 14          |\n"
-"| ezlog   | 8,404     | 7           |\n"
-"| xlog    | 12,459    | 7           |"
+msgid "Library"
+msgstr ""
+
+#: src/benchmark.md:7
+msgid "Time (ns)"
+msgstr ""
+
+#: src/benchmark.md:7
+msgid "Allocations"
+msgstr ""
+
+#: src/benchmark.md:9
+msgid "logcat"
+msgstr ""
+
+#: src/benchmark.md:9
+msgid "2,427"
+msgstr ""
+
+#: src/benchmark.md:9
+#: src/benchmark.md:11
+#: src/benchmark.md:12
+msgid "7"
+msgstr ""
+
+#: src/benchmark.md:10
+msgid "logan"
+msgstr ""
+
+#: src/benchmark.md:10
+msgid "4,726"
+msgstr ""
+
+#: src/benchmark.md:10
+msgid "14"
+msgstr ""
+
+#: src/benchmark.md:11
+msgid "8,404"
+msgstr ""
+
+#: src/benchmark.md:12
+msgid "xlog"
+msgstr ""
+
+#: src/benchmark.md:12
+msgid "12,459"
 msgstr ""
 
 #: src/benchmark.md:14
-msgid "#### startup time"
+msgid "startup time"
 msgstr ""
 
 #: src/benchmark.md:16
 msgid "startup baseline"
 msgstr ""
 
-#: src/benchmark.md:17
-msgid ""
-"```\n"
-"min 206.4,   median 218.5,   max 251.9\n"
-"```"
-msgstr ""
-
 #: src/benchmark.md:21
 msgid "startup with ezlog time:"
 msgstr ""
 
-#: src/benchmark.md:22
-msgid ""
-"```\n"
-"min 206.8,   median 216.6,   max 276.6\n"
-"```"
-msgstr ""
-
-#: src/architecture.md:1
-msgid "## Architecture"
-msgstr ""
-
 #: src/architecture.md:3
-msgid "### Code structure"
-msgstr ""
-
-#: src/architecture.md:5
-msgid ""
-"```\n"
-"├── android\n"
-"│   ├── app # android demo app\n"
-"│   └── lib-ezlog # ezlog android library\n"
-"├── examples # Rust examples\n"
-"├── ezlog_flutter # Flutter plugin\n"
-"├── ezlogcli # Rust command line tool\n"
-"├── ezlog-core # Rust core library\n"
-"├── ios\n"
-"│   ├── EZLog # ezlog iOS library\n"
-"│   ├── demo # iOS demo app\n"
-"│   └── framework # ezlog XCFramework\n"
-"```"
+msgid "Code structure"
 msgstr ""
 
 #: src/architecture.md:19
-msgid "### Log file format"
+msgid "Log file format"
 msgstr ""
 
 #: src/architecture.md:21
-msgid "#### Header "
+msgid "Header"
 msgstr ""
 
 #: src/architecture.md:23
-msgid ""
-"| Bytes Offset | Meaning                            |\n"
-"|--------|------------------------------------------|\n"
-"| 0-1    | 'ez'                                     |\n"
-"| 2      | Version number                           |\n"
-"| 3      | Flag bits                                |\n"
-"| 4-7    | Offset of recorder position in bytes     |\n"
-"| 8-15   | Unix timestamp (big-endian)              |\n"
-"| 16     | Compression type                         |\n"
-"| 17     | Encryption type                          |\n"
-"| 18-21  | Encryption key hash                      |"
+msgid "Bytes Offset"
+msgstr ""
+
+#: src/architecture.md:23
+msgid "Meaning"
+msgstr ""
+
+#: src/architecture.md:25
+msgid "0-1"
+msgstr ""
+
+#: src/architecture.md:25
+msgid "'ez'"
+msgstr ""
+
+#: src/architecture.md:26
+msgid "2"
+msgstr ""
+
+#: src/architecture.md:26
+msgid "Version number"
+msgstr ""
+
+#: src/architecture.md:27
+msgid "3"
+msgstr ""
+
+#: src/architecture.md:27
+msgid "Flag bits"
+msgstr ""
+
+#: src/architecture.md:28
+msgid "4-7"
+msgstr ""
+
+#: src/architecture.md:28
+msgid "Offset of recorder position in bytes"
+msgstr ""
+
+#: src/architecture.md:29
+msgid "8-15"
+msgstr ""
+
+#: src/architecture.md:29
+msgid "Unix timestamp (big-endian)"
+msgstr ""
+
+#: src/architecture.md:30
+msgid "16"
+msgstr ""
+
+#: src/architecture.md:30
+msgid "Compression type"
+msgstr ""
+
+#: src/architecture.md:31
+msgid "17"
+msgstr ""
+
+#: src/architecture.md:31
+msgid "Encryption type"
+msgstr ""
+
+#: src/architecture.md:32
+msgid "18-21"
+msgstr ""
+
+#: src/architecture.md:32
+msgid "Encryption key hash"
 msgstr ""
 
 #: src/architecture.md:34
-msgid "#### Per log record"
+msgid "Per log record"
 msgstr ""
 
 #: src/architecture.md:36
-msgid ""
-"| Byte Offset | Field Name| Description  |\n"
-"|----------|-----------|-----------------|\n"
-"| 0| Start Byte| Always 0x3b indicating the start|\n"
-"| 1-varint|Record Length| A variable-length integer that specifies the "
-"length|\n"
-"| varint+1-varint+n | Record Content | The actual log record content |\n"
-"| varint+n+1| End Byte| Always 0x21 indicating the start |"
+msgid "Byte Offset"
+msgstr ""
+
+#: src/architecture.md:36
+msgid "Field Name"
+msgstr ""
+
+#: src/architecture.md:36
+msgid "Description"
+msgstr ""
+
+#: src/architecture.md:38
+msgid "0"
+msgstr ""
+
+#: src/architecture.md:38
+msgid "Start Byte"
+msgstr ""
+
+#: src/architecture.md:38
+msgid "Always 0x3b indicating the start"
+msgstr ""
+
+#: src/architecture.md:39
+msgid "1-varint"
+msgstr ""
+
+#: src/architecture.md:39
+msgid "Record Length"
+msgstr ""
+
+#: src/architecture.md:39
+msgid "A variable-length integer that specifies the length"
+msgstr ""
+
+#: src/architecture.md:40
+msgid "varint+1-varint+n"
+msgstr ""
+
+#: src/architecture.md:40
+msgid "Record Content"
+msgstr ""
+
+#: src/architecture.md:40
+msgid "The actual log record content"
+msgstr ""
+
+#: src/architecture.md:41
+msgid "varint+n+1"
+msgstr ""
+
+#: src/architecture.md:41
+msgid "End Byte"
+msgstr ""
+
+#: src/architecture.md:41
+msgid "Always 0x21 indicating the end"
 msgstr ""
 
 #: src/architecture.md:43
-msgid "### Compression"
+msgid "Compression"
 msgstr ""
 
 #: src/architecture.md:45
@@ -518,11 +606,11 @@ msgid "We use zlib as the compression algorithm."
 msgstr ""
 
 #: src/architecture.md:47
-msgid "### Encryption"
+msgid "Encryption"
 msgstr ""
 
 #: src/architecture.md:49
-msgid "#### We use AES-GCM-SIV as the encryption algorithm."
+msgid "We use AES-GCM-SIV as the encryption algorithm."
 msgstr ""
 
 #: src/architecture.md:51
@@ -533,7 +621,7 @@ msgid ""
 msgstr ""
 
 #: src/architecture.md:53
-msgid "### Make nonce not repeat"
+msgid "Make nonce not repeat"
 msgstr ""
 
 #: src/architecture.md:55
@@ -544,20 +632,8 @@ msgid ""
 "calculate the nonce of the current log record by the following formula:"
 msgstr ""
 
-#: src/architecture.md:57
-msgid ""
-"```\n"
-"nonce = init_nonce ^ timestamp.extend(index)\n"
-"\n"
-"```"
-msgstr ""
-
-#: src/build.md:1
-msgid "## Build"
-msgstr ""
-
 #: src/build.md:3
-msgid "- install and config rust"
+msgid "install and config rust"
 msgstr ""
 
 #: src/build.md:5
@@ -569,14 +645,7 @@ msgid ""
 msgstr ""
 
 #: src/build.md:10
-msgid "- use rust nightly"
-msgstr ""
-
-#: src/build.md:12
-msgid ""
-"```shell\n"
-"rustup default nightly-2022-08-10\n"
-"```"
+msgid "use rust nightly"
 msgstr ""
 
 #: src/build.md:16
@@ -586,84 +655,32 @@ msgid ""
 "feature, so add nightly src component"
 msgstr ""
 
-#: src/build.md:18
-msgid ""
-"```shell\n"
-"rustup component add rust-src --toolchain nightly-x86_64-apple-darwin\n"
-"```"
-msgstr ""
-
 #: src/build.md:22
 msgid "clone repository and open in command line tool. then run"
-msgstr ""
-
-#: src/build.md:24
-msgid ""
-"```shell\n"
-"cargo check\n"
-"```"
 msgstr ""
 
 #: src/build.md:28
 msgid "wait crates download..."
 msgstr ""
 
-#: src/build.md:30
-msgid ""
-"```shell\n"
-"cargo build -p ezlog\n"
-"```"
-msgstr ""
-
 #: src/build.md:34
-msgid "### for Flutter build"
-msgstr ""
-
-#: src/build.md:36
-msgid ""
-"```dart\n"
-"flutter packages get\n"
-"\n"
-"flutter packages upgrade\n"
-"```"
+msgid "for Flutter build"
 msgstr ""
 
 #: src/build.md:42
-msgid "### For android build"
+msgid "For android build"
 msgstr ""
 
 #: src/build.md:44
-msgid "- add android targets"
-msgstr ""
-
-#: src/build.md:46
-msgid ""
-"```shell\n"
-"rustup target add aarch64-linux-android armv7-linux-androideabi "
-"i686-linux-android x86_64-linux-android\n"
-"```"
+msgid "add android targets"
 msgstr ""
 
 #: src/build.md:50
 msgid "we use `cargo-ndk` to build dylib"
 msgstr ""
 
-#: src/build.md:52
-msgid ""
-"```shell\n"
-"cargo install cargo-ndk\n"
-"```"
-msgstr ""
-
 #: src/build.md:56
 msgid "cd android"
-msgstr ""
-
-#: src/build.md:58
-msgid ""
-"```shell\n"
-"sh b_android.sh\n"
-"```"
 msgstr ""
 
 #: src/build.md:62
@@ -671,40 +688,19 @@ msgid "then open current workspace in AndroidStudio"
 msgstr ""
 
 #: src/build.md:64
-msgid "### For iOS build"
+msgid "For iOS build"
 msgstr ""
 
 #: src/build.md:66
-msgid "- add iOS targets"
-msgstr ""
-
-#: src/build.md:68
-msgid ""
-"```shell\n"
-"rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios\n"
-"```"
+msgid "add iOS targets"
 msgstr ""
 
 #: src/build.md:73
 msgid "install `cbindgen`"
 msgstr ""
 
-#: src/build.md:75
-msgid ""
-"```shell\n"
-"cargo install --force cbindgen\n"
-"```"
-msgstr ""
-
 #: src/build.md:79
 msgid "cd ios dir"
-msgstr ""
-
-#: src/build.md:81
-msgid ""
-"```shell\n"
-"sh b_ios.sh\n"
-"```"
 msgstr ""
 
 #: src/build.md:85
