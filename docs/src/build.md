@@ -10,7 +10,7 @@ source $HOME/.cargo/env
 - use rust nightly
 
 ```shell
-rustup default nightly-2022-08-10
+rustup default nightly
 ```
 
 we use [build-std](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#build-std) feature, so add nightly src component
