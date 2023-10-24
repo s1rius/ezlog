@@ -5,3 +5,11 @@ dependencies {
     androidTestImplementation "androidx.test:runner:1.5.2"
     androidTestImplementation "androidx.test:rules:1.5.0"
 }
+
+
+task buildRust(type: Exec) {
+    workingDir '../'
+    commandLine 'sh', 'b_android.sh'
+}
+
+preBuild.dependsOn buildRust
