@@ -7,15 +7,56 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2023-10-13
+          override: true
+          components: rustfmt, clippy
+      
+      - name: Install iOS target
+        run: >
+          rustup target add
+          aarch64-apple-ios
+      
+      - name: Add macOS rust std 
+        run: >   
+          rustup component add rust-src --toolchain nightly-2023-10-13-x86_64-apple-darwin 
+
+      - name: Build xcframework
+        working-directory: ./ios
+        run: b_ios.sh
+
+      - name: Get last tag
+        run: |
+        git fetch --tags
+        LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+        echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
+        echo "Latest git tag: $LATEST_TAG"
+
+      - name: Zip
+        working-directory: ./ios
+        run: |
+          mkdir build
+          pushd framework
+          zip -r ../build/ezlog_${{ env.LATEST_TAG }}_xcframework.zip ezlog.xcframework
+
+      - name: Upload xcframework
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.LATEST_TAG }}
+          name: apple:${{ env.LATEST_TAG }}
+          files: |
+            ./ios/build/*
+
       - name: Install Cocoapods
         run: gem install cocoapods
 
       - name: Deploy to Cocoapods
-        run: |
-          set -eo pipefail
-          chmod +x ./publish_ios.sh
-          ./publish_ios.sh
+        # pod lib lint EZLog.podspec --verbose
+        run: pod trunk push EZLog.podspec --allow-warnings
         shell: bash  
         env:
           COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}

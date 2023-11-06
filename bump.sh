@@ -1,4 +1,6 @@
 #!/bin/bash
+# usage ./bump.sh 2.0.0 2.0.1
+
 set -e
 
 EXCLUDE_DIR='./target'
