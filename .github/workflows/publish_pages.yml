@@ -1,10 +1,6 @@
 name: Publish-GithubPages
 
-on:
-  push:
-    branches:
-      - docs
-  workflow_dispatch:
+on: workflow_dispatch
 
 permissions:
   contents: read
