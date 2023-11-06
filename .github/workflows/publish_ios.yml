@@ -1,10 +1,6 @@
 name: Publish-iOS
 
-on:
-  push:
-    # Pattern matched against refs/tags
-    tags:
-      - "*" # Push events to every tag not containing /
+on: workflow_dispatch
 
 jobs:
   publish-ios:
