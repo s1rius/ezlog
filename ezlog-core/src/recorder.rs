@@ -181,6 +181,20 @@ impl EZRecord {
     }
 }
 
+impl PartialEq for EZRecord {
+    fn eq(&self, other: &Self) -> bool {
+        self.log_name == other.log_name
+            && self.level == other.level
+            && self.target == other.target
+            && self.time == other.time
+            && self.thread_id == other.thread_id
+            && self.thread_name == other.thread_name
+            && self.content == other.content
+            && self.file == other.file
+            && self.line == other.line
+    }
+}
+
 /// [EZRecord]'s builder
 #[derive(Debug)]
 pub struct EZRecordBuilder {
@@ -235,13 +249,13 @@ impl EZRecordBuilder {
     }
 
     #[cfg(feature = "log")]
-    fn line(&mut self, line: u32) -> &mut Self {
+    pub fn line(&mut self, line: u32) -> &mut Self {
         self.record.line = Some(line);
         self
     }
 
     #[cfg(feature = "log")]
-    fn file(&mut self, file: &str) -> &mut Self {
+    pub fn file(&mut self, file: &str) -> &mut Self {
         self.record.file = Some(file.to_string());
         self
     }
@@ -259,7 +273,7 @@ impl Default for EZRecordBuilder {
                 id: 0,
                 log_name: DEFAULT_LOG_NAME.to_string(),
                 level: Level::Info,
-                target: "".to_string(),
+                target: "default".to_string(),
                 time: OffsetDateTime::now_utc(),
                 thread_id: thread_id::get(),
                 thread_name: thread::current().name().unwrap_or("unknown").to_string(),

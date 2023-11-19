@@ -9,7 +9,10 @@ use std::{
     path::PathBuf,
 };
 
-use anyhow::Context;
+use anyhow::{
+    anyhow,
+    Context,
+};
 use clap::Parser;
 pub use ezlog::*;
 use serde::{
@@ -146,16 +149,14 @@ pub fn main() -> anyhow::Result<()> {
 
     let mut plain_text_write = BufWriter::new(output_file);
 
-    ezlog::decode::decode_body_and_write(
+    ezlog::decode::decode_with_writer(
         &mut cursor,
         &mut plain_text_write,
-        &config.version,
-        &compression,
-        &decryptor,
+        compression,
+        decryptor,
         &header,
     )
-    .unwrap();
-    Ok(())
+    .map_err(|e| anyhow!(format!("{}", e)))
 }
 
 #[cfg(test)]

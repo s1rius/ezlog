@@ -505,6 +505,18 @@ impl Level {
     }
 }
 
+impl std::str::FromStr for Level {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let a = LOG_LEVEL_NAMES
+            .iter()
+            .position(|&name| name == s)
+            .and_then(Self::from_usize);
+        a.ok_or(LogError::Parse("unknown level".to_string()))
+    }
+
+    type Err = LogError;
+}
+
 impl Clone for Level {
     #[inline]
     fn clone(&self) -> Level {

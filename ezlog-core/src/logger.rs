@@ -513,15 +513,23 @@ impl Header {
     }
 
     pub fn has_record_exclude_extra(&self, config: &EZLogConfig) -> bool {
-        let extra_len = match &config.extra {
+        // extra write as record
+        self.recorder_position > (self.length() + self.extra_len(config)) as u32
+    }
+
+    #[inline]
+    fn extra_len(&self, config: &EZLogConfig) -> usize {
+        match &config.extra {
             Some(e) => {
                 let record = Vec::from(e.to_owned());
                 encode_content(record).map(|r| r.len()).unwrap_or(0)
             }
             None => 0,
-        };
-        // extra write as record
-        self.recorder_position > (self.length() + extra_len) as u32
+        }
+    }
+
+    pub fn is_extra_index(&self, position: u64) -> bool {
+        self.flag.contains(Flags::HAS_EXTRA) && position == self.length() as u64
     }
 
     pub fn version(&self) -> &Version {

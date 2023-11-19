@@ -1,8 +1,13 @@
-use std::io::{
-    self,
-    BufRead,
-    Cursor,
-    Write,
+use std::{
+    io::{
+        self,
+        BufRead,
+        Cursor,
+        Write,
+    },
+    str::FromStr,
+    sync::mpsc::channel,
+    time::Duration,
 };
 
 use byteorder::{
@@ -10,13 +15,21 @@ use byteorder::{
     ReadBytesExt,
 };
 use integer_encoding::VarIntReader;
+use log::error;
+use once_cell::sync::OnceCell;
+use regex::Regex;
+use time::{
+    format_description::well_known::Rfc3339,
+    OffsetDateTime,
+};
 
 use crate::{
     errors::LogError,
     Compress,
     Cryptor,
-    EZLogger,
+    EZRecord,
     Header,
+    Level,
     NonceGenFn,
     Result,
     Version,
@@ -24,71 +37,70 @@ use crate::{
     RECORD_SIGNATURE_START,
 };
 
-#[inline]
-pub fn decode_logs_count(
-    logger: &mut EZLogger,
-    reader: &mut Cursor<Vec<u8>>,
-    header: &Header,
-) -> Result<i32> {
-    let mut count = 0;
-    loop {
-        let position = reader.position();
-        match decode_record_from_read(
-            reader,
-            &logger.config.version,
-            &logger.compression,
-            &logger.cryptor,
-            header,
-            position,
-        ) {
-            Ok(_) => {
-                count += 1;
-            }
-            Err(e) => match e {
-                LogError::IoError(err) => {
-                    if err.kind() == io::ErrorKind::UnexpectedEof {
-                        break;
-                    }
-                }
-                LogError::Illegal(_) => break,
-                _ => continue,
-            },
-        }
-    }
-    Ok(count)
-}
+pub fn decode_record(vec: &[u8]) -> Result<crate::EZRecord> {
+    static RE: OnceCell<std::result::Result<Regex, regex::Error>> = OnceCell::new();
+    let regex = RE.get_or_init(|| Regex::new(r"\[(.*?)\]"));
+    let record_str =
+        String::from_utf8(vec.to_vec()).map_err(|e| LogError::Parse(format!("{}", e)))?;
+    let mut record_builder = EZRecord::builder();
+    if let Ok(regex) = regex {
+        // Search for the first match
+        if let Some(caps) = regex.captures(&record_str) {
+            if let Some(matched) = caps.get(1) {
+                let header = matched.as_str();
+                let split: Vec<&str> = header.split_whitespace().collect();
 
-#[inline]
-pub fn decode_body_and_write(
-    reader: &mut Cursor<Vec<u8>>,
-    writer: &mut dyn Write,
-    version: &Version,
-    compression: &Option<Box<dyn Compress>>,
-    cryptor: &Option<Box<dyn Cryptor>>,
-    header: &Header,
-) -> io::Result<()> {
-    loop {
-        let position: u64 = reader.position();
-        match decode_record_from_read(reader, version, compression, cryptor, header, position) {
-            Ok(buf) => {
-                if buf.is_empty() {
-                    break;
+                let time = split
+                    .first()
+                    .map(|x| {
+                        OffsetDateTime::parse(x, &Rfc3339).unwrap_or(OffsetDateTime::now_utc())
+                    })
+                    .unwrap_or(OffsetDateTime::now_utc());
+                record_builder.time(time);
+
+                let level = split
+                    .get(1)
+                    .and_then(|x| Level::from_str(x).ok())
+                    .unwrap_or(Level::Trace);
+                record_builder.level(level);
+
+                let target = split.get(2).unwrap_or(&"").to_string();
+                record_builder.target(target);
+
+                let thread_str = split.get(3).unwrap_or(&"");
+                let mut thread_info: Vec<&str> = thread_str.split(':').collect();
+                if !thread_info.is_empty() {
+                    let thread_id = thread_info.last().unwrap_or(&"").to_string();
+                    record_builder.thread_id(thread_id.parse::<usize>().unwrap_or(0));
+                    thread_info.pop();
+                    let thread_name = thread_info.join(":");
+                    record_builder.thread_name(thread_name);
                 }
-                writer.write_all(&buf)?;
-                writer.write_all(b"\n")?;
+
+                #[cfg(feature = "log")]
+                {
+                    if split.len() == 5 {
+                        let file_info: Vec<&str> = split.last().unwrap_or(&"").split(':').collect();
+                        if !file_info.is_empty() {
+                            let file_name = file_info.first().unwrap_or(&"");
+                            let line = file_info.get(1).unwrap_or(&"");
+
+                            record_builder.file(file_name);
+                            record_builder.line(line.parse::<u32>().unwrap_or(0));
+                        }
+                    };
+                }
+                // header not contains square brackets
+                // two square brackets and one space
+                if record_str.len() > header.len() + 3 {
+                    let content = &record_str[header.len() + 3..];
+                    record_builder.content(content.to_string());
+                }
             }
-            Err(e) => match e {
-                LogError::IoError(err) => {
-                    if err.kind() == io::ErrorKind::UnexpectedEof {
-                        break;
-                    }
-                }
-                LogError::Illegal(_) => break,
-                _ => continue,
-            },
         }
     }
-    writer.flush()
+
+    Ok(record_builder.build())
 }
 
 #[inline]
@@ -104,7 +116,7 @@ pub(crate) fn decode_record_from_read(
     let combine = crate::logger::combine_time_position(header.timestamp.unix_timestamp(), position);
 
     let op = Box::new(move |input: &[u8]| crate::logger::xor_slice(input, &combine));
-    if header.has_record() && position != header.length() as u64 {
+    if header.has_record() && !header.is_extra_index(position) {
         decode_record_content(version, &chunk, compression, cryptor, op)
     } else {
         Ok(chunk)
@@ -128,7 +140,7 @@ pub(crate) fn decode_record_to_content(
     reader.read_exact(&mut chunk)?;
     let end_sign = reader.read_u8()?;
     if RECORD_SIGNATURE_END != end_sign {
-        return Err(LogError::Parse("record end sign error".to_string()));
+        //return Err(LogError::Parse("record end sign error".to_string()));
     }
     Ok(chunk)
 }
@@ -184,6 +196,81 @@ pub fn decode_record_content(
     Ok(buf)
 }
 
+pub fn decode_with_fn<F>(
+    reader: &mut Cursor<Vec<u8>>,
+    version: &Version,
+    compression: &Option<Box<dyn Compress>>,
+    cryptor: &Option<Box<dyn Cryptor>>,
+    header: &Header,
+    mut op: F,
+) where
+    F: for<'a> FnMut(&'a Vec<u8>, bool),
+{
+    loop {
+        let position: u64 = reader.position();
+        match decode_record_from_read(reader, version, compression, cryptor, header, position) {
+            Ok(buf) => {
+                if buf.is_empty() {
+                    op(&buf, true);
+                    break;
+                }
+                op(&buf, false);
+            }
+            Err(e) => match e {
+                LogError::IoError(err) => {
+                    if err.kind() == io::ErrorKind::UnexpectedEof {
+                        op(&vec![], true);
+                        break;
+                    }
+                }
+                LogError::Illegal(e) => {
+                    error!(target: "ezlog_decode", "{}", e);
+                    break;
+                }
+                _ => {
+                    error!(target: "ezlog_decode", "{}", e);
+                }
+            },
+        }
+    }
+}
+
+pub fn decode_with_writer(
+    cursor: &mut Cursor<Vec<u8>>,
+    writer: &mut io::BufWriter<std::fs::File>,
+    compression: Option<Box<dyn Compress>>,
+    decryptor: Option<Box<dyn Cryptor>>,
+    header: &Header,
+) -> Result<()> {
+    let (tx, rx) = channel();
+    let write_closure = move |data: &Vec<u8>, flag: bool| {
+        writer
+            .write_all(data)
+            .unwrap_or_else(|e| error!(target: "ezlog_decode", "{}", e));
+        writer
+            .write_all(b"\n")
+            .unwrap_or_else(|e| error!(target: "ezlog_decode", "{}", e));
+        if flag {
+            writer
+                .flush()
+                .unwrap_or_else(|e| error!(target: "ezlog_decode", "{}", e));
+            tx.send(())
+                .unwrap_or_else(|e| error!(target: "ezlog_decode", "{}", e))
+        }
+    };
+
+    decode_with_fn(
+        cursor,
+        header.version(),
+        &compression,
+        &decryptor,
+        header,
+        write_closure,
+    );
+    rx.recv_timeout(Duration::from_secs(60 * 5))
+        .map_err(|e| LogError::Parse(format!("{}", e)))
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -192,17 +279,23 @@ mod tests {
         Cursor,
         Read,
     };
+    use std::sync::mpsc::channel;
+    use std::time::Duration;
 
-    use crate::decode::decode_logs_count;
+    use time::OffsetDateTime;
+
+    use super::decode_record;
+    use crate::thread_name;
     use crate::{
         decode,
         EZLogger,
+        EZRecord,
         EZRecordBuilder,
         Header,
     };
 
     #[cfg(feature = "decode")]
-    fn create_all_feature_config() -> crate::EZLogConfig {
+    fn create_all_feature_config(path: &str) -> crate::EZLogConfig {
         use crate::CipherKind;
         use crate::CompressKind;
 
@@ -212,7 +305,7 @@ mod tests {
             .dir_path(
                 dirs::cache_dir()
                     .unwrap()
-                    .join("ezlog_test")
+                    .join(path)
                     .into_os_string()
                     .into_string()
                     .unwrap(),
@@ -250,10 +343,39 @@ mod tests {
         assert_eq!(vec, decode)
     }
 
+    #[inline]
+    fn decode_logs_count(
+        logger: &mut EZLogger,
+        reader: &mut Cursor<Vec<u8>>,
+        header: &Header,
+    ) -> crate::Result<i32> {
+        let (tx, rx) = channel();
+
+        let mut count = 0;
+        let my_closure = |data: &Vec<u8>, is_end: bool| {
+            if data.len() > 0 {
+                count += 1;
+            }
+            if is_end {
+                tx.send(()).expect("Could not send signal on channel.");
+            }
+        };
+        crate::decode::decode_with_fn(
+            reader,
+            &logger.config.version,
+            &logger.compression,
+            &logger.cryptor,
+            header,
+            my_closure,
+        );
+        rx.recv().expect("Could not receive from channel.");
+        Ok(count)
+    }
+
     #[cfg(feature = "decode")]
     #[test]
     fn teset_encode_decode_file() {
-        let config = create_all_feature_config();
+        let config = create_all_feature_config("test_file");
         fs::remove_dir_all(&config.dir_path).unwrap_or_default();
         let mut logger = EZLogger::new(config.clone()).unwrap();
 
@@ -288,7 +410,107 @@ mod tests {
         new_header.recorder_position = Header::length_compat(&config.version) as u32;
         assert_eq!(header, new_header);
         let count = decode_logs_count(&mut logger, &mut cursor, &header).unwrap();
+
         assert_eq!(count, log_count);
+        drop(logger);
+        fs::remove_dir_all(&config.dir_path).unwrap_or_default();
+    }
+
+    #[inline]
+    fn decode_array_record(
+        logger: &mut EZLogger,
+        reader: &mut Cursor<Vec<u8>>,
+        header: &Header,
+    ) -> crate::Result<Vec<EZRecord>> {
+        let mut array: Vec<EZRecord> = Vec::new();
+        let (tx, rx) = channel();
+
+        let my_closure = |data: &Vec<u8>, is_end: bool| {
+            if data.len() > 0 {
+                match decode_record(data) {
+                    Ok(r) => array.push(r),
+                    Err(e) => {
+                        println!("{}", e)
+                    }
+                }
+            }
+            if is_end {
+                tx.send(()).expect("Could not send signal on channel.");
+            }
+        };
+        crate::decode::decode_with_fn(
+            reader,
+            &logger.config.version,
+            &logger.compression,
+            &logger.cryptor,
+            header,
+            my_closure,
+        );
+        rx.recv().expect("Could not receive from channel.");
+        Ok(array)
+    }
+
+    #[test]
+    #[cfg(feature = "decode")]
+    #[cfg(feature = "log")]
+    pub fn test_decode_to_struct() {
+        let record = EZRecordBuilder::default()
+            .time(OffsetDateTime::now_utc())
+            .file("demo.rs")
+            .line(1)
+            .content("test".to_string())
+            .level(crate::Level::Trace)
+            .target("target".to_string())
+            .thread_name(thread_name::get())
+            .thread_id(thread_id::get())
+            .build();
+
+        let s = crate::formatter().format(&record).unwrap();
+        let record_decode = decode_record(&s).unwrap();
+
+        assert_eq!(record, record_decode)
+    }
+
+    #[cfg(feature = "decode")]
+    #[test]
+    fn teset_decode_to_array() {
+        use crate::EZRecord;
+
+        let config = create_all_feature_config("test_array");
+        fs::remove_dir_all(&config.dir_path).unwrap_or_default();
+
+        let mut logger = EZLogger::new(config.clone()).unwrap();
+        let log_count = 10;
+        let mut array: Vec<EZRecord> = Vec::new();
+        for i in 0..log_count {
+            let item = EZRecordBuilder::default()
+                .content(format!("hello world {}", i))
+                .time(OffsetDateTime::now_utc() - Duration::from_secs(60 * 60))
+                .target("target".to_string())
+                .build();
+            logger.append(&item.clone()).unwrap();
+            array.push(item);
+        }
+        logger.flush().unwrap();
+
+        let (path, _mmap) = &config.create_mmap_file().unwrap();
+        let file = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(&path)
+            .unwrap();
+        let mut buf = Vec::<u8>::new();
+        let mut reader = BufReader::new(file);
+        reader.read_to_end(&mut buf).unwrap();
+        assert!(buf.len() > 0);
+        let mut cursor = Cursor::new(buf);
+        let header = Header::decode(&mut cursor).unwrap();
+        assert!(header.has_record());
+        let decode_array = decode_array_record(&mut logger, &mut cursor, &header).unwrap();
+
+        assert_eq!(array, decode_array);
+        drop(logger);
         fs::remove_dir_all(&config.dir_path).unwrap_or_default();
     }
 }

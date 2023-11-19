@@ -4,10 +4,12 @@ use std::io::{
     BufWriter,
     Cursor,
     Read,
+    Write,
 };
 use std::thread;
 use std::time::Duration;
 
+use ezlog::EZMsg;
 use ezlog::Level;
 use ezlog::{
     create_log,
@@ -19,16 +21,13 @@ use ezlog::{
     EventPrinter,
     Header,
 };
-use ezlog::{
-    EZLogger,
-    EZMsg,
-};
 use log::{
     debug,
     error,
     info,
     trace,
     warn,
+    LevelFilter,
 };
 use rand::Rng;
 use time::OffsetDateTime;
@@ -37,10 +36,10 @@ static EVENT_LISTENER: EventPrinter = EventPrinter;
 
 pub fn main() {
     println!("start");
-    ezlog::InitBuilder::new()
+    let ezlog = ezlog::InitBuilder::new()
         .with_layer_fn(|msg| {
             if let EZMsg::Record(recode) = msg {
-                println!("{}", ezlog::format(&recode));
+                println!("{}", ezlog::format(recode));
             }
         })
         .with_event_listener(&EVENT_LISTENER)
@@ -51,26 +50,45 @@ pub fn main() {
 
     create_log(log_config);
 
+    log::set_boxed_logger(Box::new(ezlog))
+        .map(|()| log::set_max_level(LevelFilter::Trace))
+        .unwrap();
+
     trace!("1. create default log");
     debug!("2. debug ez log");
     info!("3. now have a log");
     warn!("4. test log to file");
     error!("5. log complete");
 
-    for i in 0..100 {
+    for i in 0..10 {
         trace!("{}{}", i, random_string(300));
     }
 
     ezlog::flush(ezlog::DEFAULT_LOG_NAME);
+
+    println!("end");
+
+    thread::sleep(Duration::from_secs(1));
+    read_log_file_rewrite();
+
+    ezlog::set_boxed_callback(Box::new(SimpleCallback));
     ezlog::request_log_files_for_date(
         ezlog::DEFAULT_LOG_NAME,
         OffsetDateTime::now_utc(),
         OffsetDateTime::now_utc(),
     );
-    println!("end");
-
     thread::sleep(Duration::from_secs(1));
-    read_log_file_rewrite();
+}
+
+struct SimpleCallback;
+
+impl EZLogCallback for SimpleCallback {
+    fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
+        println!("{} {} {}", name, date, logs.join(" "));
+    }
+    fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
+        println!("{} {} {}", name, date, err);
+    }
 }
 
 fn get_config() -> EZLogConfig {
@@ -122,30 +140,26 @@ fn read_log_file_rewrite() {
 
     let mut writer = BufWriter::new(plaintext_log);
 
-    let mut compression = ezlog::create_compress(&log_config);
-    let mut cryptor = ezlog::create_cryptor(&log_config).unwrap();
+    let compression = ezlog::create_compress(&log_config);
+    let cryptor = ezlog::create_cryptor(&log_config).unwrap();
     let header = Header::decode(&mut cursor).unwrap();
-    ezlog::decode::decode_body_and_write(
+
+    let my_closure = move |data: &Vec<u8>, flag: bool| {
+        writer.write_all(data).unwrap();
+        writer.write_all(b"\n").unwrap();
+        if flag {
+            writer.flush().unwrap();
+        }
+    };
+
+    ezlog::decode::decode_with_fn(
         &mut cursor,
-        &mut writer,
-        &header.version(),
-        &mut compression,
-        &mut cryptor,
+        header.version(),
+        &compression,
+        &cryptor,
         &header,
-    )
-    .unwrap();
-}
-
-struct SimpleCallback;
-
-impl EZLogCallback for SimpleCallback {
-    fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
-        println!("fetch success {} {} {}", name, date, logs.join(" "));
-    }
-
-    fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
-        println!("fetch fail {} {} {}", name, date, err);
-    }
+        my_closure,
+    );
 }
 
 const S: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.:;!@#$%^&*()_+-";
@@ -158,5 +172,5 @@ fn random_string(length: u32) -> String {
         let c = chars.nth(index).unwrap();
         owned_string.push(c);
     }
-    return owned_string;
+    owned_string
 }

@@ -1,10 +1,7 @@
-[package]
-name = "ezlog_space"
-version = "0.1.0"
-edition = "2021"
 
 [workspace]
-members = ["ezlogcli", "ezlog-core", "examples/android_preview", "examples/nest_log"]
+members = ["ezlogcli", "ezlog-core", "examples/android_preview", "examples/nest_log", "examples/hello_world"]
+resolver = "2"
 
 # https://github.com/johnthagen/min-sized-rust
 [profile.release]
@@ -13,17 +10,3 @@ lto = true          # Enable Link Time Optimization
 codegen-units = 1   # Reduce number of codegen units to increase optimizations.
 # panic = 'abort'     # Abort on panic
 # strip = true        # Strip symbols from binary*
-
-[dependencies]
-ezlog = {path = "ezlog-core", features = ["decode"]}
-log = "0.4.17"
-time = { version = "0.3", default-features = false, features = ["formatting"] }
-
-[dev-dependencies]
-dirs = "5.0"
-rand = "0.8"
-
-[[example]]
-name = "hello_world"
-path = "examples/hello_world.rs"
-crate-type = ["bin"]
