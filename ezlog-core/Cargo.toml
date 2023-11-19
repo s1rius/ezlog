@@ -14,7 +14,7 @@ crate-type = ["lib", "cdylib", "staticlib"]
 [features]
 default = []
 log = ["dep:log"]
-decode = ["dep:aes-gcm"]
+decode = ["dep:aes-gcm", "dep:regex", "dep:log"]
 android_logger = ["log","dep:android_logger"]
 
 [dependencies]
@@ -35,6 +35,7 @@ thiserror = "1"
 integer-encoding = "3.0"
 bitflags = "2.0.1"
 android_logger = { version = "0.13", optional = true }
+regex = { version = "1", optional = true}
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.21.0"
