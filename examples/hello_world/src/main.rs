@@ -149,17 +149,12 @@ fn read_log_file_rewrite() {
         writer.write_all(b"\n").unwrap();
         if flag {
             writer.flush().unwrap();
+            return None;
         }
+        Some(0)
     };
 
-    ezlog::decode::decode_with_fn(
-        &mut cursor,
-        header.version(),
-        &compression,
-        &cryptor,
-        &header,
-        my_closure,
-    );
+    ezlog::decode::decode_with_fn(&mut cursor, &compression, &cryptor, &header, my_closure);
 }
 
 const S: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.:;!@#$%^&*()_+-";

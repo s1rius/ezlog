@@ -87,9 +87,12 @@ use memmap2::MmapMut;
 use time::Duration;
 use time::OffsetDateTime;
 
+pub use self::compress::CompressKind;
+pub use self::compress::CompressLevel;
 pub use self::config::EZLogConfig;
 pub use self::config::EZLogConfigBuilder;
 pub use self::config::Level;
+pub use self::crypto::CipherKind;
 pub use self::errors::LogError;
 pub(crate) use self::events::event;
 pub use self::events::Event;
@@ -738,6 +741,7 @@ pub fn set_boxed_formatter(formatter: Box<dyn Formatter>) {
 ///
 /// current version: v1
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
+#[cfg_attr(feature = "json", derive(serde::Serialize, serde::Deserialize))]
 pub enum Version {
     V1,
     V2,
@@ -764,138 +768,33 @@ impl From<Version> for u8 {
     }
 }
 
-/// Cipher kind current support
-#[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
-pub enum CipherKind {
-    #[deprecated(since = "0.2.0", note = "Use AES128GCMSIV instead")]
-    AES128GCM,
-    #[deprecated(since = "0.2.0", note = "Use AES256GCMSIV instead")]
-    AES256GCM,
-    AES128GCMSIV,
-    AES256GCMSIV,
-    NONE,
-    UNKNOWN,
+#[cfg(feature = "json")]
+use serde::Deserializer;
+#[cfg(feature = "json")]
+use serde::Serializer;
+
+#[cfg(feature = "json")]
+pub fn serialize_time<S>(
+    date: &OffsetDateTime,
+    serializer: S,
+) -> std::result::Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    use time::format_description::well_known::Rfc3339;
+    serializer.serialize_str(&date.format(&Rfc3339).unwrap_or("".to_string()))
 }
 
-#[allow(deprecated)]
-impl From<u8> for CipherKind {
-    fn from(orig: u8) -> Self {
-        match orig {
-            0x00 => CipherKind::NONE,
-            0x01 => CipherKind::AES128GCM,
-            0x02 => CipherKind::AES256GCM,
-            0x03 => CipherKind::AES128GCMSIV,
-            0x04 => CipherKind::AES256GCMSIV,
-            _ => CipherKind::UNKNOWN,
-        }
-    }
-}
+#[cfg(feature = "json")]
+pub fn deserialize_time<'de, D>(deserializer: D) -> std::result::Result<OffsetDateTime, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::Deserialize;
+    use time::format_description::well_known::Rfc3339;
 
-#[allow(deprecated)]
-impl From<CipherKind> for u8 {
-    fn from(orig: CipherKind) -> Self {
-        match orig {
-            CipherKind::NONE => 0x00,
-            CipherKind::AES128GCM => 0x01,
-            CipherKind::AES256GCM => 0x02,
-            CipherKind::AES128GCMSIV => 0x03,
-            CipherKind::AES256GCMSIV => 0x04,
-            CipherKind::UNKNOWN => 0xff,
-        }
-    }
-}
-
-#[allow(deprecated)]
-impl core::fmt::Display for CipherKind {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        match self {
-            CipherKind::AES128GCM => write!(f, "AEAD_AES_128_GCM"),
-            CipherKind::AES256GCM => write!(f, "AEAD_AES_256_GCM"),
-            CipherKind::AES128GCMSIV => write!(f, "AEAD_AES_128_GCM_SIV"),
-            CipherKind::AES256GCMSIV => write!(f, "AEAD_AES_128_GCM_SIV"),
-            CipherKind::NONE => write!(f, "NONE"),
-            _ => write!(f, "UNKNOWN"),
-        }
-    }
-}
-
-#[allow(deprecated)]
-impl std::str::FromStr for CipherKind {
-    type Err = LogError;
-
-    fn from_str(s: &str) -> Result<Self> {
-        match s {
-            "AEAD_AES_128_GCM" => Ok(CipherKind::AES128GCM),
-            "AEAD_AES_256_GCM" => Ok(CipherKind::AES256GCM),
-            "AEAD_AES_128_GCM_SIV" => Ok(CipherKind::AES128GCMSIV),
-            "AEAD_AES_256_GCM_SIV" => Ok(CipherKind::AES256GCMSIV),
-            "NONE" => Ok(CipherKind::NONE),
-            _ => Err(errors::LogError::Parse("unknown cipher kind".to_string())),
-        }
-    }
-}
-
-/// Compress type can be used to compress the log file.
-#[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
-pub enum CompressKind {
-    /// ZLIB compression
-    /// we use [flate2](https://github.com/rust-lang/flate2-rs) to implement this
-    ZLIB,
-    /// No compression
-    NONE,
-    /// Unknown compression
-    UNKNOWN,
-}
-
-impl From<u8> for CompressKind {
-    fn from(orig: u8) -> Self {
-        match orig {
-            0x00 => CompressKind::NONE,
-            0x01 => CompressKind::ZLIB,
-            _ => CompressKind::UNKNOWN,
-        }
-    }
-}
-
-impl From<CompressKind> for u8 {
-    fn from(orig: CompressKind) -> Self {
-        match orig {
-            CompressKind::NONE => 0x00,
-            CompressKind::ZLIB => 0x01,
-            CompressKind::UNKNOWN => 0xff,
-        }
-    }
-}
-
-/// Compress level
-///
-/// can be define as one of the following: FAST, DEFAULT, BEST
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
-pub enum CompressLevel {
-    Fast,
-    Default,
-    Best,
-}
-
-impl From<u8> for CompressLevel {
-    fn from(orig: u8) -> Self {
-        match orig {
-            0x00 => CompressLevel::Default,
-            0x01 => CompressLevel::Fast,
-            0x02 => CompressLevel::Best,
-            _ => CompressLevel::Default,
-        }
-    }
-}
-
-impl From<CompressLevel> for u8 {
-    fn from(orig: CompressLevel) -> Self {
-        match orig {
-            CompressLevel::Default => 0x00,
-            CompressLevel::Fast => 0x01,
-            CompressLevel::Best => 0x02,
-        }
-    }
+    let s = String::deserialize(deserializer)?;
+    OffsetDateTime::parse(&s, &Rfc3339).map_err(serde::de::Error::custom)
 }
 
 #[cfg(test)]

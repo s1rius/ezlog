@@ -316,6 +316,7 @@ use bitflags::bitflags;
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "json", derive(serde::Serialize, serde::Deserialize))]
     pub(crate) struct Flags: u8 {
         const NONE = 0b0000_0000;
         const HAS_EXTRA = 0b0000_0001;
@@ -327,6 +328,7 @@ bitflags! {
 /// every log file starts with a header,
 /// which is used to describe the version, log length, compress type, cipher kind and so on.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "json", derive(serde::Serialize, serde::Deserialize))]
 pub struct Header {
     /// version code
     pub(crate) version: Version,
@@ -341,8 +343,11 @@ pub struct Header {
     // config key and nonce hash
     pub(crate) cihper_hash: u32,
     /// timestamp
+    #[cfg_attr(feature = "json", serde(serialize_with = "crate::serialize_time"))]
+    #[cfg_attr(feature = "json", serde(deserialize_with = "crate::deserialize_time"))]
     pub(crate) timestamp: OffsetDateTime,
     /// rotate time
+    #[cfg_attr(feature = "json", serde(skip))]
     pub(crate) rotate_time: Option<OffsetDateTime>,
 }
 
