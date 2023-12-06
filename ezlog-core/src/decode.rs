@@ -262,6 +262,23 @@ pub fn decode_with_writer(
         .map_err(|e| LogError::Parse(format!("{}", e)))
 }
 
+pub fn decode_header_and_extra(
+    cursor: &mut Cursor<Vec<u8>>,
+) -> Result<(Header, Option<(String, &str)>)> {
+    let header = Header::decode(cursor)?;
+    let mut extra: Option<(String, &str)> = None;
+    if header.has_extra() {
+        decode_with_fn(cursor, &None, &None, &header, |v, _| {
+            extra = String::from_utf8(v.clone())
+                .map(|x| (Some((x, "utf-8"))))
+                .map_err(|_| Some((hex::decode(v), "hex")))
+                .unwrap_or(None);
+            None
+        })
+    }
+    Ok((header, extra))
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;

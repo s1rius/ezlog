@@ -45,6 +45,7 @@
 mod appender;
 mod compress;
 mod config;
+#[allow(deprecated)]
 mod crypto;
 mod errors;
 mod events;

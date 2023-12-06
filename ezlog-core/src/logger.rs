@@ -522,6 +522,10 @@ impl Header {
         self.recorder_position > (self.length() + self.extra_len(config)) as u32
     }
 
+    pub fn has_extra(&self) -> bool {
+        self.flag.contains(Flags::HAS_EXTRA)
+    }
+
     #[inline]
     fn extra_len(&self, config: &EZLogConfig) -> usize {
         match &config.extra {
