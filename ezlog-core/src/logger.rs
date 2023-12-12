@@ -437,6 +437,10 @@ impl Header {
         }
     }
 
+    pub fn timestamp(&self) -> OffsetDateTime {
+        self.timestamp
+    }
+
     pub fn max_length() -> usize {
         V2_LOG_HEADER_SIZE
     }
