@@ -19,16 +19,28 @@ use crate::{
 
 /// Single Log record
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "json", derive(serde::Serialize, serde::Deserialize))]
 pub struct EZRecord {
     id: u64,
+    #[cfg_attr(feature = "json", serde(rename = "n"))]
     log_name: String,
+    #[cfg_attr(feature = "json", serde(rename = "l"))]
     level: Level,
+    #[cfg_attr(feature = "json", serde(rename = "g"))]
     target: String,
+    #[cfg_attr(feature = "json", serde(rename = "t"))]
+    #[cfg_attr(feature = "json", serde(serialize_with = "crate::serialize_time"))]
+    #[cfg_attr(feature = "json", serde(deserialize_with = "crate::deserialize_time"))]
     time: OffsetDateTime,
+    #[cfg_attr(feature = "json", serde(rename = "d"))]
     thread_id: usize,
+    #[cfg_attr(feature = "json", serde(rename = "m"))]
     thread_name: String,
+    #[cfg_attr(feature = "json", serde(rename = "c"))]
     content: String,
+    #[cfg_attr(feature = "json", serde(rename = "f"))]
     file: Option<String>,
+    #[cfg_attr(feature = "json", serde(rename = "y"))]
     line: Option<u32>,
 }
 

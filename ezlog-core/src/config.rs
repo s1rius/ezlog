@@ -106,7 +106,7 @@ pub struct EZLogConfig {
 
     /// Extra info to be added to log header
     ///
-    /// Plaintext infomation write in log file header
+    /// Plaintext infomation write following log's header
     pub extra: Option<String>,
 }
 
@@ -434,6 +434,7 @@ pub(crate) fn parse_date_from_str(date_str: &str, case: &str) -> crate::Result<D
 /// Log level, used to filter log records
 #[repr(usize)]
 #[derive(Copy, Eq, Debug)]
+#[cfg_attr(feature = "json", derive(serde::Serialize, serde::Deserialize))]
 pub enum Level {
     /// The "error" level.
     ///

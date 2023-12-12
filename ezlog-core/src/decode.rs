@@ -33,7 +33,6 @@ use crate::{
     NonceGenFn,
     Result,
     Version,
-    RECORD_SIGNATURE_END,
     RECORD_SIGNATURE_START,
 };
 
@@ -106,18 +105,17 @@ pub fn decode_record(vec: &[u8]) -> Result<crate::EZRecord> {
 #[inline]
 pub(crate) fn decode_record_from_read(
     reader: &mut Cursor<Vec<u8>>,
-    version: &Version,
     compression: &Option<Box<dyn Compress>>,
     cryptor: &Option<Box<dyn Cryptor>>,
     header: &Header,
     position: u64,
 ) -> Result<Vec<u8>> {
-    let chunk = decode_record_to_content(reader, version)?;
+    let chunk = decode_record_to_content(reader, &header.version)?;
     let combine = crate::logger::combine_time_position(header.timestamp.unix_timestamp(), position);
 
     let op = Box::new(move |input: &[u8]| crate::logger::xor_slice(input, &combine));
     if header.has_record() && !header.is_extra_index(position) {
-        decode_record_content(version, &chunk, compression, cryptor, op)
+        decode_record_content(&header.version, &chunk, compression, cryptor, op)
     } else {
         Ok(chunk)
     }
@@ -138,10 +136,8 @@ pub(crate) fn decode_record_to_content(
     let content_size: usize = decode_record_size(reader, version)?;
     let mut chunk = vec![0u8; content_size];
     reader.read_exact(&mut chunk)?;
-    let end_sign = reader.read_u8()?;
-    if RECORD_SIGNATURE_END != end_sign {
-        //return Err(LogError::Parse("record end sign error".to_string()));
-    }
+    // ignore the end sign check
+    let _ = reader.read_u8()?;
     Ok(chunk)
 }
 
@@ -198,24 +194,24 @@ pub fn decode_record_content(
 
 pub fn decode_with_fn<F>(
     reader: &mut Cursor<Vec<u8>>,
-    version: &Version,
     compression: &Option<Box<dyn Compress>>,
     cryptor: &Option<Box<dyn Cryptor>>,
     header: &Header,
     mut op: F,
 ) where
-    F: for<'a> FnMut(&'a Vec<u8>, bool),
+    F: for<'a> FnMut(&'a Vec<u8>, bool) -> Option<u64>,
 {
     loop {
         let position: u64 = reader.position();
-        match decode_record_from_read(reader, version, compression, cryptor, header, position) {
-            Ok(buf) => {
-                if buf.is_empty() {
-                    op(&buf, true);
-                    break;
+        match decode_record_from_read(reader, compression, cryptor, header, position) {
+            Ok(buf) => match op(&buf, buf.is_empty()) {
+                Some(skip) => {
+                    if skip > 0 {
+                        reader.set_position(reader.position() + skip);
+                    }
                 }
-                op(&buf, false);
-            }
+                None => break,
+            },
             Err(e) => match e {
                 LogError::IoError(err) => {
                     if err.kind() == io::ErrorKind::UnexpectedEof {
@@ -255,20 +251,32 @@ pub fn decode_with_writer(
                 .flush()
                 .unwrap_or_else(|e| error!(target: "ezlog_decode", "{}", e));
             tx.send(())
-                .unwrap_or_else(|e| error!(target: "ezlog_decode", "{}", e))
+                .unwrap_or_else(|e| error!(target: "ezlog_decode", "{}", e));
+            return None;
         }
+        Some(0)
     };
 
-    decode_with_fn(
-        cursor,
-        header.version(),
-        &compression,
-        &decryptor,
-        header,
-        write_closure,
-    );
+    decode_with_fn(cursor, &compression, &decryptor, header, write_closure);
     rx.recv_timeout(Duration::from_secs(60 * 5))
         .map_err(|e| LogError::Parse(format!("{}", e)))
+}
+
+pub fn decode_header_and_extra(
+    cursor: &mut Cursor<Vec<u8>>,
+) -> Result<(Header, Option<(String, &str)>)> {
+    let header = Header::decode(cursor)?;
+    let mut extra: Option<(String, &str)> = None;
+    if header.has_extra() {
+        decode_with_fn(cursor, &None, &None, &header, |v, _| {
+            extra = String::from_utf8(v.clone())
+                .map(|x| (Some((x, "utf-8"))))
+                .map_err(|_| Some((hex::decode(v), "hex")))
+                .unwrap_or(None);
+            None
+        })
+    }
+    Ok((header, extra))
 }
 
 #[cfg(test)]
@@ -358,11 +366,12 @@ mod tests {
             }
             if is_end {
                 tx.send(()).expect("Could not send signal on channel.");
+                return None;
             }
+            Some(0)
         };
         crate::decode::decode_with_fn(
             reader,
-            &logger.config.version,
             &logger.compression,
             &logger.cryptor,
             header,
@@ -436,11 +445,12 @@ mod tests {
             }
             if is_end {
                 tx.send(()).expect("Could not send signal on channel.");
+                return None;
             }
+            Some(0)
         };
         crate::decode::decode_with_fn(
             reader,
-            &logger.config.version,
             &logger.compression,
             &logger.cryptor,
             header,
