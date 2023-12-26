@@ -27,7 +27,9 @@ jobs:
 
       - name: Build xcframework
         working-directory: ./ios
-        run: b_ios.sh
+        run: |
+          chmod +x ./b_ios.sh
+          bash ./b_ios.sh
 
       - name: Get last tag
         run: |
@@ -47,7 +49,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.LATEST_TAG }}
-          name: apple:${{ env.LATEST_TAG }}
+          name: ${{ env.LATEST_TAG }}
           files: |
             ./ios/build/*
 
