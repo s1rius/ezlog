@@ -265,14 +265,14 @@ pub fn decode_with_writer(
 
 pub fn decode_header_and_extra(
     reader: &mut Cursor<Vec<u8>>,
-) -> Result<(Header, Option<(String, &str)>)> {
+) -> Result<(Header, Option<(String, String)>)> {
     let header = Header::decode(reader)?;
-    let mut extra: Option<(String, &str)> = None;
+    let mut extra: Option<(String, String)> = None;
     if header.has_extra() {
         decode_with_fn(reader, &None, &None, &header, |v, _| {
             extra = String::from_utf8(v.clone())
-                .map(|x| (Some((x, "utf-8"))))
-                .map_err(|_| Some((hex::decode(v), "hex")))
+                .map(|x| (Some((x, "utf-8".to_owned()))))
+                .map_err(|_| Some((hex::decode(v), "hex".to_owned())))
                 .unwrap_or(None);
             None
         })

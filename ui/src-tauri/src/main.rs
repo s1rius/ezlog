@@ -26,31 +26,33 @@ fn greet(name: &str) -> String {
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![parse_header_and_extra])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
 #[tauri::command]
 fn parse_header_and_extra(file_path: String) -> Result<String, String> {
+    println!("get file");
     let mut file = File::open(file_path).unwrap();
     let mut contents = Vec::new();
     file.read_to_end(&mut contents).unwrap();
     let mut cursor = Cursor::new(contents);
     ezlog::decode::decode_header_and_extra(&mut cursor)
         .map(|header_and_extra| {
-            let key1 = "header";
-            let key2 = "type";
-            let key3 = "extra";
-
             let extra_tuple = header_and_extra.1.unwrap_or_default();
             let json_string = format!(
-                "{{\"{}\":{},\"{}\":\"{}\",\"{}\":{}}}",
-                key1,
-                header_and_extra.0.timestamp().to_string(),
-                key2,
+                "{{\"{}\":{},\"{}\":{},\"{}\":{},\"{}\":\"{}\",\"{}\":\"{}\"}}",
+                "timestamp",
+                header_and_extra.0.timestamp().unix_timestamp(),
+                "version",
+                Into::<u8>::into(*header_and_extra.0.version()),
+                "encrypt",
+                if header_and_extra.0.is_encrypt() {1} else {0},
+                "extra",
                 extra_tuple.0,
-                key3,
-                extra_tuple.1.to_string()
+                "extra_encode",
+                extra_tuple.1
             );
             json_string
         })

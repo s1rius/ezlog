@@ -574,6 +574,10 @@ impl Header {
         &self.version
     }
 
+    pub fn is_encrypt(&self) -> bool {
+        self.cipher != CipherKind::NONE
+    }
+
     pub(crate) fn init_record_position(&mut self) {
         self.recorder_position = Self::length_compat(&self.version) as u32;
     }
