@@ -1,10 +1,49 @@
 <script setup lang="ts">
 // This starter template is using Vue 3 <script setup> SFCs
 // Check out https://vuejs.org/api/sfc-script-setup.html#script-setup
+import { invoke } from "@tauri-apps/api/tauri";
 import Greet from "./components/Greet.vue";
 import LogList from "./components/LogList.vue";
 
 import { listen } from '@tauri-apps/api/event'
+
+type Header = {
+  timestamp: 0,
+  version: 2,
+  encrypt: 0,
+  extra: "",
+  extra_encode: ""
+}
+
+var record = {
+
+}
+
+async function fetchLogs(path: string) {
+            await invoke('parse_log_file_to_records', {file_path: path})
+                .then((logs: any) => {
+                    ologs = logs;
+                })
+                .catch((error: any) => {
+                    console.error('Error fetching logs:', error);
+                });
+        }
+
+async function parse_header_and_extra(path: string) {
+  console.log('parse file dropped:', path);
+    await invoke('parse_header_and_extra', {filePath: path}).then((result: any) => {
+        console.error("sdfasdf", result);
+        const header = JSON.parse(result as string) as Header
+        if (header.encrypt == 0) {
+
+        } else {
+          
+        }
+        console.log(header)
+    }).catch((error: any) => {
+      console.error("error", error);
+    })
+}
 
 listen('tauri://file-drop', (event) => {
   if (event.payload && event.payload.length > 0) {
@@ -12,7 +51,7 @@ listen('tauri://file-drop', (event) => {
       console.log('First file dropped:', firstFilePath);
       // Now you can do something with the first file path
       // For example, reading the file content or processing the file
-      
+      parse_header_and_extra(firstFilePath)
     }
 })
 
