@@ -680,7 +680,7 @@ mod tests {
 
     #[test]
     fn test_query_log_files() {
-        let temp = dirs::cache_dir().unwrap().join("ezlog_test_config");
+        let temp = test_compat::test_path().join("ezlog_test_config");
         if temp.exists() {
             fs::remove_dir_all(&temp).unwrap();
         }

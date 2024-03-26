@@ -11,6 +11,10 @@ find . -path "$EXCLUDE_DIR" -prune -o -type f \( -name "*.toml" -o -name "*.kt" 
 # clippy check
 cargo clippy --all --all-features -- -D warnings
 
+# dinghy test
+cargo dinghy -vvv -d android test -p ezlog
+cargo dinghy -vvv -d ios test -p ezlog
+
 # build iOS
 pushd ios
 sh b_ios.sh

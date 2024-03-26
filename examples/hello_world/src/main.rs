@@ -97,8 +97,7 @@ fn get_config() -> EZLogConfig {
     EZLogConfigBuilder::new()
         .level(Level::Trace)
         .dir_path(
-            dirs::cache_dir()
-                .unwrap()
+            test_compat::test_path()
                 .into_os_string()
                 .into_string()
                 .expect("dir path error"),
