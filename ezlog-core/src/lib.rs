@@ -903,7 +903,7 @@ mod tests {
 
     #[test]
     fn test_request_logs() {
-        let mut cache_dir = dirs::cache_dir().unwrap();
+        let mut cache_dir = test_compat::test_path();
         cache_dir.push("test");
         std::fs::create_dir_all(&cache_dir).unwrap();
         let dir_clone = cache_dir.clone();

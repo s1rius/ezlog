@@ -59,8 +59,7 @@ fn test_logger_create() {
     ezlog::InitBuilder::new().debug(true).init();
     let config = EZLogConfigBuilder::new()
         .dir_path(
-            dirs::cache_dir()
-                .unwrap()
+            test_compat::test_path()
                 .into_os_string()
                 .into_string()
                 .expect("dir path error"),
