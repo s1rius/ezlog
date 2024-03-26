@@ -405,6 +405,10 @@ impl Header {
         }
     }
 
+    pub fn timestamp(&self) -> OffsetDateTime {
+        self.timestamp
+    }
+
     pub fn max_length() -> usize {
         V2_LOG_HEADER_SIZE
     }
@@ -543,6 +547,10 @@ impl Header {
 
     pub fn version(&self) -> &Version {
         &self.version
+    }
+
+    pub fn is_encrypt(&self) -> bool {
+        self.cipher != CipherKind::NONE
     }
 
     pub(crate) fn init_record_poition(&mut self) {
