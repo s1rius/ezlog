@@ -87,6 +87,7 @@ pub fn main() -> anyhow::Result<()> {
     let output_file = OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(false)
         .open(output)
         .with_context(|| "output file create error".to_string())?;
 
