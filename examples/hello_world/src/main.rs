@@ -121,6 +121,7 @@ fn read_log_file_rewrite() {
         .read(true)
         .write(true)
         .create(true)
+        .truncate(false)
         .open(&path)
         .unwrap();
     let mut br = BufReader::new(&file);
@@ -135,6 +136,7 @@ fn read_log_file_rewrite() {
         .read(true)
         .write(true)
         .create(true)
+        .truncate(false)
         .open(plaintext_log_path)
         .unwrap();
 

@@ -161,6 +161,7 @@ impl EZLogConfig {
             .read(true)
             .write(true)
             .create(true)
+            .truncate(false)
             .open(&path)?;
         let mut len = file.metadata()?.len();
         len = if len != max_size && len != 0 {
