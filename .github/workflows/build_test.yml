@@ -56,7 +56,7 @@ jobs:
         run: cargo test --manifest-path ./ezlogcli/Cargo.toml --verbose --no-default-features --no-fail-fast
       - name: Install Android NDK
         if: ${{ runner.os == 'Linux' }}
-        uses: nttld/setup-ndk@v1.2.0
+        uses: nttld/setup-ndk@v1.4.2
         with:
           ndk-version: r25b
       - name: Install cargo-ndk
