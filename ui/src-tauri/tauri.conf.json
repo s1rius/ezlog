@@ -7,8 +7,8 @@
     "withGlobalTauri": false
   },
   "package": {
-    "productName": "ui",
-    "version": "0.0.0"
+    "productName": "ezlog-ui",
+    "version": "0.1.0"
   },
   "tauri": {
     "allowlist": {
@@ -40,7 +40,7 @@
       {
         "fullscreen": false,
         "resizable": true,
-        "title": "ui",
+        "title": "ezlog",
         "width": 800,
         "height": 600
       }

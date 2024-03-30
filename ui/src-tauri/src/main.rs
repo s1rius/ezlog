@@ -11,22 +11,13 @@ use std::{
 };
 
 use ezlog::EZLogConfigBuilder;
-use serde::ser::{
-    Serialize,
-    SerializeTupleStruct,
-    Serializer,
-};
-
-// Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
 
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![greet])
-        .invoke_handler(tauri::generate_handler![parse_header_and_extra])
+        .invoke_handler(tauri::generate_handler![
+            parse_header_and_extra,
+            parse_log_file_to_records,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -48,7 +39,11 @@ fn parse_header_and_extra(file_path: String) -> Result<String, String> {
                 "version",
                 Into::<u8>::into(*header_and_extra.0.version()),
                 "encrypt",
-                if header_and_extra.0.is_encrypt() {1} else {0},
+                if header_and_extra.0.is_encrypt() {
+                    1
+                } else {
+                    0
+                },
                 "extra",
                 extra_tuple.0,
                 "extra_encode",
@@ -77,7 +72,7 @@ fn parse_log_file_to_records(
     let (tx, rx) = channel();
 
     let json_closure = |data: &Vec<u8>, is_end: bool| {
-        if data.len() > 0 {
+        if !data.is_empty() {
             match ezlog::decode::decode_record(data) {
                 Ok(r) => array.push(serde_json::to_string(&r).unwrap_or_default()),
                 Err(e) => {
