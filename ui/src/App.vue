@@ -5,11 +5,22 @@ import { invoke } from "@tauri-apps/api/tauri";
 
 import { type Event, listen } from '@tauri-apps/api/event'
 import { ref } from "vue";
+import Modal from './Modal.vue'
 
 const logs = ref<Record[]>([]);
 const add = (items: Record[]) => {
   logs.value.push(...items)
 }
+
+const showModal = ref(false)
+const currentPath = ref("")
+const currentExtra = ref("")
+
+const logColors = new Map();
+
+logColors.set('a', 1);
+logColors.set('b', 2);
+logColors.set('c', 3);
 
 type Header = {
   timestamp: 0,
@@ -34,7 +45,6 @@ export interface Record {
 async function fetchLogs(path: string, k: string, n: string) {
   await invoke('parse_log_file_to_records', { filePath: path, key: k, nonce: n })
     .then((logs: any) => {
-      console.log(logs)
       let records: Record[] = JSON.parse(logs).map((item: string) => <Record>JSON.parse(item));
       add(records)
     })
@@ -45,18 +55,25 @@ async function fetchLogs(path: string, k: string, n: string) {
 
 async function parse_header_and_extra(path: string) {
   console.log('parse file dropped:', path);
+  currentPath.value = path;
   await invoke('parse_header_and_extra', { filePath: path }).then(async (result: any) => {
     const header = JSON.parse(result as string) as Header
     console.log(header)
+    currentExtra.value = header.extra_encode + ":\n" + header.extra
     if (header.encrypt == 0) {
       fetchLogs(path, "", "")
     } else {
-
+      showModal.value = true;
     }
 
   }).catch((error: any) => {
     console.error("error", error);
   })
+}
+
+async function submit_with_key_and_nonce(key: string, nonce: string) {
+  showModal.value = false;
+  fetchLogs(currentPath.value, key, nonce);
 }
 
 listen('tauri://file-drop', (event: Event<string[]>) => {
@@ -72,25 +89,32 @@ listen('tauri://file-drop', (event: Event<string[]>) => {
 </script>
 
 <template>
-  <div class="container w-full max-w-full">
+  <div class="container bg-white dark:bg-stone-700/0 w-full max-w-full p-3">
     <table class="table table-striped table-bordered border-separate border-spacing-x-3">
       <thead>
         <tr>
-          <th class="text-left">Time</th>
-          <th class="text-left">Target</th>
-          <th class="text-left w-30 mx-3">Level</th>
-          <th class="text-left">Message</th>
+          <th class="text-left text-slate-900 dark:text-white">Time</th>
+          <th class="text-left text-slate-900 dark:text-white">Target</th>
+          <th class="text-left w-30 mx-3 text-slate-900 dark:text-white">Level</th>
+          <th class="text-left text-slate-900 dark:text-white">Message</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="(log, index) in logs" :key="index">
-          <td class="w-30 min-w-30 h-fit mx-1 whitespace-nowrap align-top">{{ log.t }}</td>
-          <td class="mx-1 align-top">{{ log.g }}</td>
-          <td class="w-30 mx-3 align-top">{{ log.l }}</td>
-          <td class="text-wrap text-left break-all">{{ log.c }}</td>
+          <td class="text-slate-900 dark:text-gray-400 w-30 min-w-30 h-fit mx-1 whitespace-nowrap align-top">{{ log.t }}</td>
+          <td class="text-slate-900 dark:text-gray-400 mx-1 align-top">{{ log.g }}</td>
+          <td class="text-slate-900 dark:text-gray-400 w-30 mx-3 align-top">{{ log.l }}</td>
+          <td class="text-slate-900 dark:text-gray-400 text-wrap text-left break-all">{{ log.c }}</td>
         </tr>
       </tbody>
     </table>
+
+    <modal :show="showModal" @submit="submit_with_key_and_nonce">
+      <template #header>
+        <h2>Fill Key and Nonce</h2>
+        <div>{{ currentExtra }}</div>
+      </template>
+    </modal>
   </div>
 </template>
 
