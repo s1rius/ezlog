@@ -26,7 +26,9 @@ use crate::crypto::{
     Aes128GcmSiv,
     Aes256GcmSiv,
 };
-use crate::events::Event::{self,};
+use crate::events::Event::{
+    self,
+};
 use crate::{
     appender::EZAppender,
     compress::ZlibCodec,
@@ -224,7 +226,6 @@ impl EZLogger {
         Box::new(move |input| xor_slice(input, &combine))
     }
 
-    ///
     #[inline]
     pub fn encode_as_block(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
         let buf = self.encode(record)?;

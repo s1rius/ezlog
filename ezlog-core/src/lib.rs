@@ -68,13 +68,7 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::{
     collections::HashMap,
-    hash::Hash,
-    io::{
-        self,
-        Cursor,
-        Read,
-        Write,
-    },
+    io::Write,
     mem::MaybeUninit,
     sync::Once,
     thread,
@@ -84,7 +78,6 @@ use crossbeam_channel::{
     Sender,
     TrySendError,
 };
-use memmap2::MmapMut;
 use time::Duration;
 use time::OffsetDateTime;
 
