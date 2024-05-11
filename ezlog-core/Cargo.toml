@@ -20,7 +20,7 @@ android_logger = ["log","dep:android_logger"]
 
 [dependencies]
 libc = "0.2"
-memmap2 = "0.6"
+memmap2 = "0.9"
 log = { version = "0.4", optional = true }
 byteorder = "1"
 flate2 = "1.0"
