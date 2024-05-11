@@ -23,7 +23,7 @@ jobs:
       
       - name: Add macOS rust std 
         run: >   
-          rustup component add rust-src --toolchain nightly-2023-10-13-x86_64-apple-darwin 
+          rustup component add rust-src --toolchain nightly-2023-10-13-aarch64-apple-darwin 
 
       - name: Build xcframework
         working-directory: ./ios
