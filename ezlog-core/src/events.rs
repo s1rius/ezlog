@@ -128,8 +128,6 @@ pub(crate) fn android_print(record: std::fmt::Arguments) {
     android_logger::log(&s);
 }
 
-pub(crate) use println_with_time;
-
 use crate::errors::LogError;
 
 struct NopEvent;

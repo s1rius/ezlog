@@ -1,21 +1,32 @@
 use std::{
     fs::OpenOptions,
     io::{
+        self,
         BufReader,
         BufWriter,
+        Cursor,
         Error,
         ErrorKind,
+        Read,
+        Write,
     },
     path::PathBuf,
     rc::Rc,
 };
 
+use memmap2::MmapMut;
 use time::OffsetDateTime;
 
 use crate::{
+    errors,
     events::event,
-    logger::Header,
-    *,
+    logger::{
+        self,
+        Header,
+    },
+    EZLogConfig,
+    Event,
+    Result,
 };
 
 pub trait AppenderInner: Write {
@@ -466,6 +477,11 @@ mod tests {
 
     use super::*;
     use crate::config::EZLogConfigBuilder;
+    use crate::{
+        CipherKind,
+        CompressKind,
+        Version,
+    };
 
     fn create_all_feature_config() -> EZLogConfigBuilder {
         let key = b"an example very very secret key.";

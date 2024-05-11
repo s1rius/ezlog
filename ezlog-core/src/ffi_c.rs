@@ -8,11 +8,21 @@ use libc::c_uchar;
 use libc::c_uint;
 use libc::c_void;
 use time::Duration;
+use time::OffsetDateTime;
 
 use crate::config::Level;
+use crate::create_log;
+use crate::event;
 use crate::events::EventPrinter;
 use crate::recorder::EZRecordBuilder;
-use crate::*;
+use crate::set_boxed_callback;
+use crate::thread_name;
+use crate::CipherKind;
+use crate::CompressKind;
+use crate::CompressLevel;
+use crate::EZLogCallback;
+use crate::EZLogConfigBuilder;
+use crate::Event;
 
 /// Init ezlog, must call before any other function
 #[no_mangle]
@@ -108,7 +118,7 @@ pub unsafe extern "C" fn ezlog_log(
         .thread_id(thread_id::get())
         .thread_name(thread_name::get())
         .build();
-    log(record)
+    crate::log(record)
 }
 
 #[no_mangle]
@@ -194,7 +204,7 @@ impl EZLogCallback for Callback {
 
     fn on_fetch_fail(&self, name: &str, date: &str, err_msg: &str) {
         self.fail(name, date, err_msg).unwrap_or_else(|e| {
-            events::event!(Event::FFiError, "fetch fail nul", &e.into());
+            event!(Event::FFiError, "fetch fail nul", &e.into());
         });
     }
 }
