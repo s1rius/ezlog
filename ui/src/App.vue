@@ -18,9 +18,11 @@ const currentExtra = ref("")
 
 const logColors = new Map();
 
-logColors.set('a', 1);
-logColors.set('b', 2);
-logColors.set('c', 3);
+logColors.set('Trace', "rgb(156, 163, 175)");
+logColors.set('Debug', "rgb(33, 150, 243)");
+logColors.set('Info', "rgb(76, 175, 80)");
+logColors.set('Warn', "rgb(255, 193, 7)");
+logColors.set('Error', "rgb(244, 67, 54)");
 
 type Header = {
   timestamp: 0,
@@ -76,6 +78,11 @@ async function submit_with_key_and_nonce(key: string, nonce: string) {
   fetchLogs(currentPath.value, key, nonce);
 }
 
+function getColorClass(data: string) {
+  const value = logColors.get(data)
+  return value !== undefined ? value : "";
+}
+
 listen('tauri://file-drop', (event: Event<string[]>) => {
   if (event.payload && event.payload.length > 0) {
     const firstFilePath = event.payload[0];
@@ -101,10 +108,11 @@ listen('tauri://file-drop', (event: Event<string[]>) => {
       </thead>
       <tbody>
         <tr v-for="(log, index) in logs" :key="index">
-          <td class="text-slate-900 dark:text-gray-400 w-30 min-w-30 h-fit mx-1 whitespace-nowrap align-top">{{ log.t }}</td>
-          <td class="text-slate-900 dark:text-gray-400 mx-1 align-top">{{ log.g }}</td>
-          <td class="text-slate-900 dark:text-gray-400 w-30 mx-3 align-top">{{ log.l }}</td>
-          <td class="text-slate-900 dark:text-gray-400 text-wrap text-left break-all">{{ log.c }}</td>
+          <td class="w-30 min-w-30 h-fit mx-1 whitespace-nowrap align-top" :style="{ color: getColorClass(log.l) }">{{
+          log.t }}</td>
+          <td class="mx-1 align-top" :style="{ color: getColorClass(log.l) }">{{ log.g }}</td>
+          <td class="w-30 mx-3 align-top text-left" :style="{ color: getColorClass(log.l) }">{{ log.l }}</td>
+          <td class="text-wrap text-left break-all" :style="{ color: getColorClass(log.l) }">{{ log.c }}</td>
         </tr>
       </tbody>
     </table>
@@ -117,13 +125,3 @@ listen('tauri://file-drop', (event: Event<string[]>) => {
     </modal>
   </div>
 </template>
-
-<style scoped>
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
-}
-
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #249b73);
-}
-</style>
