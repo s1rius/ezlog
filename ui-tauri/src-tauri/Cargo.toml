@@ -1,5 +1,5 @@
 [package]
-name = "ezlog-ui"
+name = "ezlog-tauri"
 version = "0.0.0"
 description = "A Tauri App"
 authors = ["you"]
