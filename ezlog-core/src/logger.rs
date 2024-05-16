@@ -26,7 +26,6 @@ use crate::crypto::{
     Aes128GcmSiv,
     Aes256GcmSiv,
 };
-use crate::events::Event::{self,};
 use crate::{
     appender::EZAppender,
     compress::ZlibCodec,
@@ -43,6 +42,7 @@ use crate::{
 use crate::{
     errors,
     event,
+    Event,
     NonceGenFn,
     V1_LOG_HEADER_SIZE,
 };

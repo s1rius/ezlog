@@ -4,7 +4,7 @@
 import { invoke } from "@tauri-apps/api/tauri";
 
 import { type Event, listen } from '@tauri-apps/api/event'
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import Modal from './Modal.vue'
 
 const logs = ref<Record[]>([]);
@@ -42,6 +42,18 @@ export interface Record {
   c: string,
   f: string,
   y: number
+}
+
+// to avoid white screen
+onMounted(async () => {
+  setTimeout(() => {
+      setupAppWindow()
+    }, 200);
+});
+
+async function setupAppWindow() {
+  const appWindow = (await import('@tauri-apps/api/window')).appWindow
+  appWindow.show();
 }
 
 async function fetchLogs(path: string, k: string, n: string) {
