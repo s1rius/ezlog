@@ -13,7 +13,7 @@ edition = "2021"
 tauri-build = { version = "1.5.2", features = [] }
 
 [dependencies]
-tauri = { version = "1.6", features = ["shell-open"] }
+tauri = { version = "1.6", features = ["shell-open", "window-center", "window-close", "window-hide", "window-maximize", "window-minimize", "window-print", "window-show", "window-start-dragging"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 ezlog = { version = "0.2.0", path = "../../ezlog-core", features = ["decode"] }

@@ -43,6 +43,7 @@ use crate::{
 use crate::{
     errors,
     event,
+    Event,
     NonceGenFn,
     V1_LOG_HEADER_SIZE,
 };
