@@ -43,7 +43,6 @@ use crate::{
 use crate::{
     errors,
     event,
-    Event,
     NonceGenFn,
     V1_LOG_HEADER_SIZE,
 };
@@ -255,6 +254,7 @@ impl EZLogger {
         encode_content(buf)
     }
 
+    #[inline]
     fn format(&self, record: &EZRecord) -> Result<Vec<u8>> {
         crate::formatter().format(record)
     }
@@ -305,6 +305,7 @@ impl EZLogger {
         self.config.query_log_files_for_date(date)
     }
 
+    #[inline]
     pub(crate) fn rotate_if_not_empty(&self) -> Result<()> {
         if self
             .appender
@@ -327,6 +328,7 @@ pub(crate) fn combine_time_position(timestamp: i64, position: u64) -> Vec<u8> {
     vec
 }
 
+#[inline]
 pub(crate) fn xor_slice<'a>(slice: &'a [u8], vec: &'a [u8]) -> Vec<u8> {
     let mut result = Vec::with_capacity(slice.len());
     for (i, byte) in slice.iter().enumerate() {
