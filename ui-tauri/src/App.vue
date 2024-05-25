@@ -10,9 +10,11 @@ import Modal from './Modal.vue'
 const logs = ref<Record[]>([]);
 const add = (items: Record[]) => {
   logs.value.push(...items)
+  showTable.value = logs.value.length > 0
 }
 
 const showModal = ref(false)
+const showTable = ref(false)
 const currentPath = ref("")
 const currentExtra = ref("")
 
@@ -47,8 +49,8 @@ export interface Record {
 // to avoid white screen
 onMounted(async () => {
   setTimeout(() => {
-      setupAppWindow()
-    }, 200);
+    setupAppWindow()
+  }, 200);
 });
 
 async function setupAppWindow() {
@@ -108,8 +110,15 @@ listen('tauri://file-drop', (event: Event<string[]>) => {
 </script>
 
 <template>
-  <div class="container bg-white dark:bg-stone-700/0 w-full max-w-full p-3">
-    <table class="table table-striped table-bordered border-separate border-spacing-x-3">
+  <div class="container bg-white dark:bg-stone-700/0 w-full max-w-full h-max-full p-3">
+    <div v-if="!showTable"
+      class="container w-full max-w-screen h-[calc(95dvh)] max-h-5/6 border-dashed border-2 border-slate-200">
+      <div class="absolute top-12 self-center w-1/2">
+        <img src="./assets/drag&drop.png" />
+      </div>
+    </div>
+
+    <table v-show="showTable" class="table table-striped table-bordered border-separate border-spacing-x-3">
       <thead>
         <tr>
           <th class="text-left text-slate-900 dark:text-white">Time</th>
@@ -121,7 +130,7 @@ listen('tauri://file-drop', (event: Event<string[]>) => {
       <tbody>
         <tr v-for="(log, index) in logs" :key="index">
           <td class="w-30 min-w-30 h-fit mx-1 whitespace-nowrap align-top" :style="{ color: getColorClass(log.l) }">{{
-          log.t }}</td>
+      log.t }}</td>
           <td class="mx-1 align-top" :style="{ color: getColorClass(log.l) }">{{ log.g }}</td>
           <td class="w-30 mx-3 align-top text-left" :style="{ color: getColorClass(log.l) }">{{ log.l }}</td>
           <td class="text-wrap text-left break-all" :style="{ color: getColorClass(log.l) }">{{ log.c }}</td>
