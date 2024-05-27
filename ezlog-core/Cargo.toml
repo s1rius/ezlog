@@ -12,7 +12,7 @@ keywords = ["ezlog"]
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [features]
-default = ["json"]
+default = []
 log = ["dep:log"]
 json = ["serde", "serde_json", "bitflags/serde"]
 decode = ["aes-gcm", "regex", "log", "hex"]
