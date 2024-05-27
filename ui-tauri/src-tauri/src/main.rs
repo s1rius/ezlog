@@ -11,6 +11,7 @@ use std::{
 };
 
 use ezlog::EZLogConfigBuilder;
+use serde_json::json;
 
 fn main() {
     tauri::Builder::default()
@@ -31,25 +32,8 @@ fn parse_header_and_extra(file_path: String) -> Result<String, String> {
     let mut cursor = Cursor::new(contents);
     ezlog::decode::decode_header_and_extra(&mut cursor)
         .map(|header_and_extra| {
-            let extra_tuple = header_and_extra.1.unwrap_or_default();
-            let json_string = format!(
-                "{{\"{}\":{},\"{}\":{},\"{}\":{},\"{}\":\"{}\",\"{}\":\"{}\"}}",
-                "timestamp",
-                header_and_extra.0.timestamp().unix_timestamp(),
-                "version",
-                Into::<u8>::into(*header_and_extra.0.version()),
-                "encrypt",
-                if header_and_extra.0.is_encrypt() {
-                    1
-                } else {
-                    0
-                },
-                "extra",
-                extra_tuple.0,
-                "extra_encode",
-                extra_tuple.1
-            );
-            json_string
+            let extra_tuple: (String, String) = header_and_extra.1.unwrap_or_default();
+            json!({"header": header_and_extra.0, "extra": extra_tuple.0, "extra_encode": extra_tuple.1}).to_string()
         })
         .map_err(|e| e.to_string())
 }

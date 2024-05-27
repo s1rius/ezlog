@@ -8,7 +8,8 @@ import { onMounted, ref } from "vue";
 import Modal from './Modal.vue'
 
 const logs = ref<Record[]>([]);
-const add = (items: Record[]) => {
+const addRecords = (items: Record[]) => {
+  logs.value = []
   logs.value.push(...items)
   showTable.value = logs.value.length > 0
 }
@@ -29,7 +30,11 @@ logColors.set('Error', "rgb(244, 67, 54)");
 type Header = {
   timestamp: 0,
   version: 2,
-  encrypt: 0,
+  cipher: string,
+}
+
+type HeaderWithExtra = {
+  header: Header,
   extra: "",
   extra_encode: ""
 }
@@ -62,7 +67,7 @@ async function fetchLogs(path: string, k: string, n: string) {
   await invoke('parse_log_file_to_records', { filePath: path, key: k, nonce: n })
     .then((logs: any) => {
       let records: Record[] = JSON.parse(logs).map((item: string) => <Record>JSON.parse(item));
-      add(records)
+      addRecords(records)
     })
     .catch((error: any) => {
       console.error('Error fetching logs:', error);
@@ -73,10 +78,10 @@ async function parse_header_and_extra(path: string) {
   console.log('parse file dropped:', path);
   currentPath.value = path;
   await invoke('parse_header_and_extra', { filePath: path }).then(async (result: any) => {
-    const header = JSON.parse(result as string) as Header
-    console.log(header)
-    currentExtra.value = header.extra_encode + ":\n" + header.extra
-    if (header.encrypt == 0) {
+    const header_extra = JSON.parse(result as string) as HeaderWithExtra
+    currentExtra.value = header_extra.extra_encode + ":\n" + header_extra.extra
+    const noEncrypt = "NONE" == header_extra.header.cipher;
+    if (noEncrypt) {
       fetchLogs(path, "", "")
     } else {
       showModal.value = true;
@@ -100,9 +105,7 @@ function getColorClass(data: string) {
 listen('tauri://file-drop', (event: Event<string[]>) => {
   if (event.payload && event.payload.length > 0) {
     const firstFilePath = event.payload[0];
-    console.log('First file dropped:', firstFilePath);
-    // Now you can do something with the first file path
-    // For example, reading the file content or processing the file
+    console.log('file dropped:', firstFilePath);
     parse_header_and_extra(firstFilePath)
   }
 })
