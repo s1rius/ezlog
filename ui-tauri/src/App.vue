@@ -115,7 +115,7 @@ listen('tauri://file-drop', (event: Event<string[]>) => {
 <template>
   <div class="container bg-white dark:bg-stone-700/0 w-full max-w-full h-max-full p-3">
     <div v-if="!showTable"
-      class="container w-full max-w-screen h-[calc(95dvh)] max-h-5/6 border-dashed border-2 border-slate-200">
+      class="container w-full max-w-full h-[calc(95dvh)] max-h-5/6 border-dashed border-2 border-slate-200">
       <div class="absolute top-12 self-center w-1/2">
         <img src="./assets/drag&drop.png" />
       </div>
@@ -136,7 +136,7 @@ listen('tauri://file-drop', (event: Event<string[]>) => {
       log.t }}</td>
           <td class="mx-1 align-top" :style="{ color: getColorClass(log.l) }">{{ log.g }}</td>
           <td class="w-30 mx-3 align-top text-left" :style="{ color: getColorClass(log.l) }">{{ log.l }}</td>
-          <td class="text-wrap text-left break-all" :style="{ color: getColorClass(log.l) }">{{ log.c }}</td>
+          <td class="align-top text-wrap text-left break-all" :style="{ color: getColorClass(log.l) }">{{ log.c }}</td>
         </tr>
       </tbody>
     </table>
