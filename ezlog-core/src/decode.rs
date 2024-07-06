@@ -294,13 +294,16 @@ mod tests {
     use time::OffsetDateTime;
 
     use super::decode_record;
-    use crate::{thread_name, LogError};
     use crate::{
         decode,
         EZLogger,
         EZRecord,
         EZRecordBuilder,
         Header,
+    };
+    use crate::{
+        thread_name,
+        LogError,
     };
 
     #[cfg(feature = "decode")]
@@ -365,7 +368,9 @@ mod tests {
                 count += 1;
             }
             if is_end {
-                tx.send(()).unwrap_or_else(|_| { LogError::Parse("Could not send signal on channel.".to_string()); });
+                tx.send(()).unwrap_or_else(|_| {
+                    LogError::Parse("Could not send signal on channel.".to_string());
+                });
                 return None;
             }
             Some(0)
@@ -377,7 +382,9 @@ mod tests {
             header,
             my_closure,
         );
-        rx.recv().unwrap_or_else(|_| { LogError::Parse("Could not receive from channel.".to_string()); });
+        rx.recv().unwrap_or_else(|_| {
+            LogError::Parse("Could not receive from channel.".to_string());
+        });
         Ok(count)
     }
 
@@ -444,7 +451,9 @@ mod tests {
                 }
             }
             if is_end {
-                tx.send(()).unwrap_or_else(|_| { LogError::Parse("Could not send signal on channel.".to_string()); });
+                tx.send(()).unwrap_or_else(|_| {
+                    LogError::Parse("Could not send signal on channel.".to_string());
+                });
                 return None;
             }
             Some(0)
@@ -456,7 +465,9 @@ mod tests {
             header,
             my_closure,
         );
-        rx.recv().unwrap_or_else(|_| { LogError::Parse("Could not receive from channel.".to_string()); });
+        rx.recv().unwrap_or_else(|_| {
+            LogError::Parse("Could not receive from channel.".to_string());
+        });
         Ok(array)
     }
 

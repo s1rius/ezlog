@@ -69,6 +69,9 @@ override fun onCreate() {
             Log.i("ezlog", "$logName $date $err")
         }
     })
+
+    // get logs
+    EZLog.requestLogFilesForDate("demo", new Date())
 }
 
 ```

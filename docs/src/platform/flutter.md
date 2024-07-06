@@ -45,7 +45,7 @@ class _MyAppState extends State<MyApp> {
     
     logger.d("init", "success");
 
-    var logs = await EZLog.requestLogFilesForDate("main", "2022_08_25");
+    var logs = await EZLog.requestLogFilesForDate("main", DateTime.now());
   }
 }
 ```

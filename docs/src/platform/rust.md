@@ -17,7 +17,21 @@ use ezlog::Level;
 use log::{error, info, warn};
 use log::{LevelFilter, Log};
 
-ezlog::InitBuilder::new().init();
+let on_success: fn(&str, &str, &[&str]) = |name, date, logs| {
+    println!(
+        "on_success: name: {}, desc: {}, tags: {:?}", name, date, logs
+    );
+};
+
+let on_fail: fn(&str, &str, &str) = |name, date, err| {
+    println!(
+        "on_fail: name: {}, desc: {}, err: {}", name, date, err
+    );
+};
+
+ezlog::InitBuilder::new()
+    .with_request_callback_fn(on_success, on_fail)
+    .init();
 
 let config = EZLogConfigBuilder::new()
         .level(Level::Trace)
@@ -32,6 +46,12 @@ let config = EZLogConfigBuilder::new()
 ezlog::create_log(config);
 
 info!("hello ezlog");
+
+ezlog::request_log_files_for_date(
+    ezlog::DEFAULT_LOG_NAME,
+    OffsetDateTime::now_utc(),
+    OffsetDateTime::now_utc()
+);
 
 ```
 
