@@ -1,7 +1,7 @@
 PODS:
-  - EZLog (0.2.0-alpha.2)
-  - ezlog_flutter (0.0.1):
-    - EZLog (> 0.2.0-alpha)
+  - EZLog (0.2.0)
+  - ezlog_flutter (0.2.0):
+    - EZLog (>= 0.2.0)
     - Flutter
   - Flutter (1.0.0)
   - path_provider_foundation (0.0.1):
@@ -26,11 +26,11 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
 
 SPEC CHECKSUMS:
-  EZLog: 73e75c62b598027af95bdac502c51311ba0174b4
-  ezlog_flutter: 3ecbd6658ff9145d725abe33da65e6e4717eda51
+  EZLog: 842e5b9304e72faef324e33412467fa3c001074a
+  ezlog_flutter: a2e88fe49b52e794d9c884612163cfa4998913ed
   Flutter: f04841e97a9d0b0a8025694d0796dd46242b2854
   path_provider_foundation: 29f094ae23ebbca9d3d0cec13889cd9060c0e943
 
-PODFILE CHECKSUM: 8b0dd513666eaf3741dd960dfac96db902517c4f
+PODFILE CHECKSUM: b13414d87395f00cffa4410db337c2a57c089154
 
-COCOAPODS: 1.12.1
+COCOAPODS: 1.15.2

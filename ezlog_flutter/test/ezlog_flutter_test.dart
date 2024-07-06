@@ -40,7 +40,7 @@ class MockEZLogFlutterPlatform
   }
 
   @override
-  Future<List<Object?>?> requestLogFilesForDate(String name, String date) {
+  Future<List<Object?>?> requestLogFilesForDate(String name, DateTime date) {
     throw UnimplementedError();
   }
 
