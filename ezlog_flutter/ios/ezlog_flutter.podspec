@@ -4,18 +4,18 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'ezlog_flutter'
-  s.version          = '0.0.1'
+  s.version          = '0.2.0'
   s.summary          = 'EZLog Flutter plugin project. A cross-platform file logging library.'
   s.description      = <<-DESC
   EZLog Flutter plugin project. A cross-platform file logging library.
                        DESC
-  s.homepage         = 'http://example.com'
+  s.homepage         = 'http://s1rius.github.io/ezlog'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Your Company' => 'email@example.com' }
+  s.author           = { 's1rius' => "" }
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.dependency 'Flutter'
-  s.dependency 'EZLog', '> 0.2.0-alpha'
+  s.dependency 'EZLog', '>= 0.2.0'
   s.platform = :ios, '13.0'
 
   # Flutter.framework does not contain a i386 slice.
