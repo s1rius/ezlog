@@ -6,13 +6,20 @@ void main() {
 
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  Future<void> onMethodCall(MethodCall call) {
+    switch (call.method) {
+      default:
+        throw UnimplementedError(
+            "${call.method} was invoked but isn't implemented by PlatformViewsService");
+    }
+  }
+
   setUp(() {
-    channel.setMockMethodCallHandler((MethodCall methodCall) async {
-      return '42';
-    });
+    channel.setMethodCallHandler(onMethodCall);
   });
 
   tearDown(() {
+    // ignore: deprecated_member_use
     channel.setMockMethodCallHandler(null);
   });
 }

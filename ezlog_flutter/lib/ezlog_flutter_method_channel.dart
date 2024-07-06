@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -73,6 +71,7 @@ class MethodChannelEzlogFlutter extends EZLogFlutterPlatform {
     });
   }
 
+  @override
   void trim() {
     methodChannel.invokeMapMethod("trim");
   }
