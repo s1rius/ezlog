@@ -45,7 +45,7 @@ hex = { version = "0.4", optional = true }
 jni = "0.21.0"
 
 [target.'cfg(windows)'.dependencies]
-windows = "0.56"
+windows = "0.58"
 windows-sys = { version = "0.52", features = ["Win32_System_Threading", "Win32_Foundation"] } 
 
 [dev-dependencies]
