@@ -2,51 +2,25 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
-    "devPath": "http://localhost:1420",
-    "distDir": "../dist",
-    "withGlobalTauri": false
+    "frontendDist": "../dist"
   },
-  "package": {
-    "productName": "ezlog-ui",
-    "version": "0.1.0"
+  "bundle": {
+    "active": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "targets": "all"
   },
-  "tauri": {
-    "allowlist": {
-      "all": false,
-      "shell": {
-        "all": false,
-        "open": true
-      },
-      "window": {
-        "all": false,
-        "center": true,
-        "close": true,
-        "hide": true,
-        "maximize": true,
-        "minimize": true,
-        "print": true,
-        "show": true,
-        "startDragging": true
-      }
-    },
-    "bundle": {
-      "active": true,
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ],
-      "identifier": "wtf.s1.ezlog.tauri",
-      "targets": "all"
-    },
-    "security": {
-      "csp": null
-    },
-    "updater": {
-      "active": false
-    },
+  "productName": "ezlog-ui",
+  "mainBinaryName": "ezlog-ui-binary",
+  "version": "0.1.0",
+  "identifier": "wtf.s1.ezlog.tauri",
+  "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "fullscreen": false,
@@ -54,9 +28,11 @@
         "title": "ezlog",
         "theme": "Dark",
         "width": 800,
-        "height": 600,
-        "visible": false
+        "height": 600
       }
-    ]
+    ],
+    "security": {
+      "csp": null
+    }
   }
 }
