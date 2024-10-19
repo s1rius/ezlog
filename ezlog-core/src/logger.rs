@@ -494,8 +494,11 @@ impl Header {
 
     pub fn decode(reader: &mut dyn Read) -> std::result::Result<Self, errors::LogError> {
         let mut signature = [0u8; 2];
-        reader.read_exact(&mut signature)?;
+        reader.read_exact(&mut signature).map_err(|e| {
+            LogError::Parse(format!("sign read error {}", e))
+        })?;
         let version = Version::from(reader.read_u8()?);
+
         let flag = Flags::from_bits(reader.read_u8()?).unwrap_or(Flags::NONE);
         let mut timestamp = OffsetDateTime::now_utc().unix_timestamp();
         if version == Version::V2 {
@@ -535,6 +538,10 @@ impl Header {
 
     pub fn is_none(&self) -> bool {
         self.version == Version::NONE
+    }
+
+    pub fn is_unknown(&self) -> bool {
+        self.version == Version::UNKNOWN
     }
 
     pub fn is_empty(&self) -> bool {

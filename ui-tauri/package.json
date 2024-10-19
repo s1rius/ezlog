@@ -1,29 +1,37 @@
 {
-  "name": "ezlog",
+  "name": "ezlog-ui",
   "private": true,
   "version": "0.1.0-alpha",
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
+    "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "tauri": "tauri"
+    "format": "prettier --write \"src/**/*.{js,ts,vue,json,css,scss,md}\"",
+    "format:check": "prettier --check \"src/**/*.{js,ts,vue,json,css,scss,md}\""
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.0.2",
-    "@tauri-apps/plugin-log": "^2.0.0",
+    "@tanstack/vue-virtual": "^3.13.9",
+    "@tauri-apps/api": "^2.5.0",
+    "@tauri-apps/plugin-dialog": "^2.0.0",
+    "@tauri-apps/plugin-log": "^2.2.0",
+    "@tauri-apps/plugin-os": "^2.2.0",
     "@tauri-apps/plugin-shell": "^2.0.0",
+    "@vue/language-core": "^2.2.10",
     "vue": "^3.2.45"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.0.3",
+    "@tauri-apps/cli": "^2.5.0",
     "@types/node": "^18.7.10",
-    "@vitejs/plugin-vue": "^4.0.0",
+    "@vitejs/plugin-vue": "^5.2.4",
+    "@vue/eslint-config-prettier": "^10.2.0",
     "autoprefixer": "^10.4.16",
+    "eslint-plugin-vue": "^10.2.0",
     "postcss": "^8.4.32",
+    "prettier": "^3.5.3",
+    "prettier-plugin-classnames": "^0.7.8",
     "tailwindcss": "^3.4.3",
     "typescript": "^4.6.4",
-    "vite": "^4.0.0",
-    "vue-tsc": "^1.0.11"
+    "vite": "^6.3.5",
+    "vue-tsc": "^2.2.10"
   }
 }

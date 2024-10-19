@@ -277,6 +277,11 @@ pub fn decode_header_and_extra(
             None
         })
     }
+    if header.is_none() || header.is_unknown() {
+        return Err(LogError::Illegal(
+            "decode file failed, unknow file fomat or unknown log version".to_string(),
+        ));
+    }
     Ok((header, extra))
 }
 
@@ -329,6 +334,17 @@ mod tests {
             .cipher_key(key.to_vec())
             .cipher_nonce(nonce.to_vec())
             .build()
+    }
+
+    #[cfg(feature = "decode")]
+    #[test]
+    fn test_header_decode() {
+        let mut cursor = Cursor::new(vec![101, 122, 2, 0, 0, 0, 0, 0, 100, 189, 1, 16, 0, 0, 1, 112, 0, 0, 38, 194, 37, 87, 59, 114, 91, 50, 48, 50, 51, 45, 48, 55]);
+        let (header, _) = decode::decode_header_and_extra(&mut cursor).unwrap();
+        assert!(header.has_record());
+        assert_eq!(header.version, crate::Version::V2);
+        assert!(!header.is_extra_index(0));
+        assert_eq!(header.length(), crate::V2_LOG_HEADER_SIZE);
     }
 
     #[cfg(feature = "decode")]

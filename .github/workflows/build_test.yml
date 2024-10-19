@@ -30,6 +30,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly-2025-04-03
+          override: true
           components: ${{ matrix.components }}
       - name: Install android target
         if: ${{ runner.os == 'Linux' }}

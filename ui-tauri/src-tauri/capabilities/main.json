@@ -1,5 +1,5 @@
 {
-  "identifier": "migrated",
+  "identifier": "main",
   "description": "permissions that were migrated from v1",
   "local": true,
   "windows": [
@@ -17,6 +17,10 @@
     "core:webview:allow-print",
     "shell:allow-open",
     "shell:default",
-    "log:default"
+    "log:default",
+    "dialog:allow-open",
+    "os:default",
+    "log:default",
+    "android-fs:default"
   ]
 }

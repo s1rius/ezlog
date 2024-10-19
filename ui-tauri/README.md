@@ -1,6 +1,44 @@
+# Dev
+
+use `cargo tauri dev` to start the development server. This will run the Tauri backend and the Vite frontend in development mode.
+
+## iOS Development
+
+use `cargo tauri ios dev`
+
+### Set Development Team ID
+set the `APPLE_DEVELOPMENT_TEAM` environment variable to your Team ID:
+```bash
+# example export APPLE_DEVELOPMENT_TEAM="AAAAAAA"
+export APPLE_DEVELOPMENT_TEAM=<your_team_id>
+```
+
+### List available devices and simulators
+```bash
+# List all devices (real devices and simulators)
+xcrun devicectl list devices
+
+# List only simulators
+xcrun simctl list devices
+
+# Clean up unavailable simulators
+xcrun simctl delete unavailable
+```
+
+### Development commands
+```bash
+# Auto-select available simulator
+cargo tauri ios dev
+
+# Use specific device by name
+cargo tauri ios dev --device "iPhone 15"
+
+# Use specific device by UDID (get UDID from list command above)
+cargo tauri ios dev --device <device_udid>
+
 # Debug
 
-use the Ctrl + Shift + i shortcut on Linux and Windows, and Command + Option + i on macOS to open the inspector.
+Use the Ctrl + Shift + i shortcut on Linux and Windows, and Command + Option + i on macOS to open the inspector.
 
 # Tauri + Vue 3 + TypeScript
 
