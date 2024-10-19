@@ -4,28 +4,42 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { type Event, listen } from "@tauri-apps/api/event";
+import { open } from "@tauri-apps/plugin-dialog";
+import { platform } from "@tauri-apps/plugin-os";
+import {
+  warn,
+  debug,
+  trace,
+  info,
+  error,
+  attachConsole,
+  attachLogger,
+} from "@tauri-apps/plugin-log";
 import { onMounted, ref } from "vue";
 import Modal from "./Modal.vue";
+import LogViewer from "./LogViewer.vue";
+
+const currentPlatform = platform();
+trace(`current platform: ${currentPlatform}`);
+const isDesktop =
+  currentPlatform != "android" && currentPlatform != "ios";
 
 const logs = ref<Record[]>([]);
+const currentPath = ref("");
+
 const addRecords = (items: Record[]) => {
   logs.value = [];
   logs.value.push(...items);
   showTable.value = logs.value.length > 0;
+  if (items.length > 0) {
+    trace(`add recrods: ${logs.value.length}`);
+    trace(`showTable: ${showTable.value}`);
+  }
 };
 
 const showModal = ref(false);
 const showTable = ref(false);
-const currentPath = ref("");
 const currentExtra = ref("");
-
-const logColors = new Map();
-
-logColors.set("Trace", "rgb(156, 163, 175)");
-logColors.set("Debug", "rgb(33, 150, 243)");
-logColors.set("Info", "rgb(76, 175, 80)");
-logColors.set("Warn", "rgb(255, 193, 7)");
-logColors.set("Error", "rgb(244, 67, 54)");
 
 type Header = {
   timestamp: 0;
@@ -40,20 +54,20 @@ type HeaderWithExtra = {
 };
 
 export interface Record {
-  n: string;
-  l: string;
-  g: string;
-  t: string;
-  d: number;
-  m: string;
-  c: string;
-  f: string;
-  y: number;
+  log_name: string;
+  level: string;
+  target: string;
+  time: string;
+  thread_id: number;
+  thread_name: string;
+  content: string;
+  file: string;
+  line: number;
 }
 
-async function fetchLogs(path: string, k: string, n: string) {
+async function fetchLogs(k: string, n: string) {
+  trace(`fatchLogs`);
   await invoke("parse_log_file_to_records", {
-    filePath: path,
     key: k,
     nonce: n,
   })
@@ -64,114 +78,124 @@ async function fetchLogs(path: string, k: string, n: string) {
       addRecords(records);
     })
     .catch((error: any) => {
-      console.error("Error fetching logs:", error);
+      error(`${error}`);
     });
 }
 
 async function parse_header_and_extra(path: string) {
-  console.log("parse file dropped:", path);
-  currentPath.value = path;
+  trace(`parse file dropped: ${path}`);
   await invoke("parse_header_and_extra", { filePath: path })
     .then(async (result: any) => {
       const header_extra = JSON.parse(result as string) as HeaderWithExtra;
-      currentExtra.value =
-        header_extra.extra_encode + ":\n" + header_extra.extra;
       const noEncrypt = "NONE" == header_extra.header.cipher;
       if (noEncrypt) {
-        fetchLogs(path, "", "");
+        fetchLogs("", "");
+        currentPath.value = path;
       } else {
+        currentExtra.value =
+          header_extra.extra_encode + ":\n" + header_extra.extra;
         showModal.value = true;
       }
     })
     .catch((error: any) => {
-      console.error("error", error);
+      error(`${error}`);
     });
 }
 
 async function submit_with_key_and_nonce(key: string, nonce: string) {
   showModal.value = false;
-  fetchLogs(currentPath.value, key, nonce);
+  fetchLogs(key, nonce);
 }
 
-function getColorClass(data: string) {
-  const value = logColors.get(data);
-  return value !== undefined ? value : "";
+async function clear() {
+  currentPath.value = "";
+  logs.value = [];
+  showTable.value = false;
 }
 
-// listen("tauri://drag-drop", (event: Event<string[]>) => {
-//   if (event.payload && event.payload.length > 0) {
-//     const firstFilePath = event.payload[0];
-//     console.log("file dropped:", firstFilePath);
-//     parse_header_and_extra(firstFilePath);
-//   }
-// });
+async function selectFile() {
+  await invoke("pick_extenal_file").catch((error: any) => {
+    error(`${error}`);
+  });
+}
 
 getCurrentWebview().onDragDropEvent((event) => {
   if (event.payload.type === "hover") {
-    console.log("User hovering", event.payload.paths);
+    trace(`User hovering ${event.payload.paths}`);
   } else if (event.payload.type === "drop") {
-    console.log("User dropped", event.payload.paths);
+    trace(`User dropped ${event.payload.paths}`);
     const firstFilePath = event.payload.paths[0];
     parse_header_and_extra(firstFilePath);
   } else {
-    console.log("File drop cancelled");
+    warn("File drop cancelled");
   }
+});
+
+listen("file-get", (event) => {
+  const path = event.payload.replace(/"/g, "");
+  currentPath.value = path;
+});
+
+listen("header-parsed", (event) => {
+  const result = event.payload;
+  trace(`header parsed: ${result}`);
+  const header_extra = JSON.parse(result as string) as HeaderWithExtra;
+  const encrypt = "NONE" != header_extra.header.cipher;
+  if (encrypt) {
+    currentExtra.value = header_extra.extra_encode + ":\n" + header_extra.extra;
+    showModal.value = true;
+  }
+});
+
+listen("records-parsed", (event) => {
+  const result = event.payload;
+  trace(`records parsed: ${result}`);
+  const records: Record[] = JSON.parse(result as string).map(
+    (item: string) => <Record>JSON.parse(item)
+  );
+  addRecords(records);
 });
 </script>
 
 <template>
   <div
-    class="container bg-white dark:bg-stone-700/0 w-full max-w-full h-max-full p-3"
+    class="container bg-white dark:bg-stone-700/0 w-full h-full max-w-full h-max-full p-0"
   >
     <div
       v-if="!showTable"
-      class="container w-full max-w-full h-[calc(95dvh)] max-h-5/6 border-dashed border-2 border-slate-200"
+      class="w-100 max-w-full h-[calc(99dvh)] max-h-full p-3"
     >
-      <div class="absolute top-12 self-center w-1/2">
-        <img src="./assets/drag&drop.png" />
+      <div
+        class="container w-full h-full border-2 border-dashed border-slate-200 flex flex-row items-center"
+      >
+        <div class="w-3/4 flex flex-col items-center justify-center">
+          <div v-if="isDesktop" class="w-full mb-6 text-3xl text-slate-200 select-none">
+              Drag and drop your log file here
+          </div>
+
+          <div v-if="isDesktop" class="flex items-center">
+            <div  class="text-slate-400/50 text-2xl select-none break-keep truncate italic">or -------------------------</div>
+          </div>
+
+          <div class="w-1/2 ml-20 mr-20">
+            <button
+              @click="selectFile"
+              class="btn btn-primary border-1 border-slate-200 pl-5 pr-5 pt-3 pb-3 mt-6 text-slate-200 text-2xl/100"
+            >
+              Select File
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <table
-      v-show="showTable"
-      class="table table-striped table-bordered border-separate border-spacing-x-3"
-    >
-      <thead>
-        <tr>
-          <th class="text-left text-slate-900 dark:text-white">Time</th>
-          <th class="text-left text-slate-900 dark:text-white">Target</th>
-          <th class="text-left w-30 mx-3 text-slate-900 dark:text-white">
-            Level
-          </th>
-          <th class="text-left text-slate-900 dark:text-white">Message</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(log, index) in logs" :key="index">
-          <td
-            class="w-30 min-w-30 h-fit mx-1 whitespace-nowrap align-top"
-            :style="{ color: getColorClass(log.l) }"
-          >
-            {{ log.t }}
-          </td>
-          <td class="mx-1 align-top" :style="{ color: getColorClass(log.l) }">
-            {{ log.g }}
-          </td>
-          <td
-            class="w-30 mx-3 align-top text-left"
-            :style="{ color: getColorClass(log.l) }"
-          >
-            {{ log.l }}
-          </td>
-          <td
-            class="align-top text-wrap text-left break-all"
-            :style="{ color: getColorClass(log.l) }"
-          >
-            {{ log.c }}
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div v-if="showTable" class="w-full h-full">
+      <LogViewer
+        :logs="logs"
+        :filePath="currentPath"
+        :onClose="clear"
+      />
+    </div>
 
     <modal :show="showModal" @submit="submit_with_key_and_nonce">
       <template #header>
@@ -181,3 +205,6 @@ getCurrentWebview().onDragDropEvent((event) => {
     </modal>
   </div>
 </template>
+
+<style scoped>
+</style>
