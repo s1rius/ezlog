@@ -30,7 +30,7 @@ aes-gcm = { version = "0.10.1", optional = true }
 aes-gcm-siv = "0.11.1"
 time = { version = "0.3", default-features = false, features = ["formatting", "parsing"] }
 crossbeam-channel = "0.5"
-thread-id = "4.0.0"
+thread-id = "5.0.0"
 once_cell = "1.12"
 thiserror = "1"
 integer-encoding = "4.0"
