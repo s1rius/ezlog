@@ -26,7 +26,6 @@ use crate::crypto::{
     Aes128GcmSiv,
     Aes256GcmSiv,
 };
-use crate::events::Event::{self,};
 use crate::{
     appender::EZAppender,
     compress::ZlibCodec,
@@ -43,6 +42,7 @@ use crate::{
 use crate::{
     errors,
     event,
+    Event,
     NonceGenFn,
     V1_LOG_HEADER_SIZE,
 };
@@ -144,7 +144,7 @@ impl EZLogger {
 
             record.trunks(&self.config).iter().for_each(|record| {
                 match self
-                    .encode_as_block(record)
+                    .encode_as_vec(record)
                     .map(|buf| self.appender.write_all(&buf))
                 {
                     Ok(_) => {}
@@ -153,7 +153,7 @@ impl EZLogger {
             });
             e.map_or(Ok(()), Err)
         } else {
-            let buf = self.encode_as_block(record)?;
+            let buf = self.encode_as_vec(record)?;
             self.appender.write_all(&buf).map_err(|e| e.into())
         }
     }
@@ -224,13 +224,13 @@ impl EZLogger {
         Box::new(move |input| xor_slice(input, &combine))
     }
 
-    ///
     #[inline]
-    pub fn encode_as_block(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
+    pub fn encode_as_vec(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
         let buf = self.encode(record)?;
         encode_content(buf)
     }
 
+    #[inline]
     fn format(&self, record: &EZRecord) -> Result<Vec<u8>> {
         crate::formatter().format(record)
     }
@@ -278,6 +278,7 @@ impl EZLogger {
         self.config.query_log_files_for_date(date)
     }
 
+    #[inline]
     pub(crate) fn rotate_if_not_empty(&mut self) -> Result<()> {
         if self
             .appender
@@ -300,6 +301,7 @@ pub(crate) fn combine_time_position(timestamp: i64, position: u64) -> Vec<u8> {
     vec
 }
 
+#[inline]
 pub(crate) fn xor_slice<'a>(slice: &'a [u8], vec: &'a [u8]) -> Vec<u8> {
     let mut result = Vec::with_capacity(slice.len());
     for (i, byte) in slice.iter().enumerate() {
@@ -403,6 +405,10 @@ impl Header {
             timestamp: OffsetDateTime::now_utc(),
             rotate_time: Some(rotate_time),
         }
+    }
+
+    pub fn timestamp(&self) -> OffsetDateTime {
+        self.timestamp
     }
 
     pub fn max_length() -> usize {
@@ -543,6 +549,10 @@ impl Header {
 
     pub fn version(&self) -> &Version {
         &self.version
+    }
+
+    pub fn is_encrypt(&self) -> bool {
+        self.cipher != CipherKind::NONE
     }
 
     pub(crate) fn init_record_poition(&mut self) {
