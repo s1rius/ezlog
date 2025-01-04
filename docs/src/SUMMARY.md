@@ -4,10 +4,12 @@
 
 # Quick Start
 
+- [Rust](./platform/rust.md)
 - [Flutter](./platform/flutter.md)
 - [Android](./platform/android.md)
 - [iOS](./platform/ios.md)
-- [Rust](./platform/rust.md)
+
+[Log query](./query.md)
 
 [Benchmark](./benchmark.md)
 
