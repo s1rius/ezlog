@@ -9,7 +9,7 @@ edition = "2021"
 ezlog = { path = "../../ezlog-core", features = ["log", "decode"]}
 log = "0.4"
 env_logger = "0"
-dirs = "5.0"
+dirs = "6.0"
 time = { version = "0.3", default-features = false, features = ["macros"] }
 rand = "0.8"
 test-compat = { path = "../../test-compat" }
