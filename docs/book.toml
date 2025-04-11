@@ -1,7 +1,6 @@
 [book]
 authors = ["s1rius"]
 language = "en"
-multilingual = false
 src = "src"
 title = "ezlog documentation"
 
