@@ -74,7 +74,7 @@ mod tests {
 
         use crate::errors::LogError;
 
-        let err = LogError::IoError(io::Error::new(io::ErrorKind::Other, "test"));
+        let err = LogError::IoError(io::Error::other("test"));
         assert_eq!(err.to_string(), "io error: test");
     }
 }

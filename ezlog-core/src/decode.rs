@@ -360,7 +360,7 @@ mod tests {
 
         let mut count = 0;
         let my_closure = |data: &Vec<u8>, is_end: bool| {
-            if data.len() > 0 {
+            if !data.is_empty() {
                 count += 1;
             }
             if is_end {
@@ -404,7 +404,7 @@ mod tests {
             .read(true)
             .write(true)
             .create(true)
-            .open(&path)
+            .open(path)
             .unwrap();
         let mut buf = Vec::<u8>::new();
         let mut reader = BufReader::new(file);
@@ -413,8 +413,8 @@ mod tests {
         let mut header = Header::decode(&mut cursor).unwrap();
         header.recorder_position = header.length().try_into().unwrap();
         let mut new_header = Header::create(&logger.config);
-        new_header.timestamp = header.timestamp.clone();
-        new_header.rotate_time = header.rotate_time.clone();
+        new_header.timestamp = header.timestamp;
+        new_header.rotate_time = header.rotate_time;
         new_header.recorder_position = Header::length_compat(&config.version) as u32;
         assert_eq!(header, new_header);
         let count = decode_logs_count(&mut logger, &mut cursor, &header).unwrap();
@@ -434,7 +434,7 @@ mod tests {
         let (tx, rx) = channel();
 
         let my_closure = |data: &Vec<u8>, is_end: bool| {
-            if data.len() > 0 {
+            if !data.is_empty() {
                 match decode_record(data) {
                     Ok(r) => array.push(r),
                     Err(e) => {
@@ -507,12 +507,12 @@ mod tests {
             .read(true)
             .write(true)
             .create(true)
-            .open(&path)
+            .open(path)
             .unwrap();
         let mut buf = Vec::<u8>::new();
         let mut reader = BufReader::new(file);
         reader.read_to_end(&mut buf).unwrap();
-        assert!(buf.len() > 0);
+        assert!(!buf.is_empty());
         let mut cursor = Cursor::new(buf);
         let header = Header::decode(&mut cursor).unwrap();
         assert!(header.has_record());

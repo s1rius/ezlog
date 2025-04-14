@@ -129,13 +129,11 @@ impl EZAppender {
         let header_time = self.inner.header().timestamp;
         self.inner = Box::new(NopInner::empty());
 
-        EZAppender::rename_current_file(&self.config, &file_path, header_time).map_err(|e| {
-            event!(Event::RotateFileError, "rename file error", &e);
-            e
+        EZAppender::rename_current_file(&self.config, &file_path, header_time).inspect_err(|e| {
+            event!(Event::RotateFileError, "rename file error", e);
         })?;
-        self.inner = Self::create_inner(&self.config).map_err(|e| {
-            event!(Event::RotateFileError, "create inner err = ", &e);
-            e
+        self.inner = Self::create_inner(&self.config).inspect_err(|e| {
+            event!(Event::RotateFileError, "create inner err = ", e);
         })?;
         event!(Event::RotateFile);
         Ok(())
@@ -169,7 +167,7 @@ impl EZAppender {
 impl Write for EZAppender {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         if buf.len() > self.config.writable_size() as usize {
-            return Err(Error::new(ErrorKind::Other, "buf_size is over max_size"));
+            return Err(Error::other("buf_size is over max_size"));
         }
 
         self.check_write_rolling(buf.len())
@@ -558,7 +556,7 @@ mod tests {
         appender.flush().unwrap();
 
         let mut read_buf = vec![0u8; buf.len()];
-        let file = current_file(&appender.file_path()).unwrap();
+        let file = current_file(appender.file_path()).unwrap();
         let mut reader: BufReader<File> = BufReader::new(file);
         reader
             .seek(SeekFrom::Start(
