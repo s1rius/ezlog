@@ -686,20 +686,20 @@ impl Formatter for DefaultFormatter {
             .unwrap_or_else(|_| "unknown".to_string());
 
         let mut vec = Vec::<u8>::new();
-        vec.write_all(&[b'['])?;
+        vec.write_all(b"[")?;
         vec.write_all(time.as_bytes())?;
-        vec.write_all(&[b' '])?;
+        vec.write_all(b" ")?;
         vec.write_all(record.level().as_str().as_bytes())?;
-        vec.write_all(&[b' '])?;
+        vec.write_all(b" ")?;
         vec.write_all(record.target().as_bytes())?;
-        vec.write_all(&[b' '])?;
+        vec.write_all(b" ")?;
         vec.write_all(record.thread_name().as_bytes())?;
-        vec.write_all(&[b':'])?;
+        vec.write_all(b":")?;
         vec.write_all(record.thread_id().to_string().as_bytes())?;
         if let Some(file) = record.file() {
-            vec.write_all(&[b' '])?;
+            vec.write_all(b" ")?;
             vec.write_all(file.as_bytes())?;
-            vec.write_all(&[b':'])?;
+            vec.write_all(b":")?;
             vec.write_all(record.line().unwrap_or_default().to_string().as_bytes())?;
         }
         vec.write_all("] ".as_bytes())?;
