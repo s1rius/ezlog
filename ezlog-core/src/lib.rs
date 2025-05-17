@@ -277,23 +277,20 @@ fn init_log_channel() -> Sender<EZMsg> {
                             );
                             continue;
                         }
-                        match log.append(&record) {
+                        let tid = record.t_id();
+                        match log.append(record) {
                             Ok(_) => {
-                                event!(Event::RecordEnd, &record.t_id());
+                                event!(Event::RecordEnd, &tid);
                             }
                             Err(err) => match err {
                                 LogError::Compress(err) => {
-                                    event!(Event::CompressError, &record.t_id(), &err.into());
+                                    event!(Event::CompressError, &tid, &err.into());
                                 }
                                 LogError::Crypto(err) => {
-                                    event!(
-                                        Event::EncryptError,
-                                        &record.t_id(),
-                                        &LogError::Crypto(err)
-                                    )
+                                    event!(Event::EncryptError, &tid, &LogError::Crypto(err))
                                 }
                                 _ => {
-                                    event!(Event::RecordError, &record.t_id(), &err)
+                                    event!(Event::RecordError, &tid, &err)
                                 }
                             },
                         }

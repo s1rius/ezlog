@@ -1,10 +1,11 @@
+use core::fmt;
 use std::io::Read;
+use std::io::Write;
 use std::path::PathBuf;
 use std::{
     fs,
     io,
 };
-use std::io::Write;
 
 use byteorder::ReadBytesExt;
 use byteorder::{
@@ -23,7 +24,9 @@ use crate::crypto::{
     Aes128GcmSiv,
     Aes256GcmSiv,
 };
-use crate::events::Event::{self,};
+use crate::events::Event::{
+    self,
+};
 use crate::{
     appender::EZAppender,
     compress::ZlibCodec,
@@ -134,24 +137,40 @@ impl EZLogger {
         })
     }
 
-    pub(crate) fn append(&mut self, record: &EZRecord) -> Result<()> {
-        if record.content().len() > self.config.max_size as usize / 2 {
-            let mut e: Option<LogError> = None;
-
-            record.trunks(&self.config).iter().for_each(|record| {
-                match self
-                    .encode_as_block(record)
-                    .map(|buf| self.appender.write_all(&buf))
-                {
-                    Ok(_) => {}
-                    Err(err) => e = Some(err),
-                }
-            });
-            e.map_or(Ok(()), Err)
+    /// TODO buggy add test case
+    pub(crate) fn append(&mut self, record: EZRecord) -> Result<()> {
+        let splits = if record.content().len() > self.config.max_size as usize / 2 {
+            record.trunks(&self.config)
         } else {
+            vec![record]
+        };
+        for record in splits.iter() {
             let buf = self.encode_as_block(record)?;
-            self.appender.write_all(&buf).map_err(|e| e.into())
+            match self.appender.write_all(&buf) {
+                Ok(_) => {}
+                Err(e) => {
+                    // Check if the error is an appender error (e.g., file is full or needs rotation)
+                    if e.kind() == io::ErrorKind::Other {
+                        if let Some(appender_err) = e.get_ref().and_then(|inner| {
+                            inner.downcast_ref::<crate::appender::AppenderError>()
+                        }) {
+                            // maybe split to another fn to make test easy
+                            match appender_err {
+                                crate::appender::AppenderError::SizeExceeded { .. }
+                                | crate::appender::AppenderError::RotateTimeExceeded { .. } => {
+                                    self.appender.rotate(&self.config)?;
+                                    // Retry write once after rotation
+                                    self.appender.write_all(&buf).map_err(LogError::from)?;
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                    return Err(e.into());
+                }
+            }
         }
+        Ok(())
     }
 
     #[inline]
@@ -350,6 +369,12 @@ pub struct Header {
 impl Default for Header {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl fmt::Display for Header {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Header {{ ... }}")
     }
 }
 

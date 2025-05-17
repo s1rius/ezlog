@@ -223,10 +223,6 @@ impl EZLogConfig {
             .unwrap_or(false)
     }
 
-    pub(crate) fn writable_size(&self) -> u64 {
-        self.max_size - Header::length_compat(&self.version) as u64
-    }
-
     pub fn query_log_files_for_date(&self, date: OffsetDateTime) -> Vec<PathBuf> {
         let mut logs = Vec::new();
         match fs::read_dir(&self.dir_path) {

@@ -144,9 +144,7 @@ pub(crate) fn decode_record_to_content(
 #[inline]
 pub(crate) fn decode_record_size(mut reader: &mut dyn BufRead, version: &Version) -> Result<usize> {
     match version {
-        Version::NONE => {
-            Ok(0)
-        }
+        Version::NONE => Ok(0),
         Version::V1 => {
             let size_of_size = reader.read_u8()?;
             let content_size: usize = match size_of_size {
@@ -394,7 +392,7 @@ mod tests {
         for i in 0..log_count {
             logger
                 .append(
-                    &EZRecordBuilder::default()
+                    EZRecordBuilder::default()
                         .content(format!("hello world {}", i))
                         .build(),
                 )
@@ -500,7 +498,7 @@ mod tests {
                 .time(OffsetDateTime::now_utc() - Duration::from_secs(60 * 60))
                 .target("target".to_string())
                 .build();
-            logger.append(&item.clone()).unwrap();
+            logger.append(item.clone()).unwrap();
             array.push(item);
         }
         logger.flush().unwrap();
