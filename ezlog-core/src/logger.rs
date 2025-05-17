@@ -4,10 +4,7 @@ use std::{
     fs,
     io,
 };
-use std::{
-    io::Write,
-    rc::Rc,
-};
+use std::io::Write;
 
 use byteorder::ReadBytesExt;
 use byteorder::{
@@ -116,7 +113,7 @@ pub fn create_compress(config: &EZLogConfig) -> Option<Box<dyn Compress>> {
 }
 
 pub struct EZLogger {
-    pub(crate) config: Rc<EZLogConfig>,
+    pub(crate) config: EZLogConfig,
     pub(crate) appender: EZAppender,
     pub(crate) compression: Option<Box<dyn Compress>>,
     pub(crate) cryptor: Option<Box<dyn Cryptor>>,
@@ -124,14 +121,13 @@ pub struct EZLogger {
 
 impl EZLogger {
     pub fn new(config: EZLogConfig) -> Result<Self> {
-        let rc_conf = Rc::new(config);
-        let mut appender = EZAppender::new(Rc::clone(&rc_conf))?;
-        appender.check_config_rolling(&rc_conf)?;
-        let compression = create_compress(&rc_conf);
-        let cryptor = create_cryptor(&rc_conf)?;
+        let mut appender = EZAppender::new(&config)?;
+        appender.check_config_rolling(&config)?;
+        let compression = create_compress(&config);
+        let cryptor = create_cryptor(&config)?;
 
         Ok(Self {
-            config: Rc::clone(&rc_conf),
+            config: config,
             appender,
             compression,
             cryptor,
@@ -285,7 +281,7 @@ impl EZLogger {
             .header()
             .has_record_exclude_extra(&self.config)
         {
-            self.appender.rotate()
+            self.appender.rotate(&self.config)
         } else {
             Ok(())
         }
@@ -374,7 +370,7 @@ impl Header {
 
     pub fn empty() -> Self {
         Header {
-            version: Version::UNKNOWN,
+            version: Version::NONE,
             flag: Flags::NONE,
             recorder_position: 0,
             compress: CompressKind::NONE,
@@ -414,7 +410,7 @@ impl Header {
         match version {
             Version::V1 => V1_LOG_HEADER_SIZE,
             Version::V2 => V2_LOG_HEADER_SIZE,
-            Version::UNKNOWN => 0,
+            _ => 0,
         }
     }
 
@@ -426,7 +422,7 @@ impl Header {
         match self.version {
             Version::V1 => self.encode_v1(writer),
             Version::V2 => self.encode_v2(writer),
-            Version::UNKNOWN => Err(io::Error::new(
+            _ => Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "unknown version",
             )),
@@ -487,17 +483,6 @@ impl Header {
         })
     }
 
-    pub fn decode_and_config(
-        reader: &mut dyn Read,
-        config: &EZLogConfig,
-    ) -> std::result::Result<Self, errors::LogError> {
-        let mut decode = Self::decode(reader)?;
-        if !decode.is_config() {
-            decode = Self::create(config);
-        }
-        Ok(decode)
-    }
-
     pub fn is_match(&self, config: &EZLogConfig) -> bool {
         self.version == config.version
             && self.compress == config.compress
@@ -505,12 +490,16 @@ impl Header {
             && self.cihper_hash == config.cipher_hash()
     }
 
+    pub fn is_none(&self) -> bool {
+        self.version == Version::NONE
+    }
+
     pub fn is_empty(&self) -> bool {
         self.recorder_position <= self.length() as u32
     }
 
     pub fn is_config(&self) -> bool {
-        self.version != Version::UNKNOWN
+        Into::<u8>::into(self.version) > Version::NONE.into()
     }
 
     pub fn has_record(&self) -> bool {

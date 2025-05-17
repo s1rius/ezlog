@@ -710,7 +710,7 @@ mod tests {
 
         f.set_len((crate::Header::max_length() + 1) as u64).unwrap();
 
-        let mut appender = EZAppender::new(std::rc::Rc::new(config.clone())).unwrap();
+        let mut appender = EZAppender::new(&config).unwrap();
         appender.check_config_rolling(&config).unwrap();
         drop(appender);
 

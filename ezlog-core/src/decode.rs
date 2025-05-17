@@ -144,6 +144,9 @@ pub(crate) fn decode_record_to_content(
 #[inline]
 pub(crate) fn decode_record_size(mut reader: &mut dyn BufRead, version: &Version) -> Result<usize> {
     match version {
+        Version::NONE => {
+            Ok(0)
+        }
         Version::V1 => {
             let size_of_size = reader.read_u8()?;
             let content_size: usize = match size_of_size {

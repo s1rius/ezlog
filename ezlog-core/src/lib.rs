@@ -744,6 +744,7 @@ pub fn set_boxed_formatter(formatter: Box<dyn Formatter>) {
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
 #[cfg_attr(feature = "json", derive(serde::Serialize, serde::Deserialize))]
 pub enum Version {
+    NONE,
     V1,
     V2,
     UNKNOWN,
@@ -754,6 +755,7 @@ impl From<u8> for Version {
         match v {
             1 => Version::V1,
             2 => Version::V2,
+            0 => Version::NONE,
             _ => Version::UNKNOWN,
         }
     }
@@ -764,7 +766,8 @@ impl From<Version> for u8 {
         match v {
             Version::V1 => 1,
             Version::V2 => 2,
-            Version::UNKNOWN => 0,
+            Version::UNKNOWN => u8::MAX,
+            Version::NONE => 0,
         }
     }
 }
