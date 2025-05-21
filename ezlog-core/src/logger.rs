@@ -73,11 +73,11 @@ pub(crate) fn encode_content(mut buf: Vec<u8>) -> Result<Vec<u8>> {
 }
 
 #[allow(deprecated)]
-pub fn create_cryptor(config: &EZLogConfig) -> Result<Option<Box<dyn Cryptor>>> {
-    if let Some(key) = &config.cipher_key {
-        if let Some(nonce) = &config.cipher_nonce {
+pub fn create_cryptor(config: &EZLogConfig) -> Result<Option<Box<dyn Cryptor + Send + Sync>>> {
+    if let Some(key) = &config.cipher_key() {
+        if let Some(nonce) = &config.cipher_nonce() {
             #[warn(unreachable_patterns)]
-            match config.cipher {
+            match config.cipher_kind() {
                 #[cfg(feature = "decode")]
                 CipherKind::AES128GCM => {
                     let encryptor = Aes128Gcm::new(key, nonce)?;
@@ -107,9 +107,9 @@ pub fn create_cryptor(config: &EZLogConfig) -> Result<Option<Box<dyn Cryptor>>> 
     }
 }
 
-pub fn create_compress(config: &EZLogConfig) -> Option<Box<dyn Compress>> {
-    match config.compress {
-        CompressKind::ZLIB => Some(Box::new(ZlibCodec::new(&config.compress_level))),
+pub fn create_compress(config: &EZLogConfig) -> Option<Box<dyn Compress + Send + Sync>> {
+    match config.compress_kind() {
+        CompressKind::ZLIB => Some(Box::new(ZlibCodec::new(&config.compress_level()))),
         CompressKind::NONE => None,
         CompressKind::UNKNOWN => None,
     }
@@ -118,19 +118,18 @@ pub fn create_compress(config: &EZLogConfig) -> Option<Box<dyn Compress>> {
 pub struct EZLogger {
     pub(crate) config: EZLogConfig,
     pub(crate) appender: EZAppender,
-    pub(crate) compression: Option<Box<dyn Compress>>,
-    pub(crate) cryptor: Option<Box<dyn Cryptor>>,
+    pub(crate) compression: Option<Box<dyn Compress + Send + Sync>>,
+    pub(crate) cryptor: Option<Box<dyn Cryptor + Send + Sync>>,
 }
 
 impl EZLogger {
     pub fn new(config: EZLogConfig) -> Result<Self> {
-        let mut appender = EZAppender::new(&config)?;
+        let appender = EZAppender::new(&config)?;
         appender.check_config_rolling(&config)?;
         let compression = create_compress(&config);
         let cryptor = create_cryptor(&config)?;
-
         Ok(Self {
-            config: config,
+            config,
             appender,
             compression,
             cryptor,
@@ -138,15 +137,15 @@ impl EZLogger {
     }
 
     /// TODO buggy add test case
-    pub(crate) fn append(&mut self, record: EZRecord) -> Result<()> {
-        let splits = if record.content().len() > self.config.max_size as usize / 2 {
+    pub(crate) fn append(&self, record: EZRecord) -> Result<()> {
+        let splits = if record.content().len() > self.config.max_size() as usize / 2 {
             record.trunks(&self.config)
         } else {
             vec![record]
         };
         for record in splits.iter() {
             let buf = self.encode_as_block(record)?;
-            match self.appender.write_all(&buf) {
+            match self.appender.get_inner_mut()?.write_all(&buf) {
                 Ok(_) => {}
                 Err(e) => {
                     // Check if the error is an appender error (e.g., file is full or needs rotation)
@@ -160,8 +159,13 @@ impl EZLogger {
                                 | crate::appender::AppenderError::RotateTimeExceeded { .. } => {
                                     self.appender.rotate(&self.config)?;
                                     // Retry write once after rotation
-                                    self.appender.write_all(&buf).map_err(LogError::from)?;
+                                    self.appender.get_inner_mut()?.write_all(&buf).map_err(LogError::from)?;
                                     continue;
+                                }
+                                crate::appender::AppenderError::LockError {..} => {
+                                    // Handle lock error
+                                    // todo event!(Event::LockError, "lock error", &e.into());
+                                    return Err(e.into());
                                 }
                             }
                         }
@@ -174,13 +178,13 @@ impl EZLogger {
     }
 
     #[inline]
-    fn encode(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
-        let nonce_fn: NonceGenFn = self.gen_nonce();
+    fn encode(&self, record: &EZRecord) -> Result<Vec<u8>> {
+        let nonce_fn: NonceGenFn = self.gen_nonce()?;
         let mut buf = self.format(record)?;
         if buf.is_empty() {
             return Ok(buf);
         }
-        if self.config.version == Version::V1 {
+        if self.config.version() == Version::V1 {
             if let Some(encryptor) = &self.cryptor {
                 event!(Event::Encrypt, &record.t_id());
                 buf = encryptor.encrypt(&buf, nonce_fn)?;
@@ -230,18 +234,18 @@ impl EZLogger {
     ///
     /// A `NonceGenFn` closure that be used in encode and decode.
     ///
-    fn gen_nonce(&mut self) -> NonceGenFn {
-        let timestamp = self.appender.inner.header().timestamp.unix_timestamp();
-        let position = self.appender.inner.header().recorder_position;
+    fn gen_nonce(&self) -> crate::Result<NonceGenFn> {
+        let inner = self.appender.inner.read()?;
+        let timestamp = inner.header().timestamp.unix_timestamp();
+        let position = inner.header().recorder_position;
         let combine = combine_time_position(timestamp, position.into());
 
         // create and return a closure that XORs each input slice with the count
-        Box::new(move |input| xor_slice(input, &combine))
+        Ok(Box::new(move |input| xor_slice(input, &combine)))
     }
 
-    ///
     #[inline]
-    pub fn encode_as_block(&mut self, record: &EZRecord) -> Result<Vec<u8>> {
+    pub fn encode_as_block(&self, record: &EZRecord) -> Result<Vec<u8>> {
         let buf = self.encode(record)?;
         encode_content(buf)
     }
@@ -250,12 +254,16 @@ impl EZLogger {
         crate::formatter().format(record)
     }
 
-    pub(crate) fn flush(&mut self) -> std::result::Result<(), io::Error> {
-        self.appender.flush()
+    pub(crate) fn flush(&self) -> crate::Result<()> {
+        self.appender.get_inner_mut()?.flush().map_err(|e| {
+            errors::LogError::IoError(io::Error::other(
+                e
+            ))
+        })
     }
 
     pub(crate) fn trim(&self) {
-        match fs::read_dir(&self.config.dir_path) {
+        match fs::read_dir(self.config.dir_path()) {
             Ok(dir) => {
                 for file in dir {
                     match file {
@@ -293,10 +301,10 @@ impl EZLogger {
         self.config.query_log_files_for_date(date)
     }
 
-    pub(crate) fn rotate_if_not_empty(&mut self) -> Result<()> {
+    pub(crate) fn rotate_if_not_empty(&self) -> Result<()> {
         if self
             .appender
-            .inner
+            .get_inner()?
             .header()
             .has_record_exclude_extra(&self.config)
         {
@@ -409,17 +417,17 @@ impl Header {
     pub fn create(config: &EZLogConfig) -> Self {
         let time = OffsetDateTime::now_utc();
         let rotate_time = config.rotate_time(time);
-        let flag = if config.extra.is_some() {
+        let flag = if config.has_extra() {
             Flags::HAS_EXTRA
         } else {
             Flags::NONE
         };
         Header {
-            version: config.version,
+            version: config.version(),
             flag,
             recorder_position: 0,
-            compress: config.compress,
-            cipher: config.cipher,
+            compress: config.compress_kind(),
+            cipher: config.cipher_kind(),
             cihper_hash: config.cipher_hash(),
             timestamp: OffsetDateTime::now_utc(),
             rotate_time: Some(rotate_time),
@@ -509,9 +517,9 @@ impl Header {
     }
 
     pub fn is_match(&self, config: &EZLogConfig) -> bool {
-        self.version == config.version
-            && self.compress == config.compress
-            && self.cipher == config.cipher
+        self.version == config.version()
+            && self.compress == config.compress_kind()
+            && self.cipher == config.cipher_kind()
             && self.cihper_hash == config.cipher_hash()
     }
 
@@ -542,7 +550,7 @@ impl Header {
 
     #[inline]
     fn extra_len(&self, config: &EZLogConfig) -> usize {
-        match &config.extra {
+        match &config.extra() {
             Some(e) => {
                 let record = Vec::from(e.to_owned());
                 encode_content(record).map(|r| r.len()).unwrap_or(0)
@@ -559,7 +567,7 @@ impl Header {
         &self.version
     }
 
-    pub(crate) fn init_record_poition(&mut self) {
+    pub(crate) fn init_record_position(&mut self) {
         self.recorder_position = Self::length_compat(&self.version) as u32;
     }
 }

@@ -54,60 +54,60 @@ pub struct EZLogConfig {
     /// max log level
     ///
     /// if record level is greater than this, it will be ignored
-    pub level: Level,
+    level: Level,
     /// EZLog version
     ///
     /// logger version, default is [Version::V2]
-    pub version: Version,
+    version: Version,
     /// Log file dir path
     ///
     /// all log files will be saved in this dir
-    pub dir_path: String,
+    dir_path: String,
     /// Log name to identify the [EZLogger]
     ///
     /// log file name will be `log_name` + `file_suffix`
-    pub name: String,
+    name: String,
     /// Log file suffix
     ///
     /// file suffix, default is [DEFAULT_LOG_FILE_SUFFIX]
-    pub file_suffix: String,
+    file_suffix: String,
     /// Log file expired after duration
     ///
     /// the duration after which the log file will be trimmed
-    pub trim_duration: Duration,
+    trim_duration: Duration,
     /// The maxium size of log file
     ///
     /// if log file size is greater than this, logger will rotate the log file
-    pub max_size: u64,
+    max_size: u64,
     /// Log content compress kind.
     ///
     // compress kind, default is [CompressKind::NONE]
-    pub compress: CompressKind,
+    compress: CompressKind,
     /// Log content compress level.
     ///
     /// compress level, default is [CompressLevel::Default]
-    pub compress_level: CompressLevel,
+    compress_level: CompressLevel,
     /// Log content cipher kind.
     ///
     /// cipher kind, default is [CipherKind::NONE]
-    pub cipher: CipherKind,
+    cipher: CipherKind,
     /// Log content cipher key.
     ///
     /// cipher key, default is `None`
-    pub cipher_key: Option<Vec<u8>>,
+    cipher_key: Option<Vec<u8>>,
     /// Log content cipher nonce.
     ///
     /// cipher nonce, default is `None`
-    pub cipher_nonce: Option<Vec<u8>>,
+    cipher_nonce: Option<Vec<u8>>,
     /// rotate duration
     ///
     /// the duration after which the log file will be rotated
-    pub rotate_duration: Duration,
+    rotate_duration: Duration,
 
     /// Extra info to be added to log header
     ///
     /// Plaintext infomation write following log's header
-    pub extra: Option<String>,
+    extra: Option<String>,
 }
 
 impl EZLogConfig {
@@ -266,6 +266,53 @@ impl EZLogConfig {
             return Err(LogError::Illegal("name is empty".to_string()));
         }
         Ok(())
+    }
+
+    pub(crate) fn name(&self) -> &str {
+        &self.name
+    }
+
+    
+    pub(crate) fn max_size(&self) -> u64 {
+        self.max_size
+    }
+
+    pub (crate) fn compress_kind(&self) -> CompressKind {
+        self.compress
+    }
+    pub (crate) fn compress_level(&self) -> CompressLevel {
+        self.compress_level
+    }
+
+    pub (crate) fn cipher_kind(&self) -> CipherKind {
+        self.cipher
+    }
+    pub (crate) fn cipher_key(&self) -> Option<Vec<u8>> {
+        self.cipher_key.clone()
+    }
+
+    pub (crate) fn cipher_nonce(&self) -> Option<Vec<u8>> {
+        self.cipher_nonce.clone()
+    }
+
+    pub (crate) fn extra(&self) -> Option<String> {
+        self.extra.clone()
+    }
+
+    pub (crate) fn has_extra(&self) -> bool {
+        self.extra.is_some()
+    }
+
+    pub (crate) fn level(&self) -> Level {
+        self.level
+    }
+
+    pub (crate) fn version(&self) -> Version {
+        self.version
+    }
+
+    pub (crate) fn dir_path(&self) -> String {
+        self.dir_path.clone()
     }
 }
 
@@ -706,7 +753,7 @@ mod tests {
 
         f.set_len((crate::Header::max_length() + 1) as u64).unwrap();
 
-        let mut appender = EZAppender::new(&config).unwrap();
+        let appender = EZAppender::new(&config).unwrap();
         appender.check_config_rolling(&config).unwrap();
         drop(appender);
 

@@ -39,7 +39,7 @@ pub fn main() {
     let ezlog = ezlog::InitBuilder::new()
         .with_layer_fn(|msg| {
             if let EZMsg::Record(recode) = msg {
-                println!("{}", ezlog::format(recode));
+                println!("{recode}");
             }
         })
         .with_event_listener(&EVENT_LISTENER)

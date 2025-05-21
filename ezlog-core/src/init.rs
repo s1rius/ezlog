@@ -1,5 +1,3 @@
-use std::ptr;
-
 use crate::{
     EZLogCallback,
     EZMsg,
@@ -14,7 +12,7 @@ use crate::{
 pub struct InitBuilder {
     listener: Option<&'static dyn EventListener>,
     debug: bool,
-    layers: Vec<Box<dyn MsgHandler>>,
+    layers: Vec<Box<dyn MsgHandler + Send + Sync>>,
     callback: Option<Box<dyn EZLogCallback>>,
     formatter: Option<Box<dyn Formatter>>,
 }
@@ -94,7 +92,7 @@ impl InitBuilder {
     ///     .with_layer(Box::new(MyLayer::new()))
     ///     .init();
     /// ```
-    pub fn with_layer(mut self, layer: Box<dyn MsgHandler>) -> Self {
+    pub fn with_layer(mut self, layer: Box<dyn MsgHandler + Send + Sync>) -> Self {
         self.layers.push(layer);
         self
     }
@@ -204,7 +202,7 @@ impl InitBuilder {
 
     /// real init ezlog
     pub fn init(self) -> EZLog {
-        crate::LOG_SERVICE_INIT.call_once(|| unsafe {
+        crate::LOG_SERVICE.get_or_init(|| {
             #[cfg(all(target_os = "android", feature = "android_logger"))]
             if self.debug {
                 android_logger::init_once(
@@ -231,9 +229,7 @@ impl InitBuilder {
             if let Some(formatter) = self.formatter {
                 crate::set_boxed_formatter(formatter);
             }
-            let mut service = LogService::new();
-            service.layers = self.layers;
-            ptr::write(crate::LOG_SERVICE.as_mut_ptr(), service);
+            LogService::new(self.layers)
         });
         EZLog {}
     }

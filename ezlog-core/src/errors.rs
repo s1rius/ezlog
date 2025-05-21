@@ -1,6 +1,5 @@
 use std::{
-    ffi::NulError,
-    io,
+    ffi::NulError, io, sync::PoisonError
 };
 
 use crossbeam_channel::{
@@ -27,6 +26,8 @@ pub enum LogError {
     Unknown(String),
     #[error("log init error")]
     NotInit,
+    #[error("{0}")]
+    Poison(String)
 }
 
 impl LogError {
@@ -63,6 +64,12 @@ impl From<RecvError> for LogError {
 impl<T> From<TrySendError<T>> for LogError {
     fn from(_: TrySendError<T>) -> Self {
         todo!()
+    }
+}
+
+impl<T> From<PoisonError<T>> for LogError {
+    fn from(e: PoisonError<T>) -> Self {
+        LogError::Poison(format!("{:?}", e))
     }
 }
 

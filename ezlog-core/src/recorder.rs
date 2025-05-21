@@ -1,15 +1,13 @@
 use std::{
-    collections::hash_map::DefaultHasher,
-    hash::{
+    collections::hash_map::DefaultHasher, hash::{
         Hash,
         Hasher,
-    },
-    thread,
+    }, fmt::Display, thread
 };
 
 #[cfg(feature = "log")]
 use log::Record;
-use time::OffsetDateTime;
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 use crate::{
     EZLogConfig,
@@ -165,7 +163,7 @@ impl EZRecord {
     pub fn trunks(&self, config: &EZLogConfig) -> Vec<EZRecord> {
         let mut trunks: Vec<EZRecord> = Vec::new();
         let content_bytes = self.content.as_bytes();
-        let max_size = config.max_size as usize / 2;
+        let max_size = config.max_size() as usize / 2;
         let mut start = 0;
 
         while start < content_bytes.len() {
@@ -292,5 +290,20 @@ impl Default for EZRecordBuilder {
 impl From<&Record<'_>> for EZRecord {
     fn from(record: &Record) -> Self {
         EZRecord::from(record)
+    }
+}
+
+impl Display for EZRecord {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[{}] {} {} {} {} {}",
+            self.time.format(&Rfc3339).unwrap_or("".to_string()),
+            self.level,
+            self.target,
+            self.thread_id,
+            self.thread_name,
+            self.content
+        )
     }
 }
