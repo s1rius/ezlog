@@ -69,17 +69,20 @@ pub struct EZAppender {
 impl EZAppender {
     pub fn create_inner(config: &EZLogConfig) -> Result<Box<dyn AppenderInner>> {
         event!(Event::MapFile);
-        let inner = MmapAppendInner::new(config);
-        match inner {
+        match Self::create_mmap(config) {
             Ok(i) => {
                 event!(Event::MapFileEnd);
-                Ok(Box::new(i))
+                Ok(i)
             }
             Err(e) => {
                 event!(Event::MapFileError, "mmap appender new", &e);
                 Ok(Box::new(ByteArrayAppenderInner::new(config)?))
             }
         }
+    }
+
+    pub fn create_mmap(config: &EZLogConfig) -> Result<Box<dyn AppenderInner>> {
+        MmapAppendInner::new(config).map(|inner| Box::new(inner) as Box<dyn AppenderInner>)
     }
 
     pub fn new(config: &EZLogConfig) -> Result<Self> {
@@ -115,60 +118,58 @@ impl EZAppender {
 
     #[inline]
     pub(crate) fn check_config_rolling(&self, config: &EZLogConfig) -> Result<()> {
-        if self.is_config_rolling(config)? {
+        // only hold the read-lock long enough to decide if we need to rotate
+        let needs_rotation = {
+            let inner = self.get_inner()?;  // RwLockReadGuard<'_, _>
+            inner.file_len() != config.max_size() as usize
+                || !inner.header().is_match(config)
+        }; 
+                              
+        if needs_rotation {
             self.rotate(config)?;
         }
         Ok(())
     }
 
-    #[inline]
-    pub(crate) fn is_config_rolling(&self, config: &EZLogConfig) -> Result<bool> {
-        let inner = self.get_inner()?;
-        Ok(inner.file_len() != config.max_size() as usize || !inner.header().is_match(config))
-    }
-
     pub(crate) fn rotate(&self, config: &EZLogConfig) -> Result<()> {
-        // 获取写锁
+        // Acquire write lock and extract information needed for file rotation
         let mut inner = self.get_inner_mut().map_err(|e| {
             LogError::IoError(io::Error::other(
                 format!("Failed to acquire write lock for rotation: {e}"),
             ))
         })?;
-        
-        // 保存当前信息
+
+        // Save file path and timestamp before replacement
         let file_path = inner.file_path().to_owned();
         let header_time = inner.header().timestamp;
+
+        let empty_inner = NopInner::empty();
+        let old_inner = std::mem::replace(&mut *inner, Box::new(empty_inner));
         
-        // 替换为 NopInner
-        *inner = Box::new(NopInner::empty());
-        
-        // 释放写锁，以便其他操作可以继续
-        drop(inner);
-        
-        // 重命名文件
-        EZAppender::rename_current_file(config, &file_path, header_time).inspect_err(|e| {
+        // flush the old one
+        drop(old_inner);
+
+         // Rename the old log file (now that we've released the lock)
+         EZAppender::rename_current_file(config, &file_path, header_time).inspect_err(|e| {
             event!(Event::RotateFileError, "rename file error", e);
         })?;
-        
-        // 创建新的内部状态
+
+        // Create a new inner appender before acquiring any locks
         let new_inner = Self::create_inner(config).inspect_err(|e| {
-            event!(Event::RotateFileError, "create inner err = ", e);
+            event!(Event::RotateFileError, "create inner error", e);
         })?;
+
+         // Replace the inner with the new one in a single operation
+        let empty_inner = std::mem::replace(&mut *inner, new_inner);
         
-        // 再次获取写锁更新 inner
-        let mut inner = self.get_inner_mut().map_err(|e| {
-            LogError::IoError(io::Error::other(
-                format!("Failed to acquire write lock after rotation: {e}"),
-            ))
-        })?;
-        
-        *inner = new_inner;
+        drop(empty_inner);        
         event!(Event::RotateFile);
         Ok(())
     }
 
+    // get the inner appender with read lock
     pub(crate) fn get_inner(&self) -> Result<std::sync::RwLockReadGuard<'_, Box<dyn AppenderInner>>> {
-        let inner = self.inner.try_read().map_err(|_| {
+        let inner = self.inner.read().map_err(|_| {
             errors::LogError::IoError(io::Error::other(
                 "get appender inner error",
             ))
@@ -176,9 +177,9 @@ impl EZAppender {
         Ok(inner)
     }
 
-    // 获取写锁的辅助方法
+    // get the inner appender with write lock
     pub(crate) fn get_inner_mut(&self) -> Result<std::sync::RwLockWriteGuard<'_, Box<dyn AppenderInner>>> {
-        self.inner.try_write().map_err(|_| {
+        self.inner.write().map_err(|_| {
             errors::LogError::IoError(io::Error::other(
                 "get appender inner write lock error",
             ))
@@ -242,7 +243,7 @@ pub(crate) struct MmapAppendInner {
 impl MmapAppendInner {
     pub(crate) fn new(config: &EZLogConfig) -> Result<Self> {
         let (mut file_path, mut mmap) = config.create_mmap_file()?;
-
+        
         if mmap.len() < Header::max_length() {
             EZAppender::rename_current_file(config, &file_path, OffsetDateTime::now_utc())?;
             (file_path, mmap) = config.create_mmap_file()?;
@@ -350,10 +351,10 @@ struct ByteArrayAppenderInner {
 
 impl ByteArrayAppenderInner {
     pub(crate) fn new(config: &EZLogConfig) -> Result<Self> {
-        let (mut file, mut file_path) = config.create_log_file()?;
+        let (mut file, mut file_path) = config.create_or_open_log_file()?;
         if file.metadata()?.len() < config.max_size() {
             EZAppender::rename_current_file(config, &file_path, OffsetDateTime::now_utc())?;
-            (file, file_path) = config.create_log_file()?;
+            (file, file_path) = config.create_or_open_log_file()?;
         }
         let mut byte_array = vec![0u8; config.max_size() as usize];
         BufReader::new(&file).read_exact(&mut byte_array)?;
@@ -361,19 +362,23 @@ impl ByteArrayAppenderInner {
         let mut c = Cursor::new(byte_array.get(0..Header::max_length()).ok_or_else(|| {
             io::Error::new(ErrorKind::InvalidData, "byte array get header vec error")
         })?);
+        let mut write_init = false;
         let mut header = Header::decode(&mut c)?;
         if header.is_none() {
             header = Header::create(config);
-        } else {
-            // todo check header
+            write_init = true;
         }
-
+        
         let mut inner = ByteArrayAppenderInner {
             header,
             file_path,
             byte_array,
         };
-        inner.write_init(config)?;
+
+        if write_init {
+            inner.write_init(config)?;
+        }
+
         Ok(inner)
     }
 
@@ -543,10 +548,11 @@ mod tests {
 
     use super::*;
     use crate::config::EZLogConfigBuilder;
+    const KEY: &[u8; 32] = b"an example very very secret key.";
+    const NONCE: &[u8; 12] = b"unique nonce";
 
     fn create_all_feature_config() -> EZLogConfigBuilder {
-        let key = b"an example very very secret key.";
-        let nonce = b"unique nonce";
+        
         EZLogConfigBuilder::new()
             .dir_path(
                 test_compat::test_path()
@@ -559,8 +565,17 @@ mod tests {
             .max_size(1024)
             .compress(CompressKind::ZLIB)
             .cipher(CipherKind::AES128GCMSIV)
-            .cipher_key(key.to_vec())
-            .cipher_nonce(nonce.to_vec())
+            .cipher_key(KEY.to_vec())
+            .cipher_nonce(NONCE.to_vec())
+    }
+
+    fn current_file(path: &PathBuf) -> std::result::Result<File, errors::LogError> {
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(false)
+            .open(path)?;
+        Ok(file)
     }
 
     #[test]
@@ -602,15 +617,6 @@ mod tests {
 
         let diff_compress_config = config_builder.clone().compress(CompressKind::NONE).build();
         assert!(!inner.header().is_match(&diff_compress_config));
-    }
-
-    fn current_file(path: &PathBuf) -> std::result::Result<File, errors::LogError> {
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(false)
-            .open(path)?;
-        Ok(file)
     }
 
     #[test]
@@ -677,5 +683,46 @@ mod tests {
         reader.read_exact(&mut read_buf).unwrap();
         assert_eq!(read_buf, buf);
         fs::remove_file(appender.file_path()).unwrap();
+    }
+
+    #[test]
+    fn test_appender_rotate() {
+
+        let config = EZLogConfigBuilder::new()
+            .dir_path(
+                test_compat::test_path()
+                    .into_os_string()
+                    .into_string()
+                    .unwrap(),
+            )
+            .name(String::from("rorate"))
+            .file_suffix(String::from("mmap"))
+            .max_size(1024)
+            .compress(CompressKind::ZLIB)
+            .cipher(CipherKind::AES128GCMSIV)
+            .cipher_key(KEY.to_vec())
+            .cipher_nonce(NONCE.to_vec())
+            .build();
+
+
+        let appender:EZAppender = EZAppender { inner: EZAppender::create_mmap(&config).unwrap().into()};
+
+        for _i in 0..9 {
+            appender.rotate(&config).unwrap();
+        }
+
+        let mut count = 0;
+        for entry in fs::read_dir(test_compat::test_path()).unwrap() {
+            let entry = &entry.unwrap();
+            if entry.path().is_file() {
+                let file_name_os_str = entry.file_name();
+                let file_name = file_name_os_str.to_string_lossy();
+                if file_name.contains("rorate") {
+                    count += 1;
+                    fs::remove_file(entry.path()).unwrap();
+                }
+            }
+        }
+        assert!(count == 10);
     }
 }

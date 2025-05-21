@@ -166,7 +166,7 @@ impl Callback {
             }
         }
 
-        // todo std::mem::forget_ref(self);
+        // TODO: std::mem::forget_ref(self);
         Ok(())
     }
 
@@ -181,7 +181,7 @@ impl Callback {
             let _ = CString::from_raw(c_date);
             let _ = CString::from_raw(c_err);
         }
-        // todo std::mem::forget(self);
+        // TODO: std::mem::forget(self);
         Ok(())
     }
 }
@@ -202,7 +202,7 @@ impl EZLogCallback for Callback {
 impl Drop for Callback {
     fn drop(&mut self) {
         // now it is a gloabl callback, so we can't drop it
-        // todo panic!("CompletedCallback must have explicit succeeded or failed call")
+        // TODO: panic!("CompletedCallback must have explicit succeeded or failed call")
     }
 }
 

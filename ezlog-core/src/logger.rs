@@ -144,9 +144,12 @@ impl EZLogger {
             vec![record]
         };
         for record in splits.iter() {
+            let id = record.t_id();
             let buf = self.encode_as_block(record)?;
             match self.appender.get_inner_mut()?.write_all(&buf) {
-                Ok(_) => {}
+                Ok(_) => {
+                    event!(Event::RecordEnd, &id);
+                }
                 Err(e) => {
                     // Check if the error is an appender error (e.g., file is full or needs rotation)
                     if e.kind() == io::ErrorKind::Other {
@@ -163,8 +166,6 @@ impl EZLogger {
                                     continue;
                                 }
                                 crate::appender::AppenderError::LockError {..} => {
-                                    // Handle lock error
-                                    // todo event!(Event::LockError, "lock error", &e.into());
                                     return Err(e.into());
                                 }
                             }
@@ -364,7 +365,7 @@ pub struct Header {
     /// cipher kind
     pub(crate) cipher: CipherKind,
     // config key and nonce hash
-    pub(crate) cihper_hash: u32,
+    pub(crate) cipher_hash: u32,
     /// timestamp
     #[cfg_attr(feature = "json", serde(serialize_with = "crate::serialize_time"))]
     #[cfg_attr(feature = "json", serde(deserialize_with = "crate::deserialize_time"))]
@@ -395,7 +396,7 @@ impl Header {
             recorder_position: 0,
             compress: CompressKind::ZLIB,
             cipher: CipherKind::AES128GCM,
-            cihper_hash: 0,
+            cipher_hash: 0,
             timestamp: OffsetDateTime::now_utc(),
             rotate_time: None,
         }
@@ -408,7 +409,7 @@ impl Header {
             recorder_position: 0,
             compress: CompressKind::NONE,
             cipher: CipherKind::NONE,
-            cihper_hash: 0,
+            cipher_hash: 0,
             timestamp: OffsetDateTime::UNIX_EPOCH,
             rotate_time: None,
         }
@@ -428,7 +429,7 @@ impl Header {
             recorder_position: 0,
             compress: config.compress_kind(),
             cipher: config.cipher_kind(),
-            cihper_hash: config.cipher_hash(),
+            cipher_hash: config.cipher_hash(),
             timestamp: OffsetDateTime::now_utc(),
             rotate_time: Some(rotate_time),
         }
@@ -479,7 +480,7 @@ impl Header {
         writer.write_u32::<BigEndian>(self.recorder_position)?;
         writer.write_u8(self.compress.into())?;
         writer.write_u8(self.cipher.into())?;
-        writer.write_u32::<BigEndian>(self.cihper_hash)
+        writer.write_u32::<BigEndian>(self.cipher_hash)
     }
 
     pub fn decode(reader: &mut dyn Read) -> std::result::Result<Self, errors::LogError> {
@@ -509,7 +510,7 @@ impl Header {
             recorder_position: recorder_size,
             compress: CompressKind::from(compress),
             cipher: CipherKind::from(cipher),
-            cihper_hash: hash,
+            cipher_hash: hash,
             timestamp: OffsetDateTime::from_unix_timestamp(timestamp)
                 .unwrap_or_else(|_| OffsetDateTime::now_utc()),
             rotate_time: None,
@@ -520,7 +521,7 @@ impl Header {
         self.version == config.version()
             && self.compress == config.compress_kind()
             && self.cipher == config.cipher_kind()
-            && self.cihper_hash == config.cipher_hash()
+            && self.cipher_hash == config.cipher_hash()
     }
 
     pub fn is_none(&self) -> bool {
@@ -528,7 +529,7 @@ impl Header {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.recorder_position <= self.length() as u32
+        self.recorder_position == 0
     }
 
     pub fn is_config(&self) -> bool {

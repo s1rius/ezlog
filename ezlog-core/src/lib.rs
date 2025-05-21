@@ -180,11 +180,6 @@ impl LogService {
     }
 
     fn dispatch(&self, msg: EZMsg) {
-        if LOG_SERVICE.get().is_none() {
-            event!(Event::InitError, "log service not init");
-            return;    
-        }
-
         self.layers.iter().for_each(|layer| layer.handle(&msg));
         self.log_sender
             .try_send(msg)
@@ -222,7 +217,7 @@ impl LogService {
             name: task.name,
             date: task.start.date().to_string(),
             logs: Some(logs),
-            error: None,
+            error,
         })
     }
 
@@ -247,7 +242,7 @@ impl LogService {
     fn log(&self, record: EZRecord) -> crate::Result<()> {
         self.loggers_read().map(|map| {
             if let Some(log) = map.get(&record.log_name().to_owned()) {
-                // todo add fileter logic
+                // TODO: add fileter logic
                 if log.config.level() < record.level() {
                     event!(
                         Event::RecordFilterOut,
@@ -258,7 +253,6 @@ impl LogService {
                         )
                     );
                 }
-                // todo 绑定ID let tid = record.t_id();
                 log.append(record)
             } else {
                 Err(LogError::Illegal("no logger found".into()))
@@ -316,7 +310,7 @@ pub fn set_event_listener(event: &'static dyn EventListener) {
 }
 
 fn init_log_channel() -> Sender<EZMsg> {
-    // todo change crossbean_channel to bounded_channel, if not, oom may happen.
+    // TODO: check the channel full error
     let (sender, receiver) = crossbeam_channel::bounded::<EZMsg>(200);
     match thread::Builder::new()
         .name("ezlog_task".to_string())
@@ -398,7 +392,6 @@ fn init_callback_channel() -> Sender<FetchResult> {
             match fetch_receiver.recv() {
                 Ok(result) => {
                     invoke_fetch_callback(result);
-                    event!(Event::RequestLogEnd)
                 }
                 Err(e) => event!(Event::FFiError, "init callback channel", &e.into()),
             }
@@ -456,7 +449,7 @@ pub fn request_log_files_for_date(log_name: &str, start: OffsetDateTime, end: Of
         end,
     };
 
-    // todo check init
+    // TODO: check init
     if let Some(service) = LOG_SERVICE.get() {
          service.dispatch(EZMsg::FetchLog(msg)); 
     }
@@ -464,8 +457,9 @@ pub fn request_log_files_for_date(log_name: &str, start: OffsetDateTime, end: Of
 
 #[inline]
 fn post_msg(msg: EZMsg) {
-    // todo check init
-    if let Some(service) = LOG_SERVICE.get() { service.dispatch(msg); }
+    if let Some(service) = LOG_SERVICE.get() {
+        service.dispatch(msg);
+    }
 }
 
 #[inline]
@@ -476,6 +470,7 @@ pub(crate) fn report_channel_send_err<T>(err: TrySendError<T>) {
 fn invoke_fetch_callback(result: FetchResult) {
     match result.logs {
         Some(logs) => {
+            event!(Event::RequestLogEnd, &format!("{} {} {}", &result.name, &result.date, &logs.len()));
             callback().on_fetch_success(
                 &result.name,
                 &result.date,
@@ -487,6 +482,7 @@ fn invoke_fetch_callback(result: FetchResult) {
         }
         None => {
             if let Some(err) = result.error {
+                event!(Event::RequestLogError, &err);
                 callback().on_fetch_fail(&result.name, &result.date, &err)
             }
         }

@@ -77,7 +77,7 @@ pub fn main() {
         OffsetDateTime::now_utc(),
         OffsetDateTime::now_utc(),
     );
-    thread::sleep(Duration::from_secs(1));
+    thread::sleep(Duration::from_secs(3));
 }
 
 struct SimpleCallback;

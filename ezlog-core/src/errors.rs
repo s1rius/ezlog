@@ -62,8 +62,8 @@ impl From<RecvError> for LogError {
 }
 
 impl<T> From<TrySendError<T>> for LogError {
-    fn from(_: TrySendError<T>) -> Self {
-        todo!()
+    fn from(e: TrySendError<T>) -> Self {
+        LogError::Illegal(e.to_string())
     }
 }
 

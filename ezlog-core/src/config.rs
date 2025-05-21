@@ -142,12 +142,12 @@ impl EZLogConfig {
     }
 
     pub fn create_mmap_file(&self) -> crate::Result<(PathBuf, MmapMut)> {
-        let (file, path) = self.create_log_file()?;
+        let (file, path) = self.create_or_open_log_file()?;
         let mmap = unsafe { MmapOptions::new().map_mut(&file)? };
         Ok((path, mmap))
     }
 
-    pub(crate) fn create_log_file(&self) -> crate::Result<(File, PathBuf)> {
+    pub(crate) fn create_or_open_log_file(&self) -> crate::Result<(File, PathBuf)> {
         let file_name = self.file_name()?;
         let max_size = cmp::max(self.max_size, MIN_LOG_SIZE);
         let path = Path::new(&self.dir_path).join(file_name);
