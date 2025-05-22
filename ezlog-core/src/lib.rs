@@ -64,9 +64,14 @@ mod ffi_c;
 #[allow(non_snake_case)]
 mod ffi_java;
 
+use core::fmt;
+use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::sync::{
-    Mutex, OnceLock, RwLock, RwLockReadGuard
+    Mutex,
+    OnceLock,
+    RwLock,
+    RwLockReadGuard,
 };
 use std::{
     collections::HashMap,
@@ -129,7 +134,10 @@ pub(crate) const MIN_LOG_SIZE: u64 = 100;
 pub const V1_LOG_HEADER_SIZE: usize = 10;
 pub const V2_LOG_HEADER_SIZE: usize = 22;
 
+const MAX_PRE_INIT_QUEUE_SIZE: usize = 64;
+
 static LOG_SERVICE: OnceLock<LogService> = OnceLock::new();
+static PRE_INIT_QUEUE: OnceLock<Mutex<VecDeque<EZMsg>>> = OnceLock::new();
 
 static mut GLOBAL_CALLBACK: &dyn EZLogCallback = &NopCallback;
 static CALLBACK_INIT: Once = Once::new();
@@ -190,28 +198,31 @@ impl LogService {
         event!(Event::RequestLog, &format!("{task:?}"));
         let mut logs: Vec<PathBuf> = Vec::new();
         let mut error: Option<String> = None;
-        self.loggers_read().map(|map| {
-            if let Some(logger) = map.get(&task.name) {
-                // Perform operations with the logger
-                let now = OffsetDateTime::now_utc();
-                if (now < task.end || now < task.start + Duration::days(1)) && now > task.start {
-                    logger.rotate_if_not_empty().unwrap_or_else(|e| {
-                        error = Some(format!("rotate error: {}", e));
-                    });
-                }
+        self.loggers_read()
+            .map(|map| {
+                if let Some(logger) = map.get(&task.name) {
+                    // Perform operations with the logger
+                    let now = OffsetDateTime::now_utc();
+                    if (now < task.end || now < task.start + Duration::days(1)) && now > task.start
+                    {
+                        logger.rotate_if_not_empty().unwrap_or_else(|e| {
+                            error = Some(format!("rotate error: {}", e));
+                        });
+                    }
 
-                let days = (task.end - task.start).whole_days();
-                for day in 0..=days {
-                    let mut query =
-                        logger.query_log_files_for_date(task.start + Duration::days(day));
-                    logs.append(&mut query);
+                    let days = (task.end - task.start).whole_days();
+                    for day in 0..=days {
+                        let mut query =
+                            logger.query_log_files_for_date(task.start + Duration::days(day));
+                        logs.append(&mut query);
+                    }
+                } else {
+                    error = Some("Logger not found".into())
                 }
-            } else {
-                error = Some("Logger not found".into())
-            }
-        }).unwrap_or_else(|e| {
-            error = Some(format!("Error reading loggers: {}", e));
-        });
+            })
+            .unwrap_or_else(|e| {
+                error = Some(format!("Error reading loggers: {}", e));
+            });
 
         self.on_fetch(FetchResult {
             name: task.name,
@@ -277,9 +288,9 @@ impl LogService {
     }
 
     fn trim(&self) -> crate::Result<()> {
-        self.loggers_read()?.values().for_each(|logger| {
-            logger.trim()
-        });
+        self.loggers_read()?
+            .values()
+            .for_each(|logger| logger.trim());
         Ok(())
     }
 
@@ -368,6 +379,9 @@ fn init_log_channel() -> Sender<EZMsg> {
                             event!(Event::RequestLogError, &e.to_string());
                         });
                     }
+                    EZMsg::Action(call) => {
+                        call();
+                    }
                 },
                 Err(err) => {
                     event!(Event::ChannelError, "log channel rec", &err.into());
@@ -443,22 +457,30 @@ pub fn flush_all() {
 
 /// Request logs file path array at the date which [EZLogger]'s name is define in the parameter
 pub fn request_log_files_for_date(log_name: &str, start: OffsetDateTime, end: OffsetDateTime) {
-    let msg = FetchReq {
+    let req = FetchReq {
         name: log_name.to_string(),
         start,
         end,
     };
-
-    // TODO: check init
-    if let Some(service) = LOG_SERVICE.get() {
-         service.dispatch(EZMsg::FetchLog(msg)); 
-    }
+    post_msg(EZMsg::FetchLog(req));
 }
 
 #[inline]
 fn post_msg(msg: EZMsg) {
     if let Some(service) = LOG_SERVICE.get() {
         service.dispatch(msg);
+    } else {
+        event!(Event::InitError, "post msg when log service not init");
+        // if not init, push to pre-init queue
+        let q = PRE_INIT_QUEUE.get_or_init(|| Mutex::new(VecDeque::<EZMsg>::new()));
+        let mut guard = q.lock().unwrap_or_else(|e| e.into_inner());
+        if matches!(msg, EZMsg::CreateLogger(_)) {
+            guard.push_front(msg);
+        } else if guard.len() < MAX_PRE_INIT_QUEUE_SIZE {
+            guard.push_back(msg);
+        } else {
+            event!(Event::InitError, "pre-init queue full, cant queue message");
+        }
     }
 }
 
@@ -470,7 +492,10 @@ pub(crate) fn report_channel_send_err<T>(err: TrySendError<T>) {
 fn invoke_fetch_callback(result: FetchResult) {
     match result.logs {
         Some(logs) => {
-            event!(Event::RequestLogEnd, &format!("{} {} {}", &result.name, &result.date, &logs.len()));
+            event!(
+                Event::RequestLogEnd,
+                &format!("{} {} {}", &result.name, &result.date, &logs.len())
+            );
             callback().on_fetch_success(
                 &result.name,
                 &result.date,
@@ -568,7 +593,6 @@ impl EZLogCallback for EZLogCallbackFn {
     }
 }
 
-#[derive(Debug, Clone)]
 pub enum EZMsg {
     CreateLogger(EZLogConfig),
     Record(EZRecord),
@@ -576,6 +600,21 @@ pub enum EZMsg {
     FlushAll(),
     Trim(),
     FetchLog(FetchReq),
+    Action(Box<dyn Fn() + Send>),
+}
+
+impl fmt::Debug for EZMsg {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            EZMsg::CreateLogger(cfg) => f.debug_tuple("CreateLogger").field(cfg).finish(),
+            EZMsg::Record(rec) => f.debug_tuple("Record").field(rec).finish(),
+            EZMsg::ForceFlush(name) => f.debug_tuple("ForceFlush").field(name).finish(),
+            EZMsg::FlushAll() => f.write_str("FlushAll"),
+            EZMsg::Trim() => f.write_str("Trim"),
+            EZMsg::FetchLog(req) => f.debug_tuple("FetchLog").field(req).finish(),
+            EZMsg::Action(_) => f.write_str("Callback(<dyn Fn>)"),
+        }
+    }
 }
 
 /// Fetch Logs file‘s path reqeust
@@ -677,7 +716,7 @@ impl Formatter for DefaultFormatter {
 
 pub(crate) fn formatter() -> &'static dyn Formatter {
     static DEFAULT_FORMATTER: DefaultFormatter = DefaultFormatter;
-    
+
     if let Some(mutex) = GLOBAL_FORMATTER.get() {
         if let Ok(guard) = mutex.lock() {
             if let Some(formatter) = *guard {
@@ -692,8 +731,7 @@ fn set_formatter<F>(make_formatter: F)
 where
     F: FnOnce() -> &'static dyn Formatter,
 {
-    GLOBAL_FORMATTER
-        .get_or_init(|| Mutex::new(Some(make_formatter())));
+    GLOBAL_FORMATTER.get_or_init(|| Mutex::new(Some(make_formatter())));
 }
 
 pub fn set_boxed_formatter(formatter: Box<dyn Formatter>) {

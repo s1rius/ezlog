@@ -162,10 +162,13 @@ impl EZLogger {
                                 | crate::appender::AppenderError::RotateTimeExceeded { .. } => {
                                     self.appender.rotate(&self.config)?;
                                     // Retry write once after rotation
-                                    self.appender.get_inner_mut()?.write_all(&buf).map_err(LogError::from)?;
+                                    self.appender
+                                        .get_inner_mut()?
+                                        .write_all(&buf)
+                                        .map_err(LogError::from)?;
                                     continue;
                                 }
-                                crate::appender::AppenderError::LockError {..} => {
+                                crate::appender::AppenderError::LockError { .. } => {
                                     return Err(e.into());
                                 }
                             }
@@ -256,11 +259,10 @@ impl EZLogger {
     }
 
     pub(crate) fn flush(&self) -> crate::Result<()> {
-        self.appender.get_inner_mut()?.flush().map_err(|e| {
-            errors::LogError::IoError(io::Error::other(
-                e
-            ))
-        })
+        self.appender
+            .get_inner_mut()?
+            .flush()
+            .map_err(|e| errors::LogError::IoError(io::Error::other(e)))
     }
 
     pub(crate) fn trim(&self) {

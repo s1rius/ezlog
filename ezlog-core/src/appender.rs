@@ -87,7 +87,9 @@ impl EZAppender {
 
     pub fn new(config: &EZLogConfig) -> Result<Self> {
         let inner = EZAppender::create_inner(config)?;
-        Ok(Self { inner: RwLock::new(inner) })
+        Ok(Self {
+            inner: RwLock::new(inner),
+        })
     }
 
     #[inline]
@@ -95,9 +97,10 @@ impl EZAppender {
         &self,
         buf_size: usize,
     ) -> std::result::Result<(), AppenderError> {
-        let inner = self.get_inner().map_err(|e| 
-            AppenderError::LockError(format!("Failed to acquire read lock: {}", e)))?;
-        
+        let inner = self
+            .get_inner()
+            .map_err(|e| AppenderError::LockError(format!("Failed to acquire read lock: {}", e)))?;
+
         let now = OffsetDateTime::now_utc();
         if inner.is_overtime(now) {
             let rotate_time = inner.header().rotate_time;
@@ -120,11 +123,10 @@ impl EZAppender {
     pub(crate) fn check_config_rolling(&self, config: &EZLogConfig) -> Result<()> {
         // only hold the read-lock long enough to decide if we need to rotate
         let needs_rotation = {
-            let inner = self.get_inner()?;  // RwLockReadGuard<'_, _>
-            inner.file_len() != config.max_size() as usize
-                || !inner.header().is_match(config)
-        }; 
-                              
+            let inner = self.get_inner()?; // RwLockReadGuard<'_, _>
+            inner.file_len() != config.max_size() as usize || !inner.header().is_match(config)
+        };
+
         if needs_rotation {
             self.rotate(config)?;
         }
@@ -134,9 +136,9 @@ impl EZAppender {
     pub(crate) fn rotate(&self, config: &EZLogConfig) -> Result<()> {
         // Acquire write lock and extract information needed for file rotation
         let mut inner = self.get_inner_mut().map_err(|e| {
-            LogError::IoError(io::Error::other(
-                format!("Failed to acquire write lock for rotation: {e}"),
-            ))
+            LogError::IoError(io::Error::other(format!(
+                "Failed to acquire write lock for rotation: {e}"
+            )))
         })?;
 
         // Save file path and timestamp before replacement
@@ -145,12 +147,12 @@ impl EZAppender {
 
         let empty_inner = NopInner::empty();
         let old_inner = std::mem::replace(&mut *inner, Box::new(empty_inner));
-        
+
         // flush the old one
         drop(old_inner);
 
-         // Rename the old log file (now that we've released the lock)
-         EZAppender::rename_current_file(config, &file_path, header_time).inspect_err(|e| {
+        // Rename the old log file (now that we've released the lock)
+        EZAppender::rename_current_file(config, &file_path, header_time).inspect_err(|e| {
             event!(Event::RotateFileError, "rename file error", e);
         })?;
 
@@ -159,30 +161,31 @@ impl EZAppender {
             event!(Event::RotateFileError, "create inner error", e);
         })?;
 
-         // Replace the inner with the new one in a single operation
+        // Replace the inner with the new one in a single operation
         let empty_inner = std::mem::replace(&mut *inner, new_inner);
-        
-        drop(empty_inner);        
+
+        drop(empty_inner);
         event!(Event::RotateFile);
         Ok(())
     }
 
     // get the inner appender with read lock
-    pub(crate) fn get_inner(&self) -> Result<std::sync::RwLockReadGuard<'_, Box<dyn AppenderInner>>> {
-        let inner = self.inner.read().map_err(|_| {
-            errors::LogError::IoError(io::Error::other(
-                "get appender inner error",
-            ))
-        })?;
+    pub(crate) fn get_inner(
+        &self,
+    ) -> Result<std::sync::RwLockReadGuard<'_, Box<dyn AppenderInner>>> {
+        let inner = self
+            .inner
+            .read()
+            .map_err(|_| errors::LogError::IoError(io::Error::other("get appender inner error")))?;
         Ok(inner)
     }
 
     // get the inner appender with write lock
-    pub(crate) fn get_inner_mut(&self) -> Result<std::sync::RwLockWriteGuard<'_, Box<dyn AppenderInner>>> {
+    pub(crate) fn get_inner_mut(
+        &self,
+    ) -> Result<std::sync::RwLockWriteGuard<'_, Box<dyn AppenderInner>>> {
         self.inner.write().map_err(|_| {
-            errors::LogError::IoError(io::Error::other(
-                "get appender inner write lock error",
-            ))
+            errors::LogError::IoError(io::Error::other("get appender inner write lock error"))
         })
     }
 
@@ -215,21 +218,18 @@ impl Write for EZAppender {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         self.check_write_rolling(buf.len())
             .map_err(io::Error::other)?;
-        
-        // 获取写锁
-        let mut inner = self.get_inner_mut().map_err(|e| {
-            io::Error::other(format!("Failed to acquire write lock: {}", e))
-        })?;
-        
+
+        let mut inner = self
+            .get_inner_mut()
+            .map_err(|e| io::Error::other(format!("Failed to acquire write lock: {}", e)))?;
+
         inner.write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        // 获取写锁
-        let mut inner = self.get_inner_mut().map_err(|e| {
-            io::Error::other(format!("Failed to acquire write lock: {}", e))
-        })?;
-        
+        let mut inner = self
+            .get_inner_mut()
+            .map_err(|e| io::Error::other(format!("Failed to acquire write lock: {}", e)))?;
         inner.flush()
     }
 }
@@ -243,7 +243,7 @@ pub(crate) struct MmapAppendInner {
 impl MmapAppendInner {
     pub(crate) fn new(config: &EZLogConfig) -> Result<Self> {
         let (mut file_path, mut mmap) = config.create_mmap_file()?;
-        
+
         if mmap.len() < Header::max_length() {
             EZAppender::rename_current_file(config, &file_path, OffsetDateTime::now_utc())?;
             (file_path, mmap) = config.create_mmap_file()?;
@@ -368,7 +368,7 @@ impl ByteArrayAppenderInner {
             header = Header::create(config);
             write_init = true;
         }
-        
+
         let mut inner = ByteArrayAppenderInner {
             header,
             file_path,
@@ -552,7 +552,6 @@ mod tests {
     const NONCE: &[u8; 12] = b"unique nonce";
 
     fn create_all_feature_config() -> EZLogConfigBuilder {
-        
         EZLogConfigBuilder::new()
             .dir_path(
                 test_compat::test_path()
@@ -687,7 +686,6 @@ mod tests {
 
     #[test]
     fn test_appender_rotate() {
-
         let config = EZLogConfigBuilder::new()
             .dir_path(
                 test_compat::test_path()
@@ -704,8 +702,9 @@ mod tests {
             .cipher_nonce(NONCE.to_vec())
             .build();
 
-
-        let appender:EZAppender = EZAppender { inner: EZAppender::create_mmap(&config).unwrap().into()};
+        let appender: EZAppender = EZAppender {
+            inner: EZAppender::create_mmap(&config).unwrap().into(),
+        };
 
         for _i in 0..9 {
             appender.rotate(&config).unwrap();

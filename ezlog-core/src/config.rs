@@ -272,46 +272,45 @@ impl EZLogConfig {
         &self.name
     }
 
-    
     pub(crate) fn max_size(&self) -> u64 {
         self.max_size
     }
 
-    pub (crate) fn compress_kind(&self) -> CompressKind {
+    pub(crate) fn compress_kind(&self) -> CompressKind {
         self.compress
     }
-    pub (crate) fn compress_level(&self) -> CompressLevel {
+    pub(crate) fn compress_level(&self) -> CompressLevel {
         self.compress_level
     }
 
-    pub (crate) fn cipher_kind(&self) -> CipherKind {
+    pub(crate) fn cipher_kind(&self) -> CipherKind {
         self.cipher
     }
-    pub (crate) fn cipher_key(&self) -> Option<Vec<u8>> {
+    pub(crate) fn cipher_key(&self) -> Option<Vec<u8>> {
         self.cipher_key.clone()
     }
 
-    pub (crate) fn cipher_nonce(&self) -> Option<Vec<u8>> {
+    pub(crate) fn cipher_nonce(&self) -> Option<Vec<u8>> {
         self.cipher_nonce.clone()
     }
 
-    pub (crate) fn extra(&self) -> Option<String> {
+    pub(crate) fn extra(&self) -> Option<String> {
         self.extra.clone()
     }
 
-    pub (crate) fn has_extra(&self) -> bool {
+    pub(crate) fn has_extra(&self) -> bool {
         self.extra.is_some()
     }
 
-    pub (crate) fn level(&self) -> Level {
+    pub(crate) fn level(&self) -> Level {
         self.level
     }
 
-    pub (crate) fn version(&self) -> Version {
+    pub(crate) fn version(&self) -> Version {
         self.version
     }
 
-    pub (crate) fn dir_path(&self) -> String {
+    pub(crate) fn dir_path(&self) -> String {
         self.dir_path.clone()
     }
 }
