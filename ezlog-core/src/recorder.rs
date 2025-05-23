@@ -1,13 +1,19 @@
 use std::{
-    collections::hash_map::DefaultHasher, hash::{
+    collections::hash_map::DefaultHasher,
+    fmt::Display,
+    hash::{
         Hash,
         Hasher,
-    }, fmt::Display, thread
+    },
+    thread,
 };
 
 #[cfg(feature = "log")]
 use log::Record;
-use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+use time::{
+    format_description::well_known::Rfc3339,
+    OffsetDateTime,
+};
 
 use crate::{
     EZLogConfig,

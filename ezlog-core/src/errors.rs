@@ -1,5 +1,7 @@
 use std::{
-    ffi::NulError, io, sync::PoisonError
+    ffi::NulError,
+    io,
+    sync::PoisonError,
 };
 
 use crossbeam_channel::{
@@ -27,7 +29,7 @@ pub enum LogError {
     #[error("log init error")]
     NotInit,
     #[error("{0}")]
-    Poison(String)
+    Poison(String),
 }
 
 impl LogError {

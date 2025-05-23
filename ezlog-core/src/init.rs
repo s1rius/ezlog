@@ -202,7 +202,7 @@ impl InitBuilder {
 
     /// real init ezlog
     pub fn init(self) -> EZLog {
-        crate::LOG_SERVICE.get_or_init(|| {
+        let log_service = crate::LOG_SERVICE.get_or_init(|| {
             #[cfg(all(target_os = "android", feature = "android_logger"))]
             if self.debug {
                 android_logger::init_once(
@@ -231,6 +231,14 @@ impl InitBuilder {
             }
             LogService::new(self.layers)
         });
+
+        // after init, drain all messages in the queue, and dispatch them
+        if let Some(queue) = crate::PRE_INIT_QUEUE.get() {
+            let mut buf = queue.lock().unwrap_or_else(|e| e.into_inner());
+            for msg in buf.drain(..) {
+                log_service.dispatch(msg);
+            }
+        }
         EZLog {}
     }
 }
@@ -320,4 +328,66 @@ impl log::Log for EZLog {
     }
 
     fn flush(&self) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        sync::mpsc::channel,
+        time::Duration,
+    };
+
+    use crate::{
+        EZLogConfigBuilder,
+        EZRecord,
+    };
+
+    #[test]
+    pub fn test_log_before_init() {
+        let (tx, rx) = channel::<bool>();
+
+        let record = EZRecord::builder()
+            .log_name(crate::DEFAULT_LOG_NAME.to_string())
+            .level(crate::Level::Debug)
+            .target("test".to_owned())
+            .build();
+        crate::log(record);
+
+        assert!(crate::PRE_INIT_QUEUE.wait().lock().unwrap().len() != 0);
+
+        let config = EZLogConfigBuilder::new()
+            .level(crate::Level::Trace)
+            .dir_path(
+                test_compat::test_path()
+                    .into_os_string()
+                    .into_string()
+                    .expect("dir path error"),
+            )
+            .name(crate::DEFAULT_LOG_NAME.to_string())
+            .build();
+
+        crate::create_log(config);
+
+        crate::InitBuilder::new().init();
+
+        let tx_clone = tx.clone();
+        crate::post_msg(crate::EZMsg::Action(Box::new(move || {
+            let is_empty = crate::LOG_SERVICE
+                .wait()
+                .loggers
+                .read()
+                .unwrap()
+                .get(crate::DEFAULT_LOG_NAME)
+                .unwrap()
+                .appender
+                .get_inner()
+                .unwrap()
+                .header()
+                .is_empty();
+            let _ = tx_clone.send(is_empty);
+        })));
+
+        let is_empty = rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        assert!(!is_empty)
+    }
 }
