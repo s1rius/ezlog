@@ -3,11 +3,9 @@ use std::{
     io::{
         BufReader,
         BufWriter,
-        Error,
         ErrorKind,
     },
     path::PathBuf,
-    rc::Rc,
 };
 
 use time::OffsetDateTime;
@@ -18,7 +16,7 @@ use crate::{
     *,
 };
 
-pub trait AppenderInner: Write {
+pub trait AppenderInner: Write + Send + Sync {
     /// check have enough space to write record
     fn is_oversize(&self, buf_size: usize) -> bool;
 
@@ -34,9 +32,6 @@ pub trait AppenderInner: Write {
     /// Write header bytes to log file
     fn write_header_to_log(&mut self) -> std::result::Result<(), std::io::Error>;
 
-    /// Init header write position
-    fn init_header_position(&mut self);
-
     /// appender is overtime
     fn is_overtime(&self, time: OffsetDateTime) -> bool {
         self.header()
@@ -46,21 +41,21 @@ pub trait AppenderInner: Write {
     }
 
     /// Log file init then write header and extra
-    fn write_log_init_data(
-        &mut self,
-        config: &EZLogConfig,
-    ) -> std::result::Result<(), std::io::Error> {
+    fn write_init(&mut self, config: &EZLogConfig) -> std::result::Result<(), std::io::Error> {
         if self.header().is_empty() {
-            self.init_header_position();
             self.write_header_to_log()?;
-            if let Some(extra) = config.extra.to_owned() {
-                if extra.is_empty() {
-                    return Ok(());
-                }
-                let content =
-                    logger::encode_content((extra.as_bytes()).to_vec()).unwrap_or_default();
-                self.write_all(&content)?;
+            self.write_extra(config)?;
+        }
+        Ok(())
+    }
+
+    fn write_extra(&mut self, config: &EZLogConfig) -> std::result::Result<(), std::io::Error> {
+        if let Some(extra) = config.extra() {
+            if extra.is_empty() {
+                return Ok(());
             }
+            let content = logger::encode_content((extra.as_bytes()).to_vec()).unwrap_or_default();
+            self.write_all(&content)?;
         }
         Ok(())
     }
@@ -68,18 +63,16 @@ pub trait AppenderInner: Write {
 
 /// # Appender 的实现
 pub struct EZAppender {
-    config: Rc<EZLogConfig>,
-    pub(crate) inner: Box<dyn AppenderInner>,
+    pub(crate) inner: RwLock<Box<dyn AppenderInner>>,
 }
 
 impl EZAppender {
     pub fn create_inner(config: &EZLogConfig) -> Result<Box<dyn AppenderInner>> {
         event!(Event::MapFile);
-        let inner = MmapAppendInner::new(config);
-        match inner {
+        match Self::create_mmap(config) {
             Ok(i) => {
                 event!(Event::MapFileEnd);
-                Ok(Box::new(i))
+                Ok(i)
             }
             Err(e) => {
                 event!(Event::MapFileError, "mmap appender new", &e);
@@ -88,57 +81,109 @@ impl EZAppender {
         }
     }
 
-    pub fn new(config: Rc<EZLogConfig>) -> Result<Self> {
-        let inner = EZAppender::create_inner(&config)?;
-        Ok(Self { config, inner })
+    pub fn create_mmap(config: &EZLogConfig) -> Result<Box<dyn AppenderInner>> {
+        MmapAppendInner::new(config).map(|inner| Box::new(inner) as Box<dyn AppenderInner>)
+    }
+
+    pub fn new(config: &EZLogConfig) -> Result<Self> {
+        let inner = EZAppender::create_inner(config)?;
+        Ok(Self { inner: RwLock::new(inner) })
     }
 
     #[inline]
-    pub(crate) fn check_write_rolling(&mut self, buf_size: usize) -> Result<()> {
-        if self.is_write_rolling(buf_size) {
-            self.rotate()?;
+    pub(crate) fn check_write_rolling(
+        &self,
+        buf_size: usize,
+    ) -> std::result::Result<(), AppenderError> {
+        let inner = self.get_inner().map_err(|e| 
+            AppenderError::LockError(format!("Failed to acquire read lock: {}", e)))?;
+        
+        let now = OffsetDateTime::now_utc();
+        if inner.is_overtime(now) {
+            let rotate_time = inner.header().rotate_time;
+            return Err(AppenderError::RotateTimeExceeded {
+                current: now,
+                rotate_time: rotate_time.unwrap_or_else(OffsetDateTime::now_utc),
+            });
+        }
+        if inner.is_oversize(buf_size) {
+            return Err(AppenderError::SizeExceeded {
+                current: inner.header().recorder_position as usize,
+                append: buf_size,
+                max: inner.file_len(),
+            });
         }
         Ok(())
     }
 
     #[inline]
-    pub(crate) fn is_write_rolling(&self, buf_size: usize) -> bool {
-        let now = OffsetDateTime::now_utc();
-        self.inner.is_overtime(now) || self.inner.is_oversize(buf_size)
-    }
-
-    #[inline]
-    pub(crate) fn check_config_rolling(&mut self, config: &EZLogConfig) -> Result<()> {
-        if self.is_config_rolling(config) {
-            self.rotate()?;
+    pub(crate) fn check_config_rolling(&self, config: &EZLogConfig) -> Result<()> {
+        // only hold the read-lock long enough to decide if we need to rotate
+        let needs_rotation = {
+            let inner = self.get_inner()?;  // RwLockReadGuard<'_, _>
+            inner.file_len() != config.max_size() as usize
+                || !inner.header().is_match(config)
+        }; 
+                              
+        if needs_rotation {
+            self.rotate(config)?;
         }
         Ok(())
     }
 
-    #[inline]
-    pub(crate) fn is_config_rolling(&self, config: &EZLogConfig) -> bool {
-        let now = OffsetDateTime::now_utc();
-        self.inner.is_overtime(now)
-            || self.inner.file_len() != config.max_size as usize
-            || !self.inner.header().is_match(config)
-    }
-
-    pub(crate) fn rotate(&mut self) -> Result<()> {
-        // drop current inner, and rename the log file
-        let file_path = self.inner.file_path().to_owned();
-        let header_time = self.inner.header().timestamp;
-        self.inner = Box::new(NopInner::empty());
-
-        EZAppender::rename_current_file(&self.config, &file_path, header_time).map_err(|e| {
-            event!(Event::RotateFileError, "rename file error", &e);
-            e
+    pub(crate) fn rotate(&self, config: &EZLogConfig) -> Result<()> {
+        // Acquire write lock and extract information needed for file rotation
+        let mut inner = self.get_inner_mut().map_err(|e| {
+            LogError::IoError(io::Error::other(
+                format!("Failed to acquire write lock for rotation: {e}"),
+            ))
         })?;
-        self.inner = Self::create_inner(&self.config).map_err(|e| {
-            event!(Event::RotateFileError, "create inner err = ", &e);
-            e
+
+        // Save file path and timestamp before replacement
+        let file_path = inner.file_path().to_owned();
+        let header_time = inner.header().timestamp;
+
+        let empty_inner = NopInner::empty();
+        let old_inner = std::mem::replace(&mut *inner, Box::new(empty_inner));
+        
+        // flush the old one
+        drop(old_inner);
+
+         // Rename the old log file (now that we've released the lock)
+         EZAppender::rename_current_file(config, &file_path, header_time).inspect_err(|e| {
+            event!(Event::RotateFileError, "rename file error", e);
         })?;
+
+        // Create a new inner appender before acquiring any locks
+        let new_inner = Self::create_inner(config).inspect_err(|e| {
+            event!(Event::RotateFileError, "create inner error", e);
+        })?;
+
+         // Replace the inner with the new one in a single operation
+        let empty_inner = std::mem::replace(&mut *inner, new_inner);
+        
+        drop(empty_inner);        
         event!(Event::RotateFile);
         Ok(())
+    }
+
+    // get the inner appender with read lock
+    pub(crate) fn get_inner(&self) -> Result<std::sync::RwLockReadGuard<'_, Box<dyn AppenderInner>>> {
+        let inner = self.inner.read().map_err(|_| {
+            errors::LogError::IoError(io::Error::other(
+                "get appender inner error",
+            ))
+        })?;
+        Ok(inner)
+    }
+
+    // get the inner appender with write lock
+    pub(crate) fn get_inner_mut(&self) -> Result<std::sync::RwLockWriteGuard<'_, Box<dyn AppenderInner>>> {
+        self.inner.write().map_err(|_| {
+            errors::LogError::IoError(io::Error::other(
+                "get appender inner write lock error",
+            ))
+        })
     }
 
     pub fn rename_current_file(
@@ -168,17 +213,24 @@ impl EZAppender {
 
 impl Write for EZAppender {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        if buf.len() > self.config.writable_size() as usize {
-            return Err(Error::new(ErrorKind::Other, "buf_size is over max_size"));
-        }
-
         self.check_write_rolling(buf.len())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-        self.inner.write(buf)
+            .map_err(io::Error::other)?;
+        
+        // 获取写锁
+        let mut inner = self.get_inner_mut().map_err(|e| {
+            io::Error::other(format!("Failed to acquire write lock: {}", e))
+        })?;
+        
+        inner.write(buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.inner.flush()
+        // 获取写锁
+        let mut inner = self.get_inner_mut().map_err(|e| {
+            io::Error::other(format!("Failed to acquire write lock: {}", e))
+        })?;
+        
+        inner.flush()
     }
 }
 
@@ -191,7 +243,7 @@ pub(crate) struct MmapAppendInner {
 impl MmapAppendInner {
     pub(crate) fn new(config: &EZLogConfig) -> Result<Self> {
         let (mut file_path, mut mmap) = config.create_mmap_file()?;
-
+        
         if mmap.len() < Header::max_length() {
             EZAppender::rename_current_file(config, &file_path, OffsetDateTime::now_utc())?;
             (file_path, mmap) = config.create_mmap_file()?;
@@ -201,16 +253,24 @@ impl MmapAppendInner {
             .get(0..Header::max_length())
             .ok_or_else(|| io::Error::new(ErrorKind::InvalidData, "mmap get header vec error"))?;
         let mut c = Cursor::new(mmap_header);
-        let mut header = Header::decode_and_config(&mut c, config)?;
-        let rotate_time = config.rotate_time(header.timestamp);
-        header.rotate_time = Some(rotate_time);
+        let mut header = Header::decode(&mut c)?;
+
+        let mut write_init = false;
+        if header.is_none() {
+            header = Header::create(config);
+            write_init = true;
+        }
 
         let mut inner = MmapAppendInner {
             header,
             file_path,
             mmap,
         };
-        inner.write_log_init_data(config)?;
+
+        if write_init {
+            inner.write_init(config)?;
+        }
+
         Ok(inner)
     }
 
@@ -261,6 +321,9 @@ impl AppenderInner for MmapAppendInner {
     }
 
     fn write_header_to_log(&mut self) -> std::result::Result<(), std::io::Error> {
+        if self.header.is_empty() {
+            self.header.init_record_position();
+        }
         let mmap_header = self.mmap.get_mut(0..self.header.length()).ok_or_else(|| {
             io::Error::new(ErrorKind::InvalidData, "mmap write header vec get error")
         })?;
@@ -271,10 +334,6 @@ impl AppenderInner for MmapAppendInner {
 
     fn file_len(&self) -> usize {
         self.mmap.len()
-    }
-
-    fn init_header_position(&mut self) {
-        self.header.init_record_poition()
     }
 }
 
@@ -292,27 +351,34 @@ struct ByteArrayAppenderInner {
 
 impl ByteArrayAppenderInner {
     pub(crate) fn new(config: &EZLogConfig) -> Result<Self> {
-        let (mut file, mut file_path) = config.create_log_file()?;
-        if file.metadata()?.len() < config.max_size {
+        let (mut file, mut file_path) = config.create_or_open_log_file()?;
+        if file.metadata()?.len() < config.max_size() {
             EZAppender::rename_current_file(config, &file_path, OffsetDateTime::now_utc())?;
-            (file, file_path) = config.create_log_file()?;
+            (file, file_path) = config.create_or_open_log_file()?;
         }
-        let mut byte_array = vec![0u8; config.max_size as usize];
+        let mut byte_array = vec![0u8; config.max_size() as usize];
         BufReader::new(&file).read_exact(&mut byte_array)?;
 
         let mut c = Cursor::new(byte_array.get(0..Header::max_length()).ok_or_else(|| {
             io::Error::new(ErrorKind::InvalidData, "byte array get header vec error")
         })?);
-        let mut header = Header::decode_and_config(&mut c, config)?;
-        let rotate_time = config.rotate_time(header.timestamp);
-        header.rotate_time = Some(rotate_time);
-
+        let mut write_init = false;
+        let mut header = Header::decode(&mut c)?;
+        if header.is_none() {
+            header = Header::create(config);
+            write_init = true;
+        }
+        
         let mut inner = ByteArrayAppenderInner {
             header,
             file_path,
             byte_array,
         };
-        inner.write_log_init_data(config)?;
+
+        if write_init {
+            inner.write_init(config)?;
+        }
+
         Ok(inner)
     }
 
@@ -368,6 +434,9 @@ impl AppenderInner for ByteArrayAppenderInner {
     }
 
     fn write_header_to_log(&mut self) -> std::result::Result<(), std::io::Error> {
+        if self.header.is_empty() {
+            self.header.init_record_position();
+        }
         let header = self
             .byte_array
             .get_mut(0..self.header.length())
@@ -383,10 +452,6 @@ impl AppenderInner for ByteArrayAppenderInner {
 
     fn file_len(&self) -> usize {
         self.byte_array.len()
-    }
-
-    fn init_header_position(&mut self) {
-        self.header.init_record_poition()
     }
 }
 
@@ -434,8 +499,6 @@ impl AppenderInner for NopInner {
     fn file_len(&self) -> usize {
         0
     }
-
-    fn init_header_position(&mut self) {}
 }
 
 impl Write for NopInner {
@@ -446,6 +509,25 @@ impl Write for NopInner {
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
+}
+
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum AppenderError {
+    #[error("current size: {current}, append size: {append}, max size: {max}")]
+    SizeExceeded {
+        current: usize,
+        append: usize,
+        max: usize,
+    },
+    #[error("current time: {current}, rotate time: {rotate_time}")]
+    RotateTimeExceeded {
+        current: OffsetDateTime,
+        rotate_time: OffsetDateTime,
+    },
+    #[error("lock error: {0}")]
+    LockError(String),
 }
 
 #[cfg(test)]
@@ -466,10 +548,11 @@ mod tests {
 
     use super::*;
     use crate::config::EZLogConfigBuilder;
+    const KEY: &[u8; 32] = b"an example very very secret key.";
+    const NONCE: &[u8; 12] = b"unique nonce";
 
     fn create_all_feature_config() -> EZLogConfigBuilder {
-        let key = b"an example very very secret key.";
-        let nonce = b"unique nonce";
+        
         EZLogConfigBuilder::new()
             .dir_path(
                 test_compat::test_path()
@@ -482,8 +565,17 @@ mod tests {
             .max_size(1024)
             .compress(CompressKind::ZLIB)
             .cipher(CipherKind::AES128GCMSIV)
-            .cipher_key(key.to_vec())
-            .cipher_nonce(nonce.to_vec())
+            .cipher_key(KEY.to_vec())
+            .cipher_nonce(NONCE.to_vec())
+    }
+
+    fn current_file(path: &PathBuf) -> std::result::Result<File, errors::LogError> {
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(false)
+            .open(path)?;
+        Ok(file)
     }
 
     #[test]
@@ -505,7 +597,7 @@ mod tests {
 
     fn test_inner_rolling(inner: &dyn AppenderInner, config_builder: &EZLogConfigBuilder) {
         let config = config_builder.clone().build();
-        let max_size: usize = config.max_size as usize;
+        let max_size: usize = config.max_size() as usize;
         assert!(inner.is_oversize(max_size - inner.header().length() + 1));
         assert!(!inner.is_oversize(max_size - inner.header().length()));
         assert!(
@@ -527,20 +619,11 @@ mod tests {
         assert!(!inner.header().is_match(&diff_compress_config));
     }
 
-    fn current_file(path: &PathBuf) -> std::result::Result<File, errors::LogError> {
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(false)
-            .open(path)?;
-        Ok(file)
-    }
-
     #[test]
     fn test_appender_write() {
         let buf = b"hello an other log, let's go";
 
-        let c = EZLogConfigBuilder::new()
+        let config = EZLogConfigBuilder::new()
             .dir_path(
                 test_compat::test_path()
                     .into_os_string()
@@ -552,17 +635,16 @@ mod tests {
             .max_size(1024)
             .build();
 
-        let config = Rc::new(c);
         let mut appender = MmapAppendInner::new(&config).unwrap();
         appender.write(buf).unwrap();
         appender.flush().unwrap();
 
         let mut read_buf = vec![0u8; buf.len()];
-        let file = current_file(&appender.file_path()).unwrap();
+        let file = current_file(appender.file_path()).unwrap();
         let mut reader: BufReader<File> = BufReader::new(file);
         reader
             .seek(SeekFrom::Start(
-                Header::length_compat(&config.version) as u64
+                Header::length_compat(&config.version()) as u64
             ))
             .unwrap();
         reader.read(&mut read_buf).unwrap();
@@ -595,11 +677,52 @@ mod tests {
         let mut reader = BufReader::new(file);
         reader
             .seek(SeekFrom::Start(
-                Header::length_compat(&config.version) as u64
+                Header::length_compat(&config.version()) as u64
             ))
             .unwrap();
         reader.read_exact(&mut read_buf).unwrap();
         assert_eq!(read_buf, buf);
         fs::remove_file(appender.file_path()).unwrap();
+    }
+
+    #[test]
+    fn test_appender_rotate() {
+
+        let config = EZLogConfigBuilder::new()
+            .dir_path(
+                test_compat::test_path()
+                    .into_os_string()
+                    .into_string()
+                    .unwrap(),
+            )
+            .name(String::from("rorate"))
+            .file_suffix(String::from("mmap"))
+            .max_size(1024)
+            .compress(CompressKind::ZLIB)
+            .cipher(CipherKind::AES128GCMSIV)
+            .cipher_key(KEY.to_vec())
+            .cipher_nonce(NONCE.to_vec())
+            .build();
+
+
+        let appender:EZAppender = EZAppender { inner: EZAppender::create_mmap(&config).unwrap().into()};
+
+        for _i in 0..9 {
+            appender.rotate(&config).unwrap();
+        }
+
+        let mut count = 0;
+        for entry in fs::read_dir(test_compat::test_path()).unwrap() {
+            let entry = &entry.unwrap();
+            if entry.path().is_file() {
+                let file_name_os_str = entry.file_name();
+                let file_name = file_name_os_str.to_string_lossy();
+                if file_name.contains("rorate") {
+                    count += 1;
+                    fs::remove_file(entry.path()).unwrap();
+                }
+            }
+        }
+        assert!(count == 10);
     }
 }

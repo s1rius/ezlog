@@ -44,7 +44,7 @@ impl From<CompressKind> for u8 {
 /// Compress level
 ///
 /// can be define as one of the following: FAST, DEFAULT, BEST
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
 #[cfg_attr(feature = "json", derive(serde::Serialize, serde::Deserialize))]
 pub enum CompressLevel {
     Fast,

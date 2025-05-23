@@ -192,7 +192,7 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeTrim(_env: JNIEnv, _: JClass) {
     crate::trim();
 }
 
-// todo thread safe
+// TODO: thread safe
 #[no_mangle]
 pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeRegisterCallback(
     env: JNIEnv,

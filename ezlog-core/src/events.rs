@@ -140,7 +140,6 @@ impl EventListener for NopEvent {
 }
 
 /// Default [EventListener] implementation, print every event in console
-
 pub struct EventPrinter;
 
 impl EventPrinter {}

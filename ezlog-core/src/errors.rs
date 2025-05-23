@@ -1,6 +1,5 @@
 use std::{
-    ffi::NulError,
-    io,
+    ffi::NulError, io, sync::PoisonError
 };
 
 use crossbeam_channel::{
@@ -27,6 +26,8 @@ pub enum LogError {
     Unknown(String),
     #[error("log init error")]
     NotInit,
+    #[error("{0}")]
+    Poison(String)
 }
 
 impl LogError {
@@ -61,8 +62,14 @@ impl From<RecvError> for LogError {
 }
 
 impl<T> From<TrySendError<T>> for LogError {
-    fn from(_: TrySendError<T>) -> Self {
-        todo!()
+    fn from(e: TrySendError<T>) -> Self {
+        LogError::Illegal(e.to_string())
+    }
+}
+
+impl<T> From<PoisonError<T>> for LogError {
+    fn from(e: PoisonError<T>) -> Self {
+        LogError::Poison(format!("{:?}", e))
     }
 }
 
@@ -74,7 +81,7 @@ mod tests {
 
         use crate::errors::LogError;
 
-        let err = LogError::IoError(io::Error::new(io::ErrorKind::Other, "test"));
+        let err = LogError::IoError(io::Error::other("test"));
         assert_eq!(err.to_string(), "io error: test");
     }
 }

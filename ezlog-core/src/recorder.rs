@@ -1,15 +1,13 @@
 use std::{
-    collections::hash_map::DefaultHasher,
-    hash::{
+    collections::hash_map::DefaultHasher, hash::{
         Hash,
         Hasher,
-    },
-    thread,
+    }, fmt::Display, thread
 };
 
 #[cfg(feature = "log")]
 use log::Record;
-use time::OffsetDateTime;
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 use crate::{
     EZLogConfig,
@@ -164,31 +162,22 @@ impl EZRecord {
 
     pub fn trunks(&self, config: &EZLogConfig) -> Vec<EZRecord> {
         let mut trunks: Vec<EZRecord> = Vec::new();
-        let mut split_content: Vec<char> = Vec::new();
-        let mut size = 0;
-        let chars = self.content.chars();
-        chars.for_each(|c| {
-            size += c.len_utf8();
-            if size > config.max_size as usize / 2 {
-                let ez = self
-                    .to_trunk_builder()
-                    .content(split_content.iter().collect::<String>())
-                    .build();
-                trunks.push(ez);
-                split_content.clear();
-                size = c.len_utf8();
-                split_content.push(c)
-            } else {
-                split_content.push(c);
+        let content_bytes = self.content.as_bytes();
+        let max_size = config.max_size() as usize / 2;
+        let mut start = 0;
+
+        while start < content_bytes.len() {
+            // Find the end index, making sure not to split in the middle of a UTF-8 character
+            let mut end = usize::min(start + max_size, content_bytes.len());
+            while end < content_bytes.len() && !self.content.is_char_boundary(end) {
+                end -= 1;
             }
-        });
-        if !split_content.is_empty() {
-            let ez = self
-                .to_trunk_builder()
-                .content(String::from_iter(&split_content))
-                .build();
+            let chunk = &self.content[start..end];
+            let ez = self.to_trunk_builder().content(chunk.to_string()).build();
             trunks.push(ez);
+            start = end;
         }
+
         trunks
     }
 }
@@ -301,5 +290,20 @@ impl Default for EZRecordBuilder {
 impl From<&Record<'_>> for EZRecord {
     fn from(record: &Record) -> Self {
         EZRecord::from(record)
+    }
+}
+
+impl Display for EZRecord {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[{}] {} {} {} {} {}",
+            self.time.format(&Rfc3339).unwrap_or("".to_string()),
+            self.level,
+            self.target,
+            self.thread_id,
+            self.thread_name,
+            self.content
+        )
     }
 }

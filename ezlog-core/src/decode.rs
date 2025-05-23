@@ -105,8 +105,8 @@ pub fn decode_record(vec: &[u8]) -> Result<crate::EZRecord> {
 #[inline]
 pub(crate) fn decode_record_from_read(
     reader: &mut Cursor<Vec<u8>>,
-    compression: &Option<Box<dyn Compress>>,
-    cryptor: &Option<Box<dyn Cryptor>>,
+    compression: &Option<Box<dyn Compress + Send + Sync>>,
+    cryptor: &Option<Box<dyn Cryptor + Send + Sync>>,
     header: &Header,
     position: u64,
 ) -> Result<Vec<u8>> {
@@ -144,6 +144,7 @@ pub(crate) fn decode_record_to_content(
 #[inline]
 pub(crate) fn decode_record_size(mut reader: &mut dyn BufRead, version: &Version) -> Result<usize> {
     match version {
+        Version::NONE => Ok(0),
         Version::V1 => {
             let size_of_size = reader.read_u8()?;
             let content_size: usize = match size_of_size {
@@ -165,8 +166,8 @@ pub(crate) fn decode_record_size(mut reader: &mut dyn BufRead, version: &Version
 pub fn decode_record_content(
     version: &Version,
     chunk: &[u8],
-    compression: &Option<Box<dyn Compress>>,
-    cryptor: &Option<Box<dyn Cryptor>>,
+    compression: &Option<Box<dyn Compress + Send + Sync>>,
+    cryptor: &Option<Box<dyn Cryptor + Send + Sync>>,
     op: NonceGenFn,
 ) -> Result<Vec<u8>> {
     let mut buf = chunk.to_vec();
@@ -194,8 +195,8 @@ pub fn decode_record_content(
 
 pub fn decode_with_fn<F>(
     reader: &mut Cursor<Vec<u8>>,
-    compression: &Option<Box<dyn Compress>>,
-    cryptor: &Option<Box<dyn Cryptor>>,
+    compression: &Option<Box<dyn Compress + Send + Sync>>,
+    cryptor: &Option<Box<dyn Cryptor + Send + Sync>>,
     header: &Header,
     mut op: F,
 ) where
@@ -234,8 +235,8 @@ pub fn decode_with_fn<F>(
 pub fn decode_with_writer(
     cursor: &mut Cursor<Vec<u8>>,
     writer: &mut io::BufWriter<std::fs::File>,
-    compression: Option<Box<dyn Compress>>,
-    decryptor: Option<Box<dyn Cryptor>>,
+    compression: Option<Box<dyn Compress + Send + Sync>>,
+    decryptor: Option<Box<dyn Cryptor + Send + Sync>>,
     header: &Header,
 ) -> Result<()> {
     let (tx, rx) = channel();
@@ -360,7 +361,7 @@ mod tests {
 
         let mut count = 0;
         let my_closure = |data: &Vec<u8>, is_end: bool| {
-            if data.len() > 0 {
+            if !data.is_empty() {
                 count += 1;
             }
             if is_end {
@@ -384,14 +385,14 @@ mod tests {
     #[test]
     fn teset_encode_decode_file() {
         let config = create_all_feature_config("test_file");
-        fs::remove_dir_all(&config.dir_path).unwrap_or_default();
+        fs::remove_dir_all(&config.dir_path()).unwrap_or_default();
         let mut logger = EZLogger::new(config.clone()).unwrap();
 
         let log_count = 10;
         for i in 0..log_count {
             logger
                 .append(
-                    &EZRecordBuilder::default()
+                    EZRecordBuilder::default()
                         .content(format!("hello world {}", i))
                         .build(),
                 )
@@ -404,7 +405,7 @@ mod tests {
             .read(true)
             .write(true)
             .create(true)
-            .open(&path)
+            .open(path)
             .unwrap();
         let mut buf = Vec::<u8>::new();
         let mut reader = BufReader::new(file);
@@ -413,15 +414,15 @@ mod tests {
         let mut header = Header::decode(&mut cursor).unwrap();
         header.recorder_position = header.length().try_into().unwrap();
         let mut new_header = Header::create(&logger.config);
-        new_header.timestamp = header.timestamp.clone();
-        new_header.rotate_time = header.rotate_time.clone();
-        new_header.recorder_position = Header::length_compat(&config.version) as u32;
+        new_header.timestamp = header.timestamp;
+        new_header.rotate_time = header.rotate_time;
+        new_header.recorder_position = Header::length_compat(&config.version()) as u32;
         assert_eq!(header, new_header);
         let count = decode_logs_count(&mut logger, &mut cursor, &header).unwrap();
 
         assert_eq!(count, log_count);
         drop(logger);
-        fs::remove_dir_all(&config.dir_path).unwrap_or_default();
+        fs::remove_dir_all(&config.dir_path()).unwrap_or_default();
     }
 
     #[inline]
@@ -434,7 +435,7 @@ mod tests {
         let (tx, rx) = channel();
 
         let my_closure = |data: &Vec<u8>, is_end: bool| {
-            if data.len() > 0 {
+            if !data.is_empty() {
                 match decode_record(data) {
                     Ok(r) => array.push(r),
                     Err(e) => {
@@ -486,7 +487,7 @@ mod tests {
         use crate::EZRecord;
 
         let config = create_all_feature_config("test_array");
-        fs::remove_dir_all(&config.dir_path).unwrap_or_default();
+        fs::remove_dir_all(&config.dir_path()).unwrap_or_default();
 
         let mut logger = EZLogger::new(config.clone()).unwrap();
         let log_count = 10;
@@ -497,7 +498,7 @@ mod tests {
                 .time(OffsetDateTime::now_utc() - Duration::from_secs(60 * 60))
                 .target("target".to_string())
                 .build();
-            logger.append(&item.clone()).unwrap();
+            logger.append(item.clone()).unwrap();
             array.push(item);
         }
         logger.flush().unwrap();
@@ -507,12 +508,12 @@ mod tests {
             .read(true)
             .write(true)
             .create(true)
-            .open(&path)
+            .open(path)
             .unwrap();
         let mut buf = Vec::<u8>::new();
         let mut reader = BufReader::new(file);
         reader.read_to_end(&mut buf).unwrap();
-        assert!(buf.len() > 0);
+        assert!(!buf.is_empty());
         let mut cursor = Cursor::new(buf);
         let header = Header::decode(&mut cursor).unwrap();
         assert!(header.has_record());
@@ -520,6 +521,6 @@ mod tests {
 
         assert_eq!(array, decode_array);
         drop(logger);
-        fs::remove_dir_all(&config.dir_path).unwrap_or_default();
+        fs::remove_dir_all(&config.dir_path()).unwrap_or_default();
     }
 }
