@@ -23,29 +23,23 @@ runs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       id: android-sdk
-
-    - name: Install NDK
-      shell: bash
-      run: sdkmanager "ndk;${{ inputs.ndk-version }}"
+      with:
+        packages: platforms;android-34 build-tools;${{ inputs.build-tools-version }} platform-tools ndk;${{ inputs.ndk-version }}
         
     - name: Set Android environment variables
       shell: bash
       run: |
-        ANDROID_SDK_PATH="/usr/local/lib/android/sdk"
-        NDK_PATH="$ANDROID_SDK_PATH/ndk/${{ inputs.ndk-version }}"
-
-        if [ ! -d "$ANDROID_SDK_PATH" ]; then
-          echo "Android SDK not found at $ANDROID_SDK_PATH"
+        if [ ! -d "$ANDROID_HOME" ]; then
+          echo "Android SDK not found at $ANDROID_HOME"
           exit 1
         fi
-
-        echo "ANDROID_HOME=$ANDROID_SDK_PATH" >> $GITHUB_ENV
-        echo "ANDROID_SDK_ROOT=$ANDROID_SDK_PATH" >> $GITHUB_ENV
+        
+        NDK_PATH="$ANDROID_HOME/ndk/${{ inputs.ndk-version }}"
         echo "NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
 
-        echo "$ANDROID_SDK_PATH/cmdline-tools/latest/bin" >> $GITHUB_PATH
-        echo "$ANDROID_SDK_PATH/platform-tools" >> $GITHUB_PATH
-        echo "$ANDROID_SDK_PATH/build-tools/${{ inputs.build-tools-version }}" >> $GITHUB_PATH
+        echo "$ANDROID_HOME/build-tools/${{ inputs.build-tools-version }}" >> $GITHUB_PATH
+        echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+        echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
         echo "$NDK_PATH" >> $GITHUB_PATH
 
     - name: Add Rust Android targets
@@ -55,16 +49,11 @@ runs:
         rustup target add armv7-linux-androideabi
         rustup target add i686-linux-android
         rustup target add x86_64-linux-android
-        
-        # 验证安装
-        rustup target list | grep -E '(aarch64|armv7|i686|x86_64).*android'
 
     - name: Validate environment
       shell: bash
       run: |
         echo "=== Environment Validation ==="
         echo "Java: $(java -version 2>&1 | head -n 1)"
-        echo "Android SDK: $(sdkmanager --version)"
-        echo "Build-tools: $(ls $ANDROID_HOME/build-tools)"
         echo "NDK: $NDK_HOME (exists: $(test -d "$NDK_HOME" && echo 'YES' || echo 'NO'))"
         echo "Rust targets: $(rustup target list | grep android | tr '\n' ' ')"

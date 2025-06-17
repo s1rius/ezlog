@@ -36,6 +36,11 @@
     if (items.length > 0) {
       trace(`add recrods: ${logs.value.length}`)
       trace(`showTable: ${showTable.value}`)
+    } else {
+      addToast({
+        message: 'No records found in the log file.',
+        type: 'info',
+      })
     }
   }
 

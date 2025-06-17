@@ -1,6 +1,6 @@
 <template>
   <div class="log-container font-mono bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-    <div class="tab flex justify-between items-center bg-gray-100 dark:bg-gray-900 sticky top-0 z-10 p-1">
+    <div class="tab flex justify-between items-center bg-gray-100/30 dark:bg-gray-900/30 sticky top-0 z-10 p-1">
       <span class="file-name pointer-events-none select-none ml-4 text-gray-700 dark:text-gray-300 font-medium">{{ fileName }}</span>
       <button class="close-btn ml-auto text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 bg-transparent border-none w-8 h-8 text-xl cursor-pointer mr-3 transition-all duration-200 outline-none shadow-none rounded-md flex items-center justify-center" @click="closeFile">×</button>
     </div>

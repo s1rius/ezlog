@@ -1,6 +1,6 @@
 name: "publish_tauri"
 
-on: [workflow_dispatch, push]
+on: workflow_dispatch
 
 jobs:
   create-release:
@@ -60,6 +60,7 @@ jobs:
         include:
           - platform: "macos-latest"
             args: "--target aarch64-apple-darwin"
+            android: true
           - platform: "macos-13"
             args: "--target x86_64-apple-darwin"
           - platform: "ubuntu-22.04"
@@ -106,23 +107,27 @@ jobs:
 
       # Android-specific steps (only run on Ubuntu)
       - name: Setup android
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.android
         uses: ./.github/workflows/setup-android
 
       - name: Release android app
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.android
         run: |
           cargo install tauri-cli
           cargo tauri android build --verbose
 
       - name: Extract android signing key from env
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.android
         run: |
           echo "${{ secrets.ANDROID_RELEASE_KEYSTORE }}" > src-tauri/gen/android/release.jks.base64
-          base64 -d src-tauri/gen/android/release.jks.base64 > src-tauri/gen/android/release.decrypted.jks
+          if [[ "$(uname)" == "Darwin" ]]; then
+            base64 -D -i src-tauri/gen/android/release.jks.base64 -o src-tauri/gen/android/release.decrypted.jks
+          else
+            base64 -d src-tauri/gen/android/release.jks.base64 > src-tauri/gen/android/release.decrypted.jks
+          fi
 
       - name: Sign APK
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.android
         run: |
           ${{ env.ANDROID_HOME }}/build-tools/34.0.0/apksigner sign --ks src-tauri/gen/android/release.decrypted.jks \
             --ks-key-alias ${{ secrets.ANDROID_RELEASE_KEY }} \
@@ -132,13 +137,13 @@ jobs:
             src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
 
       - name: Rename APK file
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.android
         run: |
           mv ./src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-signed.apk \
              ./src-tauri/gen/android/app/build/outputs/apk/universal/release/ezlog-ui-${{ needs.create-release.outputs.version }}.apk
 
       - name: Upload APK to Release
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.android
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

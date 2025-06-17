@@ -121,14 +121,12 @@ fn debug_file_content(file: &mut File) -> Result<(), String> {
     let current_pos = file.stream_position().map_err(|e| e.to_string())?;
     log::info!("Current file position: {}", current_pos);
     
-    // 读取前 32 字节来检查文件头
     let mut header_bytes = vec![0u8; 32];
     match file.read(&mut header_bytes) {
         Ok(n) => {
             log::info!("Read {} bytes from file start", n);
             log::info!("First 32 bytes: {:?}", &header_bytes[..n.min(32)]);
             
-            // 重置文件位置
             file.seek(SeekFrom::Start(current_pos)).map_err(|e| e.to_string())?;
         }
         Err(e) => {
