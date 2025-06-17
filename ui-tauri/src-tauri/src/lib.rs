@@ -239,10 +239,13 @@ fn pick_extenal_file(app: tauri::AppHandle) -> Result<String, String> {
                 match file_path.clone().into_path() {
                     Ok(path_buf) => {
                         log::info!("file path: {:?}", path_buf);
-                        app.emit("file-get", format!("{:?}", path_buf.file_name()))
+                        path_buf.file_name().inspect(|file_name| {
+                             app.emit("file-get", file_name.to_string_lossy().to_string())
                             .unwrap_or_else(|e| {
                                 log::error!("could not emit file-get event: {}", e)
                             });
+                        });
+                       
                         File::open(path_buf)
                             .map(|mut f| parse_log_file_and_emit_result(&mut f, &app))
                             .unwrap_or_else(|e| {
