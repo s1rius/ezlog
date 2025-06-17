@@ -1,8 +1,8 @@
 <template>
-  <div class="log-container">
-    <div class="tab flex justify-between items-center bg-gray-200 p-1 sticky top-0 z-10">
-      <span class="file-name pointer-events-none ml-3">{{ fileName }}</span>
-      <button class="close-btn ml-auto" @click="closeFile">x</button>
+  <div class="log-container font-mono bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+    <div class="tab flex justify-between items-center bg-gray-100 dark:bg-gray-900 sticky top-0 z-10 p-1">
+      <span class="file-name pointer-events-none select-none ml-4 text-gray-700 dark:text-gray-300 font-medium">{{ fileName }}</span>
+      <button class="close-btn ml-auto text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 bg-transparent border-none w-8 h-8 text-xl cursor-pointer mr-3 transition-all duration-200 outline-none shadow-none rounded-md flex items-center justify-center" @click="closeFile">×</button>
     </div>
     <div ref="listContainer" class="flex-1 overflow-auto">
       <div
@@ -24,9 +24,9 @@
             transform: `translateY(${virtualRow.start}px)`,
           }"
         >
-          <div class="log-entry ml-4 mr-4">
+          <div class="hover:bg-gray-50 dark:hover:bg-gray-700/50 px-4 transition-colors">
             <div
-              class="log-item"
+              class="log-item py-2 text-left"
               :class="{
                 'level-trace': logs[virtualRow.index].level === 'Trace',
                 'level-debug': logs[virtualRow.index].level === 'Debug',
@@ -35,10 +35,10 @@
                 'level-error': logs[virtualRow.index].level === 'Error',
               }"
             >
-              <span class="log-time">{{ logs[virtualRow.index].time }}</span>
-              <span class="log-level">{{ logs[virtualRow.index].level }}</span>
-              <span class="log-target">{{ logs[virtualRow.index].target }}</span>
-              <span class="log-content">{{ logs[virtualRow.index].content }}</span>
+              <span class="log-time inline-block min-w-60 whitespace-nowrap opacity-80 mr-3">{{ logs[virtualRow.index].time }}</span>
+              <span class="log-level inline-block min-w-12 font-bold text-left whitespace-nowrap mr-2">{{ logs[virtualRow.index].level }}</span>
+              <span class="log-target inline-block min-w-20 whitespace-nowrap font-mono mr-3">{{ logs[virtualRow.index].target }}</span>
+              <span class="log-content whitespace-pre-wrap break-all">{{ logs[virtualRow.index].content }}</span>
             </div>
           </div>
         </div>
@@ -98,93 +98,53 @@
 </script>
 
 <style scoped>
-  .log-container {
-    font-family:
-      'Lucida Console', 'Andale Mono', 'Monaco', 'Consolas', 'Source Code Pro', 'Fira Code',
-      'Roboto Mono', 'Ubuntu Mono', 'Inconsolata', monospace;
+  .log-time, .log-level, .log-target {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
-  .log-entry {
-    padding: 2px 0;
-  }
-
-  .tab {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: #25272b97;
-  }
-
-  .file-name {
-    pointer-events: none; /* Make non-clickable */
-    user-select: none; /* Prevent text selection */
-  }
-
-  .log-item {
-    text-align: start;
-  }
-
-  .log-target {
-    min-width: 80px;
-    white-space: nowrap;
-    font-family: Courier;
-  }
-
-  .close-btn {
-    background: transparent;
-    border: none;
-    width: 28px;
-    height: 28px;
-    font-size: 18px;
-    cursor: pointer;
-    margin-right: 12px;
-    transition: background-color 0.3s;
-    outline: none;
-    box-shadow: none;
-  }
-
-  .close-btn:hover {
-    background-color: rgba(0, 0, 0, 0.1); /* Dark background on hover */
-  }
-
-  .log-time {
-    display: inline-block;
-    width: 28ch;
-    white-space: nowrap;
-  }
-
-  .log-level {
-    display: inline-block;
-    width: 6ch;
-    font-weight: bold;
-    text-align: start;
-    align-items: baseline;
-    white-space: nowrap;
-  }
-
+  /* Light theme colors */
   .level-trace {
-    color: rgb(156, 163, 175);
+    color: rgb(107, 114, 128); /* gray-500 */
   }
 
   .level-debug {
-    color: rgb(33, 150, 243);
+    color: rgb(59, 130, 246); /* blue-500 */
   }
 
   .level-info {
-    color: rgb(76, 175, 80);
+    color: rgb(34, 197, 94); /* green-500 */
   }
 
   .level-warn {
-    color: rgb(255, 193, 7);
+    color: rgb(245, 158, 11); /* amber-500 */
   }
 
   .level-error {
-    color: rgb(244, 67, 54);
+    color: rgb(239, 68, 68); /* red-500 */
   }
 
-  .log-content {
-    margin-left: 10px;
-    white-space: pre-wrap;
-    word-break: break-all;
+  /* Dark theme colors */
+  @media (prefers-color-scheme: dark) {
+    .level-trace {
+      color: rgb(156, 163, 175); /* gray-400 */
+    }
+
+    .level-debug {
+      color: rgb(96, 165, 250); /* blue-400 */
+    }
+
+    .level-info {
+      color: rgb(74, 222, 128); /* green-400 */
+    }
+
+    .level-warn {
+      color: rgb(251, 191, 36); /* amber-400 */
+    }
+
+    .level-error {
+      color: rgb(248, 113, 113); /* red-400 */
+    }
   }
 </style>

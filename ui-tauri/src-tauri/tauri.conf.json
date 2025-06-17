@@ -27,7 +27,7 @@
         "fullscreen": false,
         "resizable": true,
         "title": "ezlog",
-        "theme": "Dark",
+        "theme": null,
         "width": 800,
         "height": 600
       }

@@ -27,16 +27,16 @@
   const { toasts, removeToast } = useToast()
 
   const toastClasses = {
-    success: 'bg-green-500 text-white',
-    error: 'bg-red-500 text-white',
-    warning: 'bg-yellow-500 text-black',
-    info: 'bg-blue-500 text-white',
+    success: 'bg-green-500 dark:bg-green-600 text-white border border-green-600 dark:border-green-500',
+    error: 'bg-red-500 dark:bg-red-600 text-white border border-red-600 dark:border-red-500',
+    warning: 'bg-yellow-500 dark:bg-yellow-600 text-gray-900 dark:text-gray-100 border border-yellow-600 dark:border-yellow-500',
+    info: 'bg-blue-500 dark:bg-blue-600 text-white border border-blue-600 dark:border-blue-500',
   }
 
   const iconClasses = {
     success: 'text-white',
     error: 'text-white',
-    warning: 'text-black',
+    warning: 'text-gray-900 dark:text-gray-100',
     info: 'text-white',
   }
 

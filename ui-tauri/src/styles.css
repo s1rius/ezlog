@@ -1,3 +1,4 @@
+/* Global styles for basic elements */
 a:hover {
   color: #535bf2;
 }
@@ -6,56 +7,38 @@ h1 {
   text-align: center;
 }
 
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
+/* CSS Custom Properties for theming */
+:root {
+  /* Light theme colors */
+  --text-primary: theme('colors.gray.900');
+  --text-secondary: theme('colors.gray.600');
+  --bg-primary: theme('colors.white');
+  --bg-secondary: theme('colors.gray.50');
+  --border-color: theme('colors.gray.300');
+  --shadow: theme('boxShadow.sm');
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     color: #f6f6f6;
-    background-color: #2f2f2f;
+    background-color: #23272e;
+    
+    /* Dark theme colors */
+    --text-primary: theme('colors.gray.100');
+    --text-secondary: theme('colors.gray.400');
+    --bg-primary: theme('colors.gray.900');
+    --bg-secondary: theme('colors.gray.800');
+    --border-color: theme('colors.gray.600');
+    --shadow: theme('boxShadow.lg');
   }
 
   a:hover {
     color: #24c8db;
   }
-
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-  button:active {
-    background-color: #0f0f0f69;
-  }
 }
+
+/* Remove global button/input styles to avoid conflicts with Tailwind */
+/* Let components handle their own styling */
 
 @tailwind base;
 @tailwind components;

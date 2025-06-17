@@ -174,21 +174,21 @@
 
 <template>
   <div
-    class="bg-white dark:bg-stone-700/0 w-full h-full max-w-full h-max-full flex justify-center p-0 flex-row
-      items-center"
+    class="bg-gray-100 dark:bg-gray-800 w-full h-full max-w-full h-max-full flex justify-center p-0 flex-row
+      items-center text-gray-900 dark:text-gray-100"
   >
     <div
       v-if="!showTable"
       class="w-full max-w-full h-[calc(99dvh)] max-h-full p-3 justify-center flex-row items-center"
     >
       <div
-        class="max-w-full w-full h-full border-2 border-dashed border-slate-200 pt-10 m-0 flex justify-center
+        class="max-w-full w-full h-full border-2 border-dashed border-gray-300 dark:border-gray-600 pt-10 m-0 flex justify-center
           flex-row items-center"
       >
         <div class="w-3/4 flex flex-col items-center justify-center">
           <div
             v-if="isDesktop"
-            class="w-full mb-6 text-2xl text-slate-200 select-none center text-center"
+            class="w-full mb-6 text-2xl text-gray-600 dark:text-gray-300 select-none center text-center"
           >
             Drag and drop
             <br />
@@ -196,7 +196,7 @@
           </div>
 
           <div v-if="isDesktop" class="flex items-center">
-            <div class="text-slate-400/50 text-1xl select-none break-keep truncate italic">
+            <div class="text-gray-400 dark:text-gray-500 text-1xl select-none break-keep truncate italic">
               ------------- or -----------
             </div>
           </div>
@@ -204,11 +204,12 @@
           <div class="w-1/2 ml-20 mr-20 flex justify-center">
             <button
               @click="selectFile"
-              class="px-6 py-3 mt-6 text-xl font-medium rounded-lg transition-all duration-200 bg-transparent
-                hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border-2
-                border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500
-                focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 focus:ring-offset-2
-                dark:focus:ring-offset-gray-900"
+              class="px-6 py-3 mt-6 text-xl font-medium rounded-lg transition-all duration-200 
+                bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 
+                text-gray-800 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 
+                hover:border-gray-400 dark:hover:border-gray-500 shadow-sm hover:shadow-md
+                focus:outline-none focus:ring-2 focus:ring-gray-500 dark:focus:ring-gray-400 
+                focus:ring-offset-2 dark:focus:ring-offset-gray-800"
             >
               Select File
             </button>

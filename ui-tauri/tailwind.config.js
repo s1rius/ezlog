@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: 'selector',
+  darkMode: 'media', // This will follow system theme
   content: [
     "./index.html",
     "./src/**/*.{vue,js,ts,jsx,tsx}",
