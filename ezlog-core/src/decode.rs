@@ -3,6 +3,8 @@ use std::{
         self,
         BufRead,
         Cursor,
+        Read,
+        Seek,
         Write,
     },
     str::FromStr,
@@ -16,8 +18,6 @@ use byteorder::{
 };
 use integer_encoding::VarIntReader;
 use log::error;
-use once_cell::sync::OnceCell;
-use regex::Regex;
 use time::{
     format_description::well_known::Rfc3339,
     OffsetDateTime,
@@ -37,68 +37,68 @@ use crate::{
 };
 
 pub fn decode_record(vec: &[u8]) -> Result<crate::EZRecord> {
-    static RE: OnceCell<std::result::Result<Regex, regex::Error>> = OnceCell::new();
-    let regex = RE.get_or_init(|| Regex::new(r"\[(.*?)\]"));
-    let record_str =
-        String::from_utf8(vec.to_vec()).map_err(|e| LogError::Parse(format!("{}", e)))?;
     let mut record_builder = EZRecord::builder();
-    if let Ok(regex) = regex {
-        // Search for the first match
-        if let Some(caps) = regex.captures(&record_str) {
-            if let Some(matched) = caps.get(1) {
-                let header = matched.as_str();
-                let split: Vec<&str> = header.split_whitespace().collect();
+    let mut cursor = Cursor::new(vec);
+    let mut buf = vec![];
+    cursor
+        .read_until(b'[', &mut buf)
+        .map_err(|_| LogError::Parse("not found [".to_string()))?;
+    buf.clear();
+    cursor
+        .read_until(b']', &mut buf)
+        .map_err(|_| LogError::Parse("not found ]".to_string()))?;
+    buf.pop();
 
-                let time = split
-                    .first()
-                    .map(|x| {
-                        OffsetDateTime::parse(x, &Rfc3339).unwrap_or(OffsetDateTime::now_utc())
-                    })
-                    .unwrap_or(OffsetDateTime::now_utc());
-                record_builder.time(time);
+    let header_buf = String::from_utf8_lossy(&buf);
+    let mut header_split = header_buf.split_whitespace();
+    let time = header_split
+        .next()
+        .map(|x| OffsetDateTime::parse(x, &Rfc3339).unwrap_or(OffsetDateTime::now_utc()))
+        .unwrap_or(OffsetDateTime::now_utc());
+    record_builder.time(time);
 
-                let level = split
-                    .get(1)
-                    .and_then(|x| Level::from_str(x).ok())
-                    .unwrap_or(Level::Trace);
-                record_builder.level(level);
+    let level = header_split
+        .next()
+        .and_then(|x| Level::from_str(x).ok())
+        .unwrap_or(Level::Trace);
+    record_builder.level(level);
 
-                let target = split.get(2).unwrap_or(&"").to_string();
-                record_builder.target(target);
+    let target = header_split.next().unwrap_or("");
+    record_builder.target(target.to_string());
 
-                let thread_str = split.get(3).unwrap_or(&"");
-                let mut thread_info: Vec<&str> = thread_str.split(':').collect();
-                if !thread_info.is_empty() {
-                    let thread_id = thread_info.last().unwrap_or(&"").to_string();
-                    record_builder.thread_id(thread_id.parse::<usize>().unwrap_or(0));
-                    thread_info.pop();
-                    let thread_name = thread_info.join(":");
-                    record_builder.thread_name(thread_name);
-                }
-
-                #[cfg(feature = "log")]
-                {
-                    if split.len() == 5 {
-                        let file_info: Vec<&str> = split.last().unwrap_or(&"").split(':').collect();
-                        if !file_info.is_empty() {
-                            let file_name = file_info.first().unwrap_or(&"");
-                            let line = file_info.get(1).unwrap_or(&"");
-
-                            record_builder.file(file_name);
-                            record_builder.line(line.parse::<u32>().unwrap_or(0));
-                        }
-                    };
-                }
-                // header not contains square brackets
-                // two square brackets and one space
-                if record_str.len() > header.len() + 3 {
-                    let content = &record_str[header.len() + 3..];
-                    record_builder.content(content.to_string());
-                }
-            }
+    if let Some(thread_str) = header_split.next() {
+        let mut thread_info: Vec<&str> = thread_str.split(':').collect();
+        if !thread_info.is_empty() {
+            let thread_id = thread_info.pop().unwrap_or("");
+            let thread_name: String = thread_info.join(":");
+            record_builder.thread_id(thread_id.parse::<usize>().unwrap_or(0));
+            record_builder.thread_name(thread_name);
         }
     }
 
+    #[cfg(feature = "log")]
+    {
+        let file_str = header_split.next().unwrap_or("");
+        if !file_str.is_empty() {
+            let file_info: Vec<&str> = file_str.split(':').collect();
+            if !file_info.is_empty() {
+                let file_name = file_info.first().unwrap_or(&"");
+                let line = file_info.get(1).unwrap_or(&"");
+
+                record_builder.file(file_name);
+                record_builder.line(line.parse::<u32>().unwrap_or(0));
+            }
+        }
+    };
+
+    let mut content_buf = vec![];
+    // skip whitespace
+    cursor.seek(io::SeekFrom::Current(1)).unwrap_or(0);
+    cursor
+        .read_to_end(&mut content_buf)
+        .map_err(|e| LogError::Parse(format!("parse content: {}", e)))?;
+    let content = String::from_utf8_lossy(&content_buf);
+    record_builder.content(content.to_string());
     Ok(record_builder.build())
 }
 
@@ -264,18 +264,23 @@ pub fn decode_with_writer(
 }
 
 pub fn decode_header_and_extra(
-    cursor: &mut Cursor<Vec<u8>>,
-) -> Result<(Header, Option<(String, &str)>)> {
-    let header = Header::decode(cursor)?;
-    let mut extra: Option<(String, &str)> = None;
+    reader: &mut Cursor<Vec<u8>>,
+) -> Result<(Header, Option<(String, String)>)> {
+    let header = Header::decode(reader)?;
+    let mut extra: Option<(String, String)> = None;
     if header.has_extra() {
-        decode_with_fn(cursor, &None, &None, &header, |v, _| {
+        decode_with_fn(reader, &None, &None, &header, |v, _| {
             extra = String::from_utf8(v.clone())
-                .map(|x| (Some((x, "utf-8"))))
-                .map_err(|_| Some((hex::decode(v), "hex")))
+                .map(|x| (Some((x, "utf-8".to_owned()))))
+                .map_err(|_| Some((hex::decode(v), "hex".to_owned())))
                 .unwrap_or(None);
             None
         })
+    }
+    if header.is_none() || header.is_unknown() {
+        return Err(LogError::Illegal(
+            "decode file failed, unknow file fomat or unknown log version".to_string(),
+        ));
     }
     Ok((header, extra))
 }
@@ -294,13 +299,16 @@ mod tests {
     use time::OffsetDateTime;
 
     use super::decode_record;
-    use crate::thread_name;
     use crate::{
         decode,
         EZLogger,
         EZRecord,
         EZRecordBuilder,
         Header,
+    };
+    use crate::{
+        thread_name,
+        LogError,
     };
 
     #[cfg(feature = "decode")]
@@ -326,6 +334,17 @@ mod tests {
             .cipher_key(key.to_vec())
             .cipher_nonce(nonce.to_vec())
             .build()
+    }
+
+    #[cfg(feature = "decode")]
+    #[test]
+    fn test_header_decode() {
+        let mut cursor = Cursor::new(vec![101, 122, 2, 0, 0, 0, 0, 0, 100, 189, 1, 16, 0, 0, 1, 112, 0, 0, 38, 194, 37, 87, 59, 114, 91, 50, 48, 50, 51, 45, 48, 55]);
+        let (header, _) = decode::decode_header_and_extra(&mut cursor).unwrap();
+        assert!(header.has_record());
+        assert_eq!(header.version, crate::Version::V2);
+        assert!(!header.is_extra_index(0));
+        assert_eq!(header.length(), crate::V2_LOG_HEADER_SIZE);
     }
 
     #[cfg(feature = "decode")]
@@ -365,7 +384,9 @@ mod tests {
                 count += 1;
             }
             if is_end {
-                tx.send(()).expect("Could not send signal on channel.");
+                tx.send(()).unwrap_or_else(|_| {
+                    LogError::Parse("Could not send signal on channel.".to_string());
+                });
                 return None;
             }
             Some(0)
@@ -377,7 +398,9 @@ mod tests {
             header,
             my_closure,
         );
-        rx.recv().expect("Could not receive from channel.");
+        rx.recv().unwrap_or_else(|_| {
+            LogError::Parse("Could not receive from channel.".to_string());
+        });
         Ok(count)
     }
 
@@ -444,7 +467,9 @@ mod tests {
                 }
             }
             if is_end {
-                tx.send(()).expect("Could not send signal on channel.");
+                tx.send(()).unwrap_or_else(|_| {
+                    LogError::Parse("Could not send signal on channel.".to_string());
+                });
                 return None;
             }
             Some(0)
@@ -456,7 +481,9 @@ mod tests {
             header,
             my_closure,
         );
-        rx.recv().expect("Could not receive from channel.");
+        rx.recv().unwrap_or_else(|_| {
+            LogError::Parse("Could not receive from channel.".to_string());
+        });
         Ok(array)
     }
 

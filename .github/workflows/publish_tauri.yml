@@ -1,0 +1,176 @@
+name: "publish_tauri"
+
+on: workflow_dispatch
+
+jobs:
+  create-release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: ./ui-tauri
+    outputs:
+      release_id: ${{ steps.create-release.outputs.release_id }}
+      upload_url: ${{ steps.create-release.outputs.upload_url }}
+      version: ${{ steps.version-step.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Get version
+        id: version-step
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Create release
+        id: create-release
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+
+            const version = "${{ steps.version-step.outputs.version }}";
+            
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: `ezlog-ui ${version}`,
+              name: `ezlog-ui ${version}`,
+              body: 'Take a look at the assets to download and install this app.',
+              draft: true,
+              prerelease: false
+            });
+
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `release_id=${data.id}\n`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `upload_url=${data.upload_url}\n`);
+
+
+  build-tauri:
+    needs: create-release
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "macos-latest"
+            args: "--target aarch64-apple-darwin"
+            android: true
+          - platform: "macos-13"
+            args: "--target x86_64-apple-darwin"
+          - platform: "ubuntu-22.04"
+            args: ""
+          - platform: "windows-latest"
+            args: ""
+
+    runs-on: ${{ matrix.platform }}
+    defaults:
+      run:
+        working-directory: ./ui-tauri
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          override: true
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: install frontend dependencies
+        run: npm install
+
+      - name: build tauri desktop app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          args: ${{ matrix.args }}
+
+      # Android-specific steps (only run on Ubuntu)
+      - name: Setup android
+        if: matrix.android
+        uses: ./.github/workflows/setup-android
+
+      - name: Release android app
+        if: matrix.android
+        run: |
+          cargo install tauri-cli
+          cargo tauri android build --verbose
+
+      - name: Extract android signing key from env
+        if: matrix.android
+        run: |
+          echo "${{ secrets.ANDROID_RELEASE_KEYSTORE }}" > src-tauri/gen/android/release.jks.base64
+          if [[ "$(uname)" == "Darwin" ]]; then
+            base64 -D -i src-tauri/gen/android/release.jks.base64 -o src-tauri/gen/android/release.decrypted.jks
+          else
+            base64 -d src-tauri/gen/android/release.jks.base64 > src-tauri/gen/android/release.decrypted.jks
+          fi
+
+      - name: Sign APK
+        if: matrix.android
+        run: |
+          ${{ env.ANDROID_HOME }}/build-tools/34.0.0/apksigner sign --ks src-tauri/gen/android/release.decrypted.jks \
+            --ks-key-alias ${{ secrets.ANDROID_RELEASE_KEY }} \
+            --ks-pass pass:${{ secrets.ANDROID_RELEASE_PASSWORD }} \
+            --key-pass pass:${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }} \
+            --out src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-signed.apk \
+            src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
+
+      - name: Rename APK file
+        if: matrix.android
+        run: |
+          mv ./src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-signed.apk \
+             ./src-tauri/gen/android/app/build/outputs/apk/universal/release/ezlog-ui-${{ needs.create-release.outputs.version }}.apk
+
+      - name: Upload APK to Release
+        if: matrix.android
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./ui-tauri/src-tauri/gen/android/app/build/outputs/apk/universal/release/ezlog-ui-${{ needs.create-release.outputs.version }}.apk
+          asset_name: ezlog-ui-${{ needs.create-release.outputs.version }}.apk
+          asset_content_type: application/vnd.android.package-archive
+
+  publish-release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    needs: [create-release, build-tauri]
+
+    steps:
+      - name: publish release
+        id: publish-release
+        uses: actions/github-script@v6
+        env:
+          release_id: ${{ needs.create-release.outputs.release_id }}
+        with:
+          script: |
+            github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: process.env.release_id,
+              draft: true,
+              prerelease: false
+            })

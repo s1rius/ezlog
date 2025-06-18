@@ -1,12 +1,12 @@
 
 [workspace]
-members = ["ezlogcli", "ezlog-core", "examples/android_preview", "examples/nest_log", "examples/hello_world", "test-compat"]
+members = ["ezlogcli", "ezlog-core", "examples/android_preview", "examples/nest_log", "examples/hello_world", "test-compat", "ui-tauri/src-tauri"]
 resolver = "2"
 
 # https://github.com/johnthagen/min-sized-rust
 [profile.release]
-opt-level = "z"     # Optimize for size.
-lto = true          # Enable Link Time Optimization
+# opt-level = "z"     # Optimize for size.
+# lto = true          # Enable Link Time Optimization
 codegen-units = 1   # Reduce number of codegen units to increase optimizations.
 # panic = 'abort'     # Abort on panic
 # strip = true        # Strip symbols from binary*

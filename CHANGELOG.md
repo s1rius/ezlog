@@ -7,64 +7,68 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased] 
 
+### Add
+- **NEW** add desktop ui application, build by tauri https://github.com/s1rius/ezlog/pull/112
+- support [dingy](https://github.com/sonos/dinghy) test workflow https://github.com/s1rius/ezlog/pull/114
 - add JSON serialization and deserialization functionality https://github.com/s1rius/ezlog/pull/108
+
 
 ## [0.2.0] (2023-10-14)
 
 ### Add
 - cli: Add key, nonce to cli options https://github.com/s1rius/ezlog/pull/29
-- Add create time info to file header https://github.com/s1rius/ezlog/pull/38
-- Make file rorate duration configurable https://github.com/s1rius/ezlog/pull/46
-- Add log file header extra info https://github.com/s1rius/ezlog/pull/48
-- Add AES-GCM-SIV encryption as mandatory for v2 https://github.com/s1rius/ezlog/pull/56
-- Generate a unique nonce for each encryption instance https://github.com/s1rius/ezlog/pull/56
-- Make log record format configurable https://github.com/s1rius/ezlog/pull/66
-- Add integration test https://github.com/s1rius/ezlog/pull/67
-- Rotate file when the query date is today https://github.com/s1rius/ezlog/pull/70
+- add create time info to file header https://github.com/s1rius/ezlog/pull/38
+- make file rotate duration configurable https://github.com/s1rius/ezlog/pull/46
+- add log file header extra info https://github.com/s1rius/ezlog/pull/48
+- add AES-GCM-SIV encryption as mandatory for v2 https://github.com/s1rius/ezlog/pull/56
+- generate a unique nonce for each encryption instance https://github.com/s1rius/ezlog/pull/56
+- make log record format configurable https://github.com/s1rius/ezlog/pull/66
+- add integration test https://github.com/s1rius/ezlog/pull/67
+- rotate file when the query date is today https://github.com/s1rius/ezlog/pull/70
 - android: Add x86 and x86_64 ABI support https://github.com/s1rius/ezlog/pull/71
 - android: make `android_logger` dependency optional https://github.com/s1rius/ezlog/pull/75
-- Add `nest-log` example https://github.com/s1rius/ezlog/pull/76
+- add `nest-log` example https://github.com/s1rius/ezlog/pull/76
 
 ### Change
 - **Break** change the `request_log_files_for_date` function paramter to a time range https://github.com/s1rius/ezlog/pull/90
 - **Break** android:rename native function name, remove underline https://github.com/s1rius/ezlog/pull/26
 - remove global panic hook https://github.com/s1rius/ezlog/pull/91
-- Use varint to describe log's content length https://github.com/s1rius/ezlog/pull/32
-- Compress first then encrypt https://github.com/s1rius/ezlog/pull/40
+- use varint to describe log's content length https://github.com/s1rius/ezlog/pull/32
+- compress first then encrypt https://github.com/s1rius/ezlog/pull/40
 
 ### Fix
-- Auto rotate log file, when the config is not match previous https://github.com/s1rius/ezlog/pull/60
+- auto rotate log file, when the config is not match previous https://github.com/s1rius/ezlog/pull/60
 
 ## [0.1.7] (2022-11-24)
 
 ### Fix
-- Fix appender rolling fail https://github.com/s1rius/ezlog/pull/22
-- Fix get error on request logs path multi times https://github.com/s1rius/ezlog/pull/23
-- Fix global typo by @nickming https://github.com/s1rius/ezlog/pull/21
+- fix appender rolling fail https://github.com/s1rius/ezlog/pull/22
+- fix get error on request logs path multi times https://github.com/s1rius/ezlog/pull/23
+- fix global typo by @nickming https://github.com/s1rius/ezlog/pull/21
 
 ### Add
-- Add ci build android and ios rust lib https://github.com/s1rius/ezlog/pull/17
+- add ci build android and ios rust lib https://github.com/s1rius/ezlog/pull/17
 - flutter: support trim function https://github.com/s1rius/ezlog/pull/18
-- Add mobile benchmark https://github.com/s1rius/ezlog/pull/20
+- add mobile benchmark https://github.com/s1rius/ezlog/pull/20
 
 ## [0.1.6] (2022-11-1)
-- Support trim log files which are out of date 
+- support trim log files which are out of date 
 
 ## [0.1.5] (2022-08-25)
 
-- Fix android jni method signature error
-- Support multi callbacks
+- fix android jni method signature error
+- support multi callbacks
 
 ## [0.1.4] (2022-07-25)
 
-- Update android/iOS prebuild library
+- update android/iOS prebuild library
 
 ## [0.1.3] (2022-07-25)
 
 - FFI hook panic when init
-- Downgrade ios support version to 13.0
-- Use Result when index is out of bounds
-- Add features: decode, backtrace, log
+- downgrade ios support version to 13.0
+- use Result when index is out of bounds
+- add features: decode, backtrace, log
 
 [Unreleased]: https://github.com/s1rius/ezlog/compare/0.2.0...HEAD
 [0.2.0]: https://github.com/s1rius/ezlog/compare/0.1.7...0.2.0

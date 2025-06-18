@@ -254,6 +254,7 @@ impl EZLogger {
         encode_content(buf)
     }
 
+    #[inline]
     fn format(&self, record: &EZRecord) -> Result<Vec<u8>> {
         crate::formatter().format(record)
     }
@@ -304,6 +305,7 @@ impl EZLogger {
         self.config.query_log_files_for_date(date)
     }
 
+    #[inline]
     pub(crate) fn rotate_if_not_empty(&self) -> Result<()> {
         if self
             .appender
@@ -326,6 +328,7 @@ pub(crate) fn combine_time_position(timestamp: i64, position: u64) -> Vec<u8> {
     vec
 }
 
+#[inline]
 pub(crate) fn xor_slice<'a>(slice: &'a [u8], vec: &'a [u8]) -> Vec<u8> {
     let mut result = Vec::with_capacity(slice.len());
     for (i, byte) in slice.iter().enumerate() {
@@ -437,6 +440,10 @@ impl Header {
         }
     }
 
+    pub fn timestamp(&self) -> OffsetDateTime {
+        self.timestamp
+    }
+
     pub fn max_length() -> usize {
         V2_LOG_HEADER_SIZE
     }
@@ -487,8 +494,11 @@ impl Header {
 
     pub fn decode(reader: &mut dyn Read) -> std::result::Result<Self, errors::LogError> {
         let mut signature = [0u8; 2];
-        reader.read_exact(&mut signature)?;
+        reader.read_exact(&mut signature).map_err(|e| {
+            LogError::Parse(format!("sign read error {}", e))
+        })?;
         let version = Version::from(reader.read_u8()?);
+
         let flag = Flags::from_bits(reader.read_u8()?).unwrap_or(Flags::NONE);
         let mut timestamp = OffsetDateTime::now_utc().unix_timestamp();
         if version == Version::V2 {
@@ -530,6 +540,10 @@ impl Header {
         self.version == Version::NONE
     }
 
+    pub fn is_unknown(&self) -> bool {
+        self.version == Version::UNKNOWN
+    }
+
     pub fn is_empty(&self) -> bool {
         self.recorder_position == 0
     }
@@ -568,6 +582,10 @@ impl Header {
 
     pub fn version(&self) -> &Version {
         &self.version
+    }
+
+    pub fn is_encrypt(&self) -> bool {
+        self.cipher != CipherKind::NONE
     }
 
     pub(crate) fn init_record_position(&mut self) {

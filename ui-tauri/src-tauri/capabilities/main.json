@@ -1,0 +1,26 @@
+{
+  "identifier": "main",
+  "description": "permissions that were migrated from v1",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-center",
+    "core:window:allow-maximize",
+    "core:window:allow-minimize",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    "core:webview:allow-print",
+    "shell:allow-open",
+    "shell:default",
+    "log:default",
+    "dialog:allow-open",
+    "os:default",
+    "log:default",
+    "android-fs:default"
+  ]
+}

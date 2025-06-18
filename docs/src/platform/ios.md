@@ -53,6 +53,9 @@ init() {
     })
     
     logger.debug("first blood")
+
+    let millis = Int64((date.timeIntervalSince1970 * 1000.0).rounded())
+    requestLogsForDate(logName: "demo", start: millis, end: millis)
 }
 ```
 click run and see console ouput.

@@ -1,0 +1,43 @@
+[package]
+name = "ezlog-tauri"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["s1rius"]
+license = "MIT"
+repository = "https://www.github.com/s1rius/ezlog"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "lib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+ezlog = { version = "0.2.0", path = "../../ezlog-core", features = ["decode", "json"] }
+tauri-plugin-shell = "2"
+tauri-plugin-log = "2"
+log = "0.4"
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-os = "2"
+tauri-plugin-android-fs = { version = "9.4.0", features = ["avoid-issue1"] }
+# fix the conflict with reqwest
+webpki-roots = "1"
+
+[features]
+# this feature is used for production builds or when `devPath` points to the filesystem
+# DO NOT REMOVE!!
+custom-protocol = ["tauri/custom-protocol"]
+
+[package.metadata.android]
+build-std = true
+
+[package.metadata.ios]
+build-std = true

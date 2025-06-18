@@ -30,6 +30,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly-2025-04-03
+          override: true
           components: ${{ matrix.components }}
       - name: Install android target
         if: ${{ runner.os == 'Linux' }}
@@ -75,4 +76,7 @@ jobs:
         if: ${{ runner.os == 'macOS' }}
         run: cargo build -Z build-std -p ezlog --release --lib --target aarch64-apple-ios
       - name: Clippy Check
-        run: cargo clippy --all --all-features -- -D warnings
+        # tauri cant run from cargo
+        run: |
+          cargo clippy -p ezlog --all-features -- -D warnings
+          cargo clippy -p ezlogcli --all-features -- -D warnings

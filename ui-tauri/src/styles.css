@@ -1,0 +1,45 @@
+/* Global styles for basic elements */
+a:hover {
+  color: #535bf2;
+}
+
+h1 {
+  text-align: center;
+}
+
+/* CSS Custom Properties for theming */
+:root {
+  /* Light theme colors */
+  --text-primary: theme('colors.gray.900');
+  --text-secondary: theme('colors.gray.600');
+  --bg-primary: theme('colors.white');
+  --bg-secondary: theme('colors.gray.50');
+  --border-color: theme('colors.gray.300');
+  --shadow: theme('boxShadow.sm');
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #f6f6f6;
+    background-color: #23272e;
+    
+    /* Dark theme colors */
+    --text-primary: theme('colors.gray.100');
+    --text-secondary: theme('colors.gray.400');
+    --bg-primary: theme('colors.gray.900');
+    --bg-secondary: theme('colors.gray.800');
+    --border-color: theme('colors.gray.600');
+    --shadow: theme('boxShadow.lg');
+  }
+
+  a:hover {
+    color: #24c8db;
+  }
+}
+
+/* Remove global button/input styles to avoid conflicts with Tailwind */
+/* Let components handle their own styling */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
