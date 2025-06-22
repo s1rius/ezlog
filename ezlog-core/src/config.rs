@@ -247,8 +247,8 @@ impl EZLogConfig {
         logs
     }
 
-    pub(crate) fn rotate_time(&self, time: OffsetDateTime) -> OffsetDateTime {
-        time + self.rotate_duration
+    pub(crate) fn rotate_time(&self, time: &OffsetDateTime) -> OffsetDateTime {
+        *time + self.rotate_duration
     }
 
     pub(crate) fn cipher_hash(&self) -> u32 {
@@ -648,6 +648,17 @@ mod tests {
         CompressKind,
         EZLogConfigBuilder,
     };
+
+    #[test]
+    fn test_config_rotate_time() {
+        let config = EZLogConfigBuilder::default()
+            .rotate_duration(Duration::days(1))
+            .build();
+
+        let now = OffsetDateTime::now_utc();
+        let rotate_time = config.rotate_time(&now);
+        assert_eq!(rotate_time, now + Duration::days(1));
+    }
 
     #[test]
     fn test_config_cipher_hash() {

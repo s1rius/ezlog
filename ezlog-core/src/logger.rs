@@ -122,6 +122,13 @@ pub struct EZLogger {
     pub(crate) cryptor: Option<Box<dyn Cryptor + Send + Sync>>,
 }
 
+/// log result
+#[derive(Debug)]
+pub(crate) enum AppendSuccess {
+    Success,
+    RotatedAndRetried,
+}
+
 impl EZLogger {
     pub fn new(config: EZLogConfig) -> Result<Self> {
         let appender = EZAppender::new(&config)?;
@@ -137,7 +144,8 @@ impl EZLogger {
     }
 
     /// TODO buggy add test case
-    pub(crate) fn append(&self, record: EZRecord) -> Result<()> {
+    pub(crate) fn append(&self, record: EZRecord) -> Result<AppendSuccess> {
+        let mut rotate = false;
         let splits = if record.content().len() > self.config.max_size() as usize / 2 {
             record.trunks(&self.config)
         } else {
@@ -146,39 +154,45 @@ impl EZLogger {
         for record in splits.iter() {
             let id = record.t_id();
             let buf = self.encode_as_block(record)?;
-            match self.appender.get_inner_mut()?.write_all(&buf) {
+            let result = { self.appender.get_inner_mut()?.append(&buf) };
+            match result {
                 Ok(_) => {
                     event!(Event::RecordEnd, &id);
                 }
                 Err(e) => {
+                    event!(Event::RecordError, &id);
                     // Check if the error is an appender error (e.g., file is full or needs rotation)
-                    if e.kind() == io::ErrorKind::Other {
-                        if let Some(appender_err) = e.get_ref().and_then(|inner| {
-                            inner.downcast_ref::<crate::appender::AppenderError>()
-                        }) {
-                            // maybe split to another fn to make test easy
-                            match appender_err {
-                                crate::appender::AppenderError::SizeExceeded { .. }
-                                | crate::appender::AppenderError::RotateTimeExceeded { .. } => {
-                                    self.appender.rotate(&self.config)?;
-                                    // Retry write once after rotation
-                                    self.appender
-                                        .get_inner_mut()?
-                                        .write_all(&buf)
-                                        .map_err(LogError::from)?;
-                                    continue;
+                    if let Some(is_rotation_error) = self.is_rotation_needed(&e) {
+                        if is_rotation_error {
+                            // Rotate the appender and retry
+                            self.appender.rotate(&self.config).inspect_err(|e| {
+                                event!(Event::RotateFileError, "rotate error", e)
+                            })?;
+                            // Retry write once after rotation
+                            let retry_result = {
+                                let mut inner = self.appender.get_inner_mut()?;
+                                inner.append(&buf)
+                            };
+                            match retry_result {
+                                Ok(_) => {
+                                    event!(Event::RecordEnd, &id);
+                                    rotate = true;
                                 }
-                                crate::appender::AppenderError::LockError { .. } => {
+                                Err(e) => {
+                                    event!(Event::RecordError, &id);
                                     return Err(e.into());
                                 }
                             }
                         }
                     }
-                    return Err(e.into());
                 }
             }
         }
-        Ok(())
+        if rotate {
+            Ok(AppendSuccess::RotatedAndRetried)
+        } else {
+            Ok(AppendSuccess::Success)
+        }
     }
 
     #[inline]
@@ -316,6 +330,24 @@ impl EZLogger {
             Ok(())
         }
     }
+
+    fn is_rotation_needed(&self, e: &io::Error) -> Option<bool> {
+        if e.kind() == io::ErrorKind::Other {
+            e.get_ref().and_then(|inner| {
+                inner
+                    .downcast_ref::<crate::appender::AppenderError>()
+                    .map(|appender_err| {
+                        matches!(
+                            appender_err,
+                            crate::appender::AppenderError::SizeExceeded { .. }
+                                | crate::appender::AppenderError::RotateTimeExceeded { .. }
+                        )
+                    })
+            })
+        } else {
+            None
+        }
+    }
 }
 
 pub(crate) fn combine_time_position(timestamp: i64, position: u64) -> Vec<u8> {
@@ -419,7 +451,8 @@ impl Header {
 
     pub fn create(config: &EZLogConfig) -> Self {
         let time = OffsetDateTime::now_utc();
-        let rotate_time = config.rotate_time(time);
+        let rotate_time = config.rotate_time(&time);
+
         let flag = if config.has_extra() {
             Flags::HAS_EXTRA
         } else {
@@ -432,7 +465,7 @@ impl Header {
             compress: config.compress_kind(),
             cipher: config.cipher_kind(),
             cipher_hash: config.cipher_hash(),
-            timestamp: OffsetDateTime::now_utc(),
+            timestamp: time,
             rotate_time: Some(rotate_time),
         }
     }
@@ -487,7 +520,9 @@ impl Header {
 
     pub fn decode(reader: &mut dyn Read) -> std::result::Result<Self, errors::LogError> {
         let mut signature = [0u8; 2];
-        reader.read_exact(&mut signature)?;
+        reader
+            .read_exact(&mut signature)
+            .map_err(|e| LogError::Parse(format!("sign read error {}", e)))?;
         let version = Version::from(reader.read_u8()?);
         let flag = Flags::from_bits(reader.read_u8()?).unwrap_or(Flags::NONE);
         let mut timestamp = OffsetDateTime::now_utc().unix_timestamp();

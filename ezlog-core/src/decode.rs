@@ -308,6 +308,8 @@ mod tests {
         use crate::CipherKind;
         use crate::CompressKind;
 
+        std::fs::create_dir_all(test_compat::test_path().join(path)).unwrap();
+
         let key = b"an example very very secret key.";
         let nonce = b"unique nonce";
         crate::EZLogConfigBuilder::new()
@@ -320,7 +322,7 @@ mod tests {
             )
             .name(String::from("all_feature"))
             .file_suffix(String::from("mmap"))
-            .max_size(150 * 1024)
+            .max_size(500 * 1024)
             .compress(CompressKind::ZLIB)
             .cipher(CipherKind::AES256GCMSIV)
             .cipher_key(key.to_vec())
@@ -385,7 +387,7 @@ mod tests {
     #[test]
     fn teset_encode_decode_file() {
         let config = create_all_feature_config("test_file");
-        fs::remove_dir_all(&config.dir_path()).unwrap_or_default();
+
         let mut logger = EZLogger::new(config.clone()).unwrap();
 
         let log_count = 10;
@@ -401,15 +403,14 @@ mod tests {
         logger.flush().unwrap();
 
         let (path, _mmap) = &config.create_mmap_file().unwrap();
-        let file = fs::OpenOptions::new()
+        let mut file = fs::OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
             .open(path)
             .unwrap();
         let mut buf = Vec::<u8>::new();
-        let mut reader = BufReader::new(file);
-        reader.read_to_end(&mut buf).unwrap();
+        file.read_to_end(&mut buf).unwrap();
         let mut cursor = Cursor::new(buf);
         let mut header = Header::decode(&mut cursor).unwrap();
         header.recorder_position = header.length().try_into().unwrap();
@@ -487,7 +488,6 @@ mod tests {
         use crate::EZRecord;
 
         let config = create_all_feature_config("test_array");
-        fs::remove_dir_all(&config.dir_path()).unwrap_or_default();
 
         let mut logger = EZLogger::new(config.clone()).unwrap();
         let log_count = 10;
@@ -521,6 +521,6 @@ mod tests {
 
         assert_eq!(array, decode_array);
         drop(logger);
-        fs::remove_dir_all(&config.dir_path()).unwrap_or_default();
+        fs::remove_dir_all(test_compat::test_path().join("test_array")).unwrap_or_default();
     }
 }
