@@ -264,7 +264,7 @@ impl LogService {
                         )
                     );
                 }
-                log.append(record)
+                log.append(record).map(|_| {})
             } else {
                 Err(LogError::Illegal("no logger found".into()))
             }
