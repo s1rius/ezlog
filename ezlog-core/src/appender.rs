@@ -235,7 +235,7 @@ impl MmapAppendInner {
             .get(0..Header::max_length())
             .ok_or_else(|| io::Error::new(ErrorKind::InvalidData, "mmap get header vec error"))?;
         let mut c = Cursor::new(mmap_header);
-        let mut header = Header::decode(&mut c)?;
+        let mut header = Header::decode_with_config(&mut c, config)?;
 
         let mut write_init = false;
         if header.is_none() {
@@ -345,7 +345,7 @@ impl ByteArrayAppenderInner {
             io::Error::new(ErrorKind::InvalidData, "byte array get header vec error")
         })?);
         let mut write_init = false;
-        let mut header = Header::decode(&mut c)?;
+        let mut header = Header::decode_with_config(&mut c, config)?;
         if header.is_none() {
             header = Header::create(config);
             write_init = true;
