@@ -160,7 +160,7 @@ impl EZLogger {
                     event!(Event::RecordEnd, &id);
                 }
                 Err(e) => {
-                    event!(Event::RecordError, &id);
+                    event!(Event::RecordError, &e.to_string());
                     // Check if the error is an appender error (e.g., file is full or needs rotation)
                     if let Some(is_rotation_error) = self.is_rotation_needed(&e) {
                         if is_rotation_error {
@@ -179,7 +179,7 @@ impl EZLogger {
                                     rotate = true;
                                 }
                                 Err(e) => {
-                                    event!(Event::RecordError, &id);
+                                    event!(Event::RecordError, &e.to_string());
                                     return Err(e.into());
                                 }
                             }
@@ -516,6 +516,15 @@ impl Header {
         writer.write_u8(self.compress.into())?;
         writer.write_u8(self.cipher.into())?;
         writer.write_u32::<BigEndian>(self.cipher_hash)
+    }
+
+    pub fn decode_with_config(
+        reader: &mut dyn Read,
+        config: &EZLogConfig,
+    ) -> std::result::Result<Self, errors::LogError> {
+        let mut header = Self::decode(reader)?;
+        header.rotate_time = Some(config.rotate_time(&header.timestamp));
+        Ok(header)
     }
 
     pub fn decode(reader: &mut dyn Read) -> std::result::Result<Self, errors::LogError> {
