@@ -1,4 +1,7 @@
+use std::time::Duration;
+
 use crate::{
+    event,
     EZLogCallback,
     EZMsg,
     EZRecord,
@@ -232,14 +235,66 @@ impl InitBuilder {
             LogService::new(self.layers)
         });
 
-        // after init, drain all messages in the queue, and dispatch them
-        if let Some(queue) = crate::PRE_INIT_QUEUE.get() {
-            let mut buf = queue.lock().unwrap_or_else(|e| e.into_inner());
-            for msg in buf.drain(..) {
-                log_service.dispatch(msg);
+        // after init, drain messages in the queue, and dispatch them
+        let create_logger_msgs: Vec<EZMsg> = {
+            let mut create_logger_msgs = Vec::new();
+
+            if let Some(mut deque) = crate::PRE_INIT_QUEUE.try_lock_for(Duration::from_millis(200))
+            {
+                while let Some(msg) = deque.front() {
+                    // Collect all CreateLogger messages
+                    if matches!(msg, EZMsg::CreateLogger { .. }) {
+                        // Remove from front and collect
+                        if let Some(msg) = deque.pop_front() {
+                            create_logger_msgs.push(msg);
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            } else {
+                event!(
+                    crate::Event::InitError,
+                    "Failed to acquire lock on PRE_INIT_QUEUE, messages may be lost."
+                );
             }
+            create_logger_msgs
+        };
+
+        // Dispatch all CreateLogger messages
+        for msg in create_logger_msgs {
+            log_service.dispatch(msg);
         }
         EZLog {}
+    }
+}
+
+pub(crate) fn dispatch_cache_records(log_name: &str) {
+    if let Some(log_service) = crate::LOG_SERVICE.get() {
+        if let Some(mut deque) = crate::PRE_INIT_QUEUE.try_lock_for(Duration::from_millis(50)) {
+            //iterator the deque, remove the records that match the target
+            let mut i = 0;
+            while i < deque.len() {
+                if let Some(EZMsg::Record(record)) = deque.get(i) {
+                    if record.log_name() == log_name {
+                        // Remove and dispatch
+                        if let Some(msg) = deque.remove(i) {
+                            log_service.dispatch(msg);
+                            continue;
+                        } else {
+                            // If we can't remove the message, just break
+                            break;
+                        }
+                    }
+                }
+                i += 1;
+            }
+        } else {
+            event!(
+                crate::Event::InitError,
+                "Failed to acquire lock on PRE_INIT_QUEUE, records may be lost."
+            );
+        }
     }
 }
 
@@ -353,7 +408,7 @@ mod tests {
             .build();
         crate::log(record);
 
-        assert!(crate::PRE_INIT_QUEUE.wait().lock().unwrap().len() != 0);
+        assert!(crate::PRE_INIT_QUEUE.lock().len() == 1);
 
         let config = EZLogConfigBuilder::new()
             .level(crate::Level::Trace)
@@ -368,22 +423,13 @@ mod tests {
 
         crate::create_log(config);
 
-        crate::InitBuilder::new().init();
+        assert!(crate::PRE_INIT_QUEUE.lock().len() == 2);
+
+        crate::InitBuilder::new().debug(true).init();
 
         let tx_clone = tx.clone();
         crate::post_msg(crate::EZMsg::Action(Box::new(move || {
-            let is_empty = crate::LOG_SERVICE
-                .wait()
-                .loggers
-                .read()
-                .unwrap()
-                .get(crate::DEFAULT_LOG_NAME)
-                .unwrap()
-                .appender
-                .get_inner()
-                .unwrap()
-                .header()
-                .is_empty();
+            let is_empty = crate::LOG_SERVICE.wait().loggers.read().unwrap().is_empty();
             let _ = tx_clone.send(is_empty);
         })));
 

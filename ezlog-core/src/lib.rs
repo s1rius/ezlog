@@ -68,7 +68,7 @@ use core::fmt;
 use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::sync::{
-    Mutex,
+    LazyLock,
     OnceLock,
     RwLock,
     RwLockReadGuard,
@@ -91,6 +91,7 @@ use crossbeam_channel::{
     TrySendError,
 };
 use memmap2::MmapMut;
+use parking_lot::Mutex;
 use time::Duration;
 use time::OffsetDateTime;
 
@@ -113,6 +114,7 @@ pub use self::logger::EZLogger;
 pub use self::logger::Header;
 pub use self::recorder::EZRecord;
 pub use self::recorder::EZRecordBuilder;
+use crate::init::dispatch_cache_records;
 
 /// A [EZLogger] default name. current is "default".
 pub const DEFAULT_LOG_NAME: &str = "default";
@@ -137,7 +139,8 @@ pub const V2_LOG_HEADER_SIZE: usize = 22;
 const MAX_PRE_INIT_QUEUE_SIZE: usize = 64;
 
 static LOG_SERVICE: OnceLock<LogService> = OnceLock::new();
-static PRE_INIT_QUEUE: OnceLock<Mutex<VecDeque<EZMsg>>> = OnceLock::new();
+static PRE_INIT_QUEUE: LazyLock<Mutex<VecDeque<EZMsg>>> =
+    LazyLock::new(|| Mutex::new(VecDeque::<EZMsg>::new()));
 
 static mut GLOBAL_CALLBACK: &dyn EZLogCallback = &NopCallback;
 static CALLBACK_INIT: Once = Once::new();
@@ -189,9 +192,20 @@ impl LogService {
 
     fn dispatch(&self, msg: EZMsg) {
         self.layers.iter().for_each(|layer| layer.handle(&msg));
+
+        let mut create_log_name = None;
+
+        if let EZMsg::CreateLogger(cfg) = &msg {
+            create_log_name = Some(cfg.name().to_owned());
+        };
+
         self.log_sender
             .try_send(msg)
             .unwrap_or_else(crate::report_channel_send_err);
+
+        if let Some(name) = create_log_name {
+            dispatch_cache_records(&name);
+        }
     }
 
     fn fetch_logs(&self, task: FetchReq) -> crate::Result<()> {
@@ -252,7 +266,7 @@ impl LogService {
 
     fn log(&self, record: EZRecord) -> crate::Result<()> {
         self.loggers_read().map(|map| {
-            if let Some(log) = map.get(&record.log_name().to_owned()) {
+            if let Some(log) = map.get(record.log_name()) {
                 // TODO: add fileter logic
                 if log.config.level() < record.level() {
                     event!(
@@ -266,7 +280,7 @@ impl LogService {
                 }
                 log.append(record).map(|_| {})
             } else {
-                Err(LogError::Illegal("no logger found".into()))
+                insert_init_cache(EZMsg::Record(record))
             }
         })?
     }
@@ -420,6 +434,31 @@ fn init_callback_channel() -> Sender<FetchResult> {
     fetch_sender
 }
 
+fn insert_init_cache(msg: EZMsg) -> crate::Result<()> {
+    if let Some(mut deque) = PRE_INIT_QUEUE.try_lock_for(std::time::Duration::from_millis(200)) {
+        if deque.len() > MAX_PRE_INIT_QUEUE_SIZE {
+            return Err(LogError::Illegal(
+                "pre-init queue full, cant queue message".into(),
+            ));
+        }
+        if matches!(msg, EZMsg::CreateLogger(_)) {
+            deque.push_front(msg);
+            Ok(())
+        } else if matches!(msg, EZMsg::Record(_)) {
+            deque.push_back(msg);
+            Ok(())
+        } else {
+            Err(LogError::Illegal(
+                "post msg when log service not init".into(),
+            ))
+        }
+    } else {
+        Err(LogError::Illegal(
+            "pre-init queue lock timeout, cant queue message".into(),
+        ))
+    }
+}
+
 /// Create a new [EZLogger] from an [EZLogConfig]
 pub fn create_log(config: EZLogConfig) {
     if let Err(log_error) = &config.check_valid() {
@@ -470,17 +509,10 @@ fn post_msg(msg: EZMsg) {
     if let Some(service) = LOG_SERVICE.get() {
         service.dispatch(msg);
     } else {
-        event!(Event::InitError, "post msg when log service not init");
         // if not init, push to pre-init queue
-        let q = PRE_INIT_QUEUE.get_or_init(|| Mutex::new(VecDeque::<EZMsg>::new()));
-        let mut guard = q.lock().unwrap_or_else(|e| e.into_inner());
-        if matches!(msg, EZMsg::CreateLogger(_)) {
-            guard.push_front(msg);
-        } else if guard.len() < MAX_PRE_INIT_QUEUE_SIZE {
-            guard.push_back(msg);
-        } else {
-            event!(Event::InitError, "pre-init queue full, cant queue message");
-        }
+        insert_init_cache(msg).unwrap_or_else(|e| {
+            event!(Event::InitError, "post msg when log service not init", &e);
+        });
     }
 }
 
@@ -718,10 +750,8 @@ pub(crate) fn formatter() -> &'static dyn Formatter {
     static DEFAULT_FORMATTER: DefaultFormatter = DefaultFormatter;
 
     if let Some(mutex) = GLOBAL_FORMATTER.get() {
-        if let Ok(guard) = mutex.lock() {
-            if let Some(formatter) = *guard {
-                return formatter;
-            }
+        if let Some(formatter) = *mutex.lock() {
+            return formatter;
         }
     }
     &DEFAULT_FORMATTER
