@@ -23,7 +23,7 @@ pub enum LogError {
     #[error("illegal argument or state {0}")]
     Illegal(String),
     #[error("ffi error: {0}")]
-    FFi(String),
+    FFI(String),
     #[error("unknown error: {0}")]
     Unknown(String),
     #[error("log init error")]
@@ -33,7 +33,7 @@ pub enum LogError {
 }
 
 impl LogError {
-    pub fn unknown(error: &str) -> Self {
+    pub fn unknown(error: impl Into<String>) -> Self {
         LogError::Unknown(error.into())
     }
 }
@@ -46,14 +46,14 @@ impl From<io::Error> for LogError {
 
 impl From<NulError> for LogError {
     fn from(e: NulError) -> Self {
-        LogError::FFi(format!("{:?}", e))
+        LogError::FFI(format!("{:?}", e))
     }
 }
 
 #[cfg(target_os = "android")]
 impl From<jni::errors::Error> for LogError {
     fn from(e: jni::errors::Error) -> Self {
-        LogError::FFi(format!("{:?}", e))
+        LogError::FFI(format!("{:?}", e))
     }
 }
 

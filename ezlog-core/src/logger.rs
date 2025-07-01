@@ -160,14 +160,14 @@ impl EZLogger {
                     event!(Event::RecordEnd, &id);
                 }
                 Err(e) => {
-                    event!(Event::RecordError, &e.to_string());
+                    event!(!Event::RecordError; &e);
                     // Check if the error is an appender error (e.g., file is full or needs rotation)
                     if let Some(is_rotation_error) = self.is_rotation_needed(&e) {
                         if is_rotation_error {
                             // Rotate the appender and retry
-                            self.appender.rotate(&self.config).inspect_err(|e| {
-                                event!(Event::RotateFileError, "rotate error", e)
-                            })?;
+                            self.appender.rotate(&self.config).inspect_err(
+                                |e| event!(!Event::RotateFileError, "rotate error"; e),
+                            )?;
                             // Retry write once after rotation
                             let retry_result = {
                                 let mut inner = self.appender.get_inner_mut()?;
@@ -179,7 +179,7 @@ impl EZLogger {
                                     rotate = true;
                                 }
                                 Err(e) => {
-                                    event!(Event::RecordError, &e.to_string());
+                                    event!(!Event::RecordError; &e);
                                     return Err(e.into());
                                 }
                             }
@@ -220,11 +220,9 @@ impl EZLogger {
                 buf = compression.compress(&buf).map_err(LogError::Compress)?;
                 event!(
                     Event::CompressEnd,
-                    &format!(
-                        "{} compress ratio = {} ",
-                        &record.t_id(),
-                        buf.len() as f64 / len as f64
-                    )
+                    "{} compress ratio = {} ",
+                    &record.t_id(),
+                    buf.len() as f64 / len as f64
                 );
             }
             if let Some(encryptor) = &self.cryptor {
@@ -232,11 +230,9 @@ impl EZLogger {
                 buf = encryptor.encrypt(&buf, nonce_fn)?;
                 event!(
                     Event::EncryptEnd,
-                    &format!(
-                        "{} process ratio = {} ",
-                        &record.t_id(),
-                        buf.len() as f64 / len as f64
-                    )
+                    "{} process ratio = {} ",
+                    &record.t_id(),
+                    buf.len() as f64 / len as f64
                 );
             }
         }
@@ -251,7 +247,6 @@ impl EZLogger {
     /// # Returns
     ///
     /// A `NonceGenFn` closure that be used in encode and decode.
-    ///
     fn gen_nonce(&self) -> crate::Result<NonceGenFn> {
         let inner = self.appender.inner.read()?;
         let timestamp = inner.header().timestamp.unix_timestamp();
@@ -291,26 +286,26 @@ impl EZLogger {
                                         if out_of_date {
                                             fs::remove_file(file.path()).unwrap_or_else(|e| {
                                                 event!(
-                                                    Event::TrimError,
-                                                    "remove file err",
+                                                    !Event::TrimError,
+                                                    "remove file err";
                                                     &e.into()
                                                 )
                                             });
                                         }
                                     }
                                     Err(e) => {
-                                        event!(Event::TrimError, "judge file out of date error", &e)
+                                        event!(!Event::TrimError, "judge file out of date error"; &e)
                                     }
                                 }
                             };
                         }
                         Err(e) => {
-                            event!(Event::TrimError, "traversal file error", &e.into())
+                            event!(!Event::TrimError, "traversal file error"; &e.into())
                         }
                     }
                 }
             }
-            Err(e) => event!(Event::TrimError, "read dir error", &e.into()),
+            Err(e) => event!(!Event::TrimError, "read dir error"; &e.into()),
         }
     }
 

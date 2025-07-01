@@ -35,9 +35,7 @@ impl InitBuilder {
     ///
     /// # Example
     /// ```
-    /// ezlog::InitBuilder::new()
-    ///     .debug(true)
-    ///     .init();
+    /// ezlog::InitBuilder::new().debug(true).init();
     /// ```
     pub fn debug(mut self, debug: bool) -> Self {
         self.debug = debug;
@@ -48,25 +46,30 @@ impl InitBuilder {
     ///
     /// # Example
     /// ```
+    /// use std::fmt::Arguments;
+    ///
     /// use ezlog::Event;
     /// use ezlog::LogError;
     ///
     /// struct MyEventListener;
     ///
     /// impl ezlog::EventListener for MyEventListener {
-    ///     fn on_event(&self, event: Event, desc: &str) {
-    ///         println!("event: {:?}, desc: {}", event, desc);
+    ///     fn on_event(&self, event: Event, args: Arguments) {
+    ///         println!("event: {:?}, desc: {}", event, args);
     ///     }
     ///
-    ///     fn on_error_event(&self, event: Event, desc: &str, err: &LogError) {
-    ///         println!("event: {:?}, desc: {}, err: {}", event, desc, err);
+    ///     fn on_error_event(&self, event: Event, args: Arguments, err: Option<&LogError>) {
+    ///         match err {
+    ///             Some(error) => println!("event: {:?} {}, err: {:#?}", event, args, error),
+    ///             None => println!("event: {:?} {}", event, args),
+    ///         }
     ///     }
     /// }
-    /// static LISTENER: MyEventListener = MyEventListener{};
+    /// static LISTENER: MyEventListener = MyEventListener {};
     /// ezlog::InitBuilder::new()
     ///     .with_event_listener(&LISTENER)
     ///     .init();
-    ///```
+    /// ```
     pub fn with_event_listener(mut self, listener: &'static dyn EventListener) -> Self {
         self.listener = Some(listener);
         self
@@ -104,18 +107,20 @@ impl InitBuilder {
     ///
     /// # Example
     /// ```
-    /// let on_success : fn(&str, &str, &[&str]) = |name, date, logs| {
-    ///     println!("on_success: name: {}, desc: {}, tags: {:?}", name, date, logs);
+    /// let on_success: fn(&str, &str, &[&str]) = |name, date, logs| {
+    ///     println!(
+    ///         "on_success: name: {}, desc: {}, tags: {:?}",
+    ///         name, date, logs
+    ///     );
     /// };
     ///
-    /// let on_fail : fn(&str, &str, &str) = |name, date, err| {
+    /// let on_fail: fn(&str, &str, &str) = |name, date, err| {
     ///     println!("on_fail: name: {}, desc: {}, err: {}", name, date, err);
     /// };
     /// ezlog::InitBuilder::new()
     ///     .with_request_callback_fn(on_success, on_fail)
     ///     .init();
     /// ```
-    ///
     pub fn with_request_callback_fn(
         mut self,
         on_success: fn(&str, &str, &[&str]),
@@ -148,7 +153,6 @@ impl InitBuilder {
     /// ezlog::InitBuilder::new()
     ///     .with_request_callback(callback)
     ///     .init();
-    ///
     pub fn with_request_callback(mut self, callback: impl EZLogCallback + 'static) -> Self {
         let boxed_callback = Box::new(callback);
         self.callback = Some(boxed_callback);
@@ -172,19 +176,18 @@ impl InitBuilder {
     ///
     /// # Example
     /// ```
-    /// use ezlog::Formatter;
     /// use ezlog::EZRecord;
+    /// use ezlog::Formatter;
     /// struct MyFormatter;
     /// impl Formatter for MyFormatter {
-    ///    fn format(&self, msg: &EZRecord) -> std::result::Result<Vec<u8>, ezlog::LogError> {
-    ///       Ok(format!("{:?}", msg).into_bytes())
-    ///   }
+    ///     fn format(&self, msg: &EZRecord) -> std::result::Result<Vec<u8>, ezlog::LogError> {
+    ///         Ok(format!("{:?}", msg).into_bytes())
+    ///     }
     /// }
     /// ezlog::InitBuilder::new()
-    ///    .with_formatter(Box::new(MyFormatter))
-    ///    .init();
+    ///     .with_formatter(Box::new(MyFormatter))
+    ///     .init();
     /// ```
-    ///
     pub fn with_formatter(mut self, formatter: Box<dyn Formatter>) -> Self {
         self.formatter = Some(formatter);
         self
@@ -195,8 +198,8 @@ impl InitBuilder {
     /// # Example
     /// ```
     /// ezlog::InitBuilder::new()
-    ///    .with_formatter_fn(|msg| format!("{:?}", msg).into_bytes())
-    ///    .init();
+    ///     .with_formatter_fn(|msg| format!("{:?}", msg).into_bytes())
+    ///     .init();
     /// ```
     pub fn with_formatter_fn(mut self, op: fn(&EZRecord) -> Vec<u8>) -> Self {
         self.formatter = Some(Box::new(FormatterProxy::new(op)));

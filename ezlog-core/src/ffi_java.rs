@@ -53,7 +53,7 @@ static JVM: OnceCell<Arc<JavaVM>> = OnceCell::new();
 #[no_mangle]
 pub extern "system" fn JNI_OnLoad(vm: JavaVM, _: *mut c_void) -> jint {
     JVM.set(Arc::new(vm))
-        .map_err(|_| event!(Event::FFiError, "set jvm error"))
+        .map_err(|_| event!(Event::FFIError, "set jvm error"))
         .unwrap_or(());
     JNI_VERSION_1_6
 }
@@ -122,8 +122,8 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeCreateLogger<'local>(
     if !config.is_valid() {
         event!(
             CreateLoggerError,
-            "create logger config error",
-            &LogError::Illegal(format!("{:?}", config))
+            "create logger config error, config: {:?}",
+            config
         );
         return;
     }
@@ -204,9 +204,9 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeRegisterCallback(
             set_boxed_callback(Box::new(AndroidCallback::new(gloableCallback)));
         }
         Err(e) => event!(
-            Event::FFiError,
-            "register callback error",
-            &LogError::FFi(format!("{:?}", e))
+            !Event::FFIError,
+            "register callback error";
+            &LogError::FFI(e.to_string())
         ),
     }
 }
@@ -227,20 +227,14 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeRequestLogFilesForDate(
     let start = match OffsetDateTime::from_unix_timestamp_nanos((j_start as i128) * 1_000_000) {
         Ok(time) => time,
         Err(_) => {
-            event!(
-                Event::RequestLogError,
-                &format!("start time illegal {}", j_start)
-            );
+            event!(Event::RequestLogError, "start time illegal {}", j_start);
             return;
         }
     };
     let end = match OffsetDateTime::from_unix_timestamp_nanos((j_end as i128) * 1_000_000) {
         Ok(time) => time,
         Err(_) => {
-            event!(
-                Event::RequestLogError,
-                &format!("end time illegal {}", j_end)
-            );
+            event!(Event::RequestLogError, "end time illegal {}", j_end);
             return;
         }
     };
@@ -329,12 +323,12 @@ impl AndroidCallback {
 impl crate::EZLogCallback for AndroidCallback {
     fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
         self.internal_fetch_success(name, date, logs)
-            .unwrap_or_else(|e| event!(Event::FFiError, "on fetch success", &e.into()));
+            .unwrap_or_else(|e| event!(!Event::FFIError, "on fetch success"; &e.into()));
     }
 
     fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
         self.internal_fetch_fail(name, date, err)
-            .unwrap_or_else(|e| event!(Event::FFiError, "on fetch fail", &e.into()));
+            .unwrap_or_else(|e| event!(!Event::FFIError, "on fetch fail"; &e.into()));
     }
 }
 

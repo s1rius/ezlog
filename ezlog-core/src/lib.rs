@@ -21,8 +21,8 @@
 //! ```
 //! use ezlog::EZLogConfigBuilder;
 //! use ezlog::Level;
+//! #[cfg(feature = "log")]
 //! use log::trace;
-//!
 //!
 //! ezlog::InitBuilder::new().debug(true).init();
 //!
@@ -38,9 +38,9 @@
 //!     .build();
 //! ezlog::create_log(config);
 //!
+//! #[cfg(feature = "log")]
 //! trace!("hello ezlog");
 //! ```
-//!
 
 mod appender;
 mod compress;
@@ -209,9 +209,9 @@ impl LogService {
     }
 
     fn fetch_logs(&self, task: FetchReq) -> crate::Result<()> {
-        event!(Event::RequestLog, &format!("{task:?}"));
+        event!(Event::RequestLog, format!("{task:?}"));
         let mut logs: Vec<PathBuf> = Vec::new();
-        let mut error: Option<String> = None;
+        let mut error: Option<LogError> = None;
         self.loggers_read()
             .map(|map| {
                 if let Some(logger) = map.get(&task.name) {
@@ -220,7 +220,7 @@ impl LogService {
                     if (now < task.end || now < task.start + Duration::days(1)) && now > task.start
                     {
                         logger.rotate_if_not_empty().unwrap_or_else(|e| {
-                            error = Some(format!("rotate error: {}", e));
+                            error = Some(e);
                         });
                     }
 
@@ -231,11 +231,11 @@ impl LogService {
                         logs.append(&mut query);
                     }
                 } else {
-                    error = Some("Logger not found".into())
+                    error = Some(LogError::Illegal(format!("{} Logger not found", task.name)));
                 }
             })
             .unwrap_or_else(|e| {
-                error = Some(format!("Error reading loggers: {}", e));
+                error = Some(e);
             });
 
         self.on_fetch(FetchResult {
@@ -247,9 +247,7 @@ impl LogService {
     }
 
     fn on_fetch(&self, result: FetchResult) -> crate::Result<()> {
-        self.fetch_sender
-            .try_send(result)
-            .map_err(|e| LogError::unknown(&format!("{:?}", e)))
+        self.fetch_sender.try_send(result).map_err(|e| e.into())
     }
 
     fn insert_logger(&self, name: String, log: EZLogger) -> crate::Result<()> {
@@ -260,7 +258,7 @@ impl LogService {
             } else {
                 map.insert(name.clone(), log);
             }
-            event!(Event::CreateLogger, &name);
+            event!(Event::CreateLogger, name);
         })
     }
 
@@ -271,11 +269,9 @@ impl LogService {
                 if log.config.level() < record.level() {
                     event!(
                         Event::RecordFilterOut,
-                        &format!(
-                            "current level {}, max level {}",
-                            &record.level(),
-                            &log.config.level()
-                        )
+                        "current level {}, max level {}",
+                        record.level(),
+                        log.config.level()
                     );
                 }
                 log.append(record).map(|_| {})
@@ -355,8 +351,8 @@ fn init_log_channel() -> Sender<EZMsg> {
                                             .insert_logger(log.config.name().to_string(), log)
                                             .unwrap_or_else(|e| {
                                                 event!(
-                                                    Event::CreateLoggerError,
-                                                    "create logger error",
+                                                    !Event::CreateLoggerError,
+                                                    "create logger error";
                                                     &e
                                                 );
                                             });
@@ -364,33 +360,33 @@ fn init_log_channel() -> Sender<EZMsg> {
                                 );
                             }
                             Err(e) => {
-                                event!(Event::CreateLoggerError, &name, &e);
+                                event!(!Event::CreateLoggerError, "failed to create logger {}", &name; &e);
                             }
                         };
                     }
                     EZMsg::Record(record) => {
                         LOG_SERVICE.wait().log(record).unwrap_or_else(|e| {
-                            event!(Event::RecordError, &e.to_string());
+                            event!(!Event::RecordError; &e);
                         });
                     }
                     EZMsg::ForceFlush(name) => {
                         LOG_SERVICE.wait().flush(name).unwrap_or_else(|e| {
-                            event!(Event::FlushError, &e.to_string());
+                            event!(!Event::FlushError; &e);
                         });
                     }
                     EZMsg::FlushAll() => {
                         LOG_SERVICE.wait().flush_all().unwrap_or_else(|e| {
-                            event!(Event::FlushError, &e.to_string());
+                            event!(!Event::FlushError; &e);
                         });
                     }
                     EZMsg::Trim() => {
                         LOG_SERVICE.wait().trim().unwrap_or_else(|e| {
-                            event!(Event::TrimError, &e.to_string());
+                            event!(!Event::TrimError; &e);
                         });
                     }
                     EZMsg::FetchLog(task) => {
                         LOG_SERVICE.wait().fetch_logs(task).unwrap_or_else(|e| {
-                            event!(Event::RequestLogError, &e.to_string());
+                            event!(!Event::RequestLogError; &e);
                         });
                     }
                     EZMsg::Action(call) => {
@@ -398,7 +394,7 @@ fn init_log_channel() -> Sender<EZMsg> {
                     }
                 },
                 Err(err) => {
-                    event!(Event::ChannelError, "log channel rec", &err.into());
+                    event!(!Event::ChannelError, "log channel rec error"; &err.into());
                 }
             }
         }) {
@@ -406,7 +402,7 @@ fn init_log_channel() -> Sender<EZMsg> {
             event!(Event::Init);
         }
         Err(e) => {
-            event!(Event::InitError, &format!("init ezlog error {}", e));
+            event!(!Event::InitError, "init ezlog error"; &e.into());
         }
     }
     sender
@@ -421,14 +417,14 @@ fn init_callback_channel() -> Sender<FetchResult> {
                 Ok(result) => {
                     invoke_fetch_callback(result);
                 }
-                Err(e) => event!(Event::FFiError, "init callback channel", &e.into()),
+                Err(e) => event!(!Event::FFIError, "init callback channel"; &e.into()),
             }
         }) {
         Ok(_) => {
             event!(Event::Init, "init callback channel success");
         }
         Err(e) => {
-            event!(Event::InitError, "init callback channel err", &e.into());
+            event!(!Event::InitError, "init callback channel err"; &e.into());
         }
     }
     fetch_sender
@@ -462,13 +458,13 @@ fn insert_init_cache(msg: EZMsg) -> crate::Result<()> {
 /// Create a new [EZLogger] from an [EZLogConfig]
 pub fn create_log(config: EZLogConfig) {
     if let Err(log_error) = &config.check_valid() {
-        event!(Event::CreateLoggerError, "config is not valid", log_error);
+        event!(!Event::CreateLoggerError, "config is not valid"; log_error);
         return;
     }
     let config_desc = format!("{:?}", config);
     let msg = EZMsg::CreateLogger(config);
 
-    event!(Event::CreateLogger, &config_desc);
+    event!(Event::CreateLogger, config_desc);
     post_msg(msg);
 }
 
@@ -476,7 +472,7 @@ pub fn create_log(config: EZLogConfig) {
 pub fn log(record: EZRecord) {
     let tid = record.t_id();
     let msg = EZMsg::Record(record);
-    event!(Event::Record, &tid);
+    event!(Event::Record, tid);
     post_msg(msg);
 }
 
@@ -511,26 +507,31 @@ fn post_msg(msg: EZMsg) {
     } else {
         // if not init, push to pre-init queue
         insert_init_cache(msg).unwrap_or_else(|e| {
-            event!(Event::InitError, "post msg when log service not init", &e);
+            event!(!Event::InitError, "post msg when log service not init"; &e);
         });
     }
 }
 
 #[inline]
 pub(crate) fn report_channel_send_err<T>(err: TrySendError<T>) {
-    event!(Event::ChannelError, "channel send err", &err.into());
+    event!(!Event::ChannelError, "channel send err"; &err.into());
 }
 
 fn invoke_fetch_callback(result: FetchResult) {
+    let name = &result.name;
+    let date = &result.date;
     match result.logs {
         Some(logs) => {
             event!(
                 Event::RequestLogEnd,
-                &format!("{} {} {}", &result.name, &result.date, &logs.len())
+                "fetch completed: {} {} {}",
+                name,
+                date,
+                logs.len()
             );
             callback().on_fetch_success(
-                &result.name,
-                &result.date,
+                name,
+                date,
                 &logs
                     .iter()
                     .map(|l| l.to_str().unwrap_or(""))
@@ -539,8 +540,8 @@ fn invoke_fetch_callback(result: FetchResult) {
         }
         None => {
             if let Some(err) = result.error {
-                event!(Event::RequestLogError, &err);
-                callback().on_fetch_fail(&result.name, &result.date, &err)
+                event!(!Event::RequestLogError; err);
+                callback().on_fetch_fail(&result.name, &result.date, &err.to_string())
             }
         }
     }
@@ -566,13 +567,13 @@ pub(crate) fn callback() -> &'static dyn EZLogCallback {
 /// struct SimpleCallback;
 ///
 /// impl EZLogCallback for SimpleCallback {
-///    fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
-///        print!("{} {} {}", name, date, logs.join(" "));
-///    }
-///    fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
-///        print!("{} {} {}", name, date, err);
-///    }
-///}
+///     fn on_fetch_success(&self, name: &str, date: &str, logs: &[&str]) {
+///         print!("{} {} {}", name, date, logs.join(" "));
+///     }
+///     fn on_fetch_fail(&self, name: &str, date: &str, err: &str) {
+///         print!("{} {} {}", name, date, err);
+///     }
+/// }
 /// fn main() {
 ///     ezlog::set_boxed_callback(Box::new(SimpleCallback));
 /// }
@@ -674,7 +675,7 @@ pub struct FetchResult {
     /// logs file's path
     logs: Option<Vec<PathBuf>>,
     /// error message
-    error: Option<String>,
+    error: Option<LogError>,
 }
 
 /// The Logger struct to implement the Log encode.
