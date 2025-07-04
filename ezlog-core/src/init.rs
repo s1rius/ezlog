@@ -272,14 +272,14 @@ impl InitBuilder {
     }
 }
 
-pub(crate) fn dispatch_cache_records(log_name: &str) {
+pub(crate) fn dispatch_cache_records(log_name: impl AsRef<str>) {
     if let Some(log_service) = crate::LOG_SERVICE.get() {
         if let Some(mut deque) = crate::PRE_INIT_QUEUE.try_lock_for(Duration::from_millis(50)) {
             //iterator the deque, remove the records that match the target
             let mut i = 0;
             while i < deque.len() {
                 if let Some(EZMsg::Record(record)) = deque.get(i) {
-                    if record.log_name() == log_name {
+                    if record.log_name() == log_name.as_ref() {
                         // Remove and dispatch
                         if let Some(msg) = deque.remove(i) {
                             log_service.dispatch(msg);
@@ -405,9 +405,9 @@ mod tests {
         let (tx, rx) = channel::<bool>();
 
         let record = EZRecord::builder()
-            .log_name(crate::DEFAULT_LOG_NAME.to_string())
+            .log_name(crate::DEFAULT_LOG_NAME)
             .level(crate::Level::Debug)
-            .target("test".to_owned())
+            .target("test")
             .build();
         crate::log(record);
 
@@ -421,7 +421,7 @@ mod tests {
                     .into_string()
                     .expect("dir path error"),
             )
-            .name(crate::DEFAULT_LOG_NAME.to_string())
+            .name(crate::DEFAULT_LOG_NAME)
             .build();
 
         crate::create_log(config);

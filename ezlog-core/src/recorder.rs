@@ -142,12 +142,12 @@ impl EZRecord {
         let t_id = thread_id::get();
         let t_name = t.name().unwrap_or_default();
         EZRecordBuilder::new()
-            .log_name(DEFAULT_LOG_NAME.to_string())
+            .log_name(DEFAULT_LOG_NAME)
             .level(r.metadata().level().into())
-            .target(r.target().to_string())
+            .target(r.target())
             .time(OffsetDateTime::now_utc())
             .thread_id(t_id)
-            .thread_name(t_name.to_string())
+            .thread_name(t_name)
             .content(format!("{}", r.args()))
             .line(r.line().unwrap_or(0))
             .file(r.file().unwrap_or_default())
@@ -179,7 +179,7 @@ impl EZRecord {
                 end -= 1;
             }
             let chunk = &self.content[start..end];
-            let ez = self.to_trunk_builder().content(chunk.to_string()).build();
+            let ez = self.to_trunk_builder().content(chunk).build();
             trunks.push(ez);
             start = end;
         }
@@ -218,8 +218,8 @@ impl EZRecordBuilder {
         self
     }
 
-    pub fn target(&mut self, target: String) -> &mut Self {
-        self.record.target = target;
+    pub fn target(&mut self, target: impl AsRef<str>) -> &mut Self {
+        self.record.target = target.as_ref().to_owned();
         self
     }
 
@@ -240,18 +240,18 @@ impl EZRecordBuilder {
         self
     }
 
-    pub fn thread_name(&mut self, thread_name: String) -> &mut Self {
-        self.record.thread_name = thread_name;
+    pub fn thread_name(&mut self, thread_name: impl AsRef<str>) -> &mut Self {
+        self.record.thread_name = thread_name.as_ref().to_owned();
         self
     }
 
-    pub fn content(&mut self, content: String) -> &mut Self {
-        self.record.content = content;
+    pub fn content(&mut self, content: impl AsRef<str>) -> &mut Self {
+        self.record.content = content.as_ref().to_owned();
         self
     }
 
-    pub fn log_name(&mut self, name: String) -> &mut Self {
-        self.record.log_name = name;
+    pub fn log_name(&mut self, name: impl AsRef<str>) -> &mut Self {
+        self.record.log_name = name.as_ref().to_owned();
         self
     }
 
@@ -262,8 +262,8 @@ impl EZRecordBuilder {
     }
 
     #[cfg(feature = "log")]
-    pub fn file(&mut self, file: &str) -> &mut Self {
-        self.record.file = Some(file.to_string());
+    pub fn file(&mut self, file: impl AsRef<str>) -> &mut Self {
+        self.record.file = Some(file.as_ref().to_owned());
         self
     }
 
