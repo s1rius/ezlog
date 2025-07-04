@@ -17,6 +17,7 @@ log = ["dep:log"]
 json = ["serde", "serde_json", "bitflags/serde"]
 decode = ["aes-gcm", "regex", "log", "hex"]
 android_logger = ["log","dep:android_logger"]
+event = []
 
 [dependencies]
 libc = "0.2"

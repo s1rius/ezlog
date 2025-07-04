@@ -80,7 +80,6 @@ pub struct EZLogConfig {
     /// if log file size is greater than this, logger will rotate the log file
     max_size: u64,
     /// Log content compress kind.
-    ///
     // compress kind, default is [CompressKind::NONE]
     compress: CompressKind,
     /// Log content compress level.
@@ -237,12 +236,12 @@ impl EZLogConfig {
                             };
                         }
                         Err(e) => {
-                            event!(Event::RequestLogError, "get dir entry in dir", &e.into());
+                            event!(!Event::RequestLogError, "get dir entry in dir"; &e.into());
                         }
                     }
                 }
             }
-            Err(e) => event!(Event::RequestLogError, "read dir", &e.into()),
+            Err(e) => event!(!Event::RequestLogError, "read dir"; &e.into()),
         }
         logs
     }

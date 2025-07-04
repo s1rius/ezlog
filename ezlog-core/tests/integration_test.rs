@@ -1,3 +1,5 @@
+use std::fmt::Arguments;
+
 use ezlog::Event;
 use ezlog::LogError;
 use ezlog::{
@@ -25,12 +27,12 @@ fn test_ezlog_init() {
     struct MyEventListener;
 
     impl ezlog::EventListener for MyEventListener {
-        fn on_event(&self, event: Event, desc: &str) {
+        fn on_event(&self, event: Event, desc: Arguments) {
             println!("event: {:?} {}", event, desc);
         }
 
-        fn on_error_event(&self, event: Event, desc: &str, err: &LogError) {
-            println!("event: {:?} {}, err: {}", event, desc, err);
+        fn on_error_event(&self, event: Event, desc: Arguments, err: Option<&LogError>) {
+            println!("event: {:?} {}, err: {:#?}", event, desc, err);
         }
     }
     static LISTENER: MyEventListener = MyEventListener {};

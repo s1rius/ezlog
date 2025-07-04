@@ -99,7 +99,7 @@ impl EZAppender {
                 Ok(i)
             }
             Err(e) => {
-                event!(Event::MapFileError, "mmap appender new", &e);
+                event!(!Event::MapFileError, "mmap appender new"; &e);
                 Ok(Box::new(ByteArrayAppenderInner::new(config)?))
             }
         }
