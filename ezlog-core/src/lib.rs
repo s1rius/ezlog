@@ -250,15 +250,14 @@ impl LogService {
         self.fetch_sender.try_send(result).map_err(|e| e.into())
     }
 
-    fn insert_logger(&self, name: String, log: EZLogger) -> crate::Result<()> {
+    fn insert_logger(&self, name: impl AsRef<str>, log: EZLogger) -> crate::Result<()> {
         self.loggers_write().map(|mut map| {
-            if map.contains_key(&name) {
+            if map.contains_key(name.as_ref()) {
                 event!(Event::CreateLoggerError, "logger already exists");
-                return;
             } else {
-                map.insert(name.clone(), log);
+                event!(Event::CreateLogger, name.as_ref());
+                map.insert(name.as_ref().to_owned(), log);
             }
-            event!(Event::CreateLogger, name);
         })
     }
 
@@ -281,9 +280,9 @@ impl LogService {
         })?
     }
 
-    fn flush(&self, name: String) -> crate::Result<()> {
+    fn flush(&self, name: impl AsRef<str>) -> crate::Result<()> {
         self.loggers_read().and_then(|map| {
-            map.get(&name)
+            map.get(name.as_ref())
                 .map(|v| v.flush())
                 .unwrap_or_else(|| Err(LogError::Illegal("Logger not found".into())))
         })
@@ -348,7 +347,7 @@ fn init_log_channel() -> Sender<EZMsg> {
                                     },
                                     |service| {
                                         service
-                                            .insert_logger(log.config.name().to_string(), log)
+                                            .insert_logger(&name, log)
                                             .unwrap_or_else(|e| {
                                                 event!(
                                                     !Event::CreateLoggerError,
@@ -477,9 +476,9 @@ pub fn log(record: EZRecord) {
 }
 
 /// Force flush the log file
-pub fn flush(log_name: &str) {
-    let msg = EZMsg::ForceFlush(log_name.to_string());
-    event!(Event::Flush, log_name);
+pub fn flush(log_name: impl AsRef<str>) {
+    let msg = EZMsg::ForceFlush(log_name.as_ref().to_owned());
+    event!(Event::Flush, log_name.as_ref());
     post_msg(msg);
 }
 
@@ -491,9 +490,13 @@ pub fn flush_all() {
 }
 
 /// Request logs file path array at the date which [EZLogger]'s name is define in the parameter
-pub fn request_log_files_for_date(log_name: &str, start: OffsetDateTime, end: OffsetDateTime) {
+pub fn request_log_files_for_date(
+    log_name: impl AsRef<str>,
+    start: OffsetDateTime,
+    end: OffsetDateTime,
+) {
     let req = FetchReq {
-        name: log_name.to_string(),
+        name: log_name.as_ref().to_owned(),
         start,
         end,
     };
@@ -928,7 +931,7 @@ mod tests {
     #[test]
     fn test_record_truncks() {
         let config = EZLogConfigBuilder::new().max_size(6).build();
-        let record = EZRecordBuilder::new().content("深圳".into()).build();
+        let record = EZRecordBuilder::new().content("深圳").build();
         let trunks = record.trunks(&config);
         assert_eq!(trunks.len(), 2);
         assert_eq!(trunks[0].content(), "深");
@@ -944,14 +947,14 @@ mod tests {
         crate::InitBuilder::new().debug(true).init();
         let config = EZLogConfigBuilder::new()
             .dir_path(cache_dir.into_os_string().into_string().unwrap())
-            .name("test".to_owned())
+            .name("test")
             .build();
         crate::create_log(config);
 
         crate::log(
             EZRecordBuilder::new()
-                .log_name("test".to_owned())
-                .content("test log".to_string())
+                .log_name("test")
+                .content("test log")
                 .build(),
         );
         let (tx, tv) = crossbeam_channel::bounded::<usize>(1);

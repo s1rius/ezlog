@@ -96,19 +96,14 @@ fn get_config() -> EZLogConfig {
     let nonce = b"unique nonce";
     EZLogConfigBuilder::new()
         .level(Level::Trace)
-        .dir_path(
-            test_compat::test_path()
-                .into_os_string()
-                .into_string()
-                .expect("dir path error"),
-        )
-        .name(ezlog::DEFAULT_LOG_NAME.to_string())
+        .dir_path(test_compat::test_path().join("ezlog"))
+        .name(ezlog::DEFAULT_LOG_NAME)
         .file_suffix(String::from("mmap"))
         .compress(CompressKind::ZLIB)
         .cipher(CipherKind::AES256GCMSIV)
         .cipher_key(key.to_vec())
         .cipher_nonce(nonce.to_vec())
-        .extra("this is an plaintext extra infomation insert in the first of log file".to_string())
+        .extra("this is an plaintext extra infomation insert in the first of log file")
         .build()
 }
 

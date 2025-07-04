@@ -62,7 +62,7 @@ pub struct EZLogConfig {
     /// Log file dir path
     ///
     /// all log files will be saved in this dir
-    dir_path: String,
+    dir_path: PathBuf,
     /// Log name to identify the [EZLogger]
     ///
     /// log file name will be `log_name` + `file_suffix`
@@ -137,7 +137,9 @@ impl EZLogConfig {
     }
 
     pub fn is_valid(&self) -> bool {
-        !self.dir_path.is_empty() && !self.name.is_empty() && !self.file_suffix.is_empty()
+        !self.dir_path.as_os_str().is_empty()
+            && !self.name.is_empty()
+            && !self.file_suffix.is_empty()
     }
 
     pub fn create_mmap_file(&self) -> crate::Result<(PathBuf, MmapMut)> {
@@ -258,11 +260,11 @@ impl EZLogConfig {
     }
 
     pub fn check_valid(&self) -> crate::Result<()> {
-        if self.dir_path.is_empty() {
-            return Err(LogError::Illegal("dir_path is empty".to_string()));
-        }
-        if self.name.is_empty() {
-            return Err(LogError::Illegal("name is empty".to_string()));
+        if !self.is_valid() {
+            return Err(LogError::Illegal(format!(
+                "config is invalidate: {:?}",
+                self
+            )));
         }
         Ok(())
     }
@@ -309,8 +311,8 @@ impl EZLogConfig {
         self.version
     }
 
-    pub(crate) fn dir_path(&self) -> String {
-        self.dir_path.clone()
+    pub(crate) fn dir_path(&self) -> &PathBuf {
+        &self.dir_path
     }
 }
 
@@ -345,7 +347,7 @@ impl EZLogConfigBuilder {
             config: EZLogConfig {
                 level: Level::Trace,
                 version: Version::V2,
-                dir_path: "".to_string(),
+                dir_path: PathBuf::default(),
                 name: DEFAULT_LOG_NAME.to_string(),
                 file_suffix: DEFAULT_LOG_FILE_SUFFIX.to_string(),
                 trim_duration: Duration::days(7),
@@ -374,20 +376,20 @@ impl EZLogConfigBuilder {
     }
 
     #[inline]
-    pub fn dir_path(mut self, dir_path: String) -> Self {
-        self.config.dir_path = dir_path;
+    pub fn dir_path(mut self, dir_path: impl AsRef<Path>) -> Self {
+        self.config.dir_path = dir_path.as_ref().into();
         self
     }
 
     #[inline]
-    pub fn name(mut self, name: String) -> Self {
-        self.config.name = name;
+    pub fn name(mut self, name: impl AsRef<str>) -> Self {
+        self.config.name = name.as_ref().to_owned();
         self
     }
 
     #[inline]
-    pub fn file_suffix(mut self, file_suffix: String) -> Self {
-        self.config.file_suffix = file_suffix;
+    pub fn file_suffix(mut self, file_suffix: impl AsRef<str>) -> Self {
+        self.config.file_suffix = file_suffix.as_ref().to_owned();
         self
     }
 
@@ -448,8 +450,8 @@ impl EZLogConfigBuilder {
     }
 
     #[inline]
-    pub fn extra(mut self, extra: String) -> Self {
-        self.config.extra = Some(extra);
+    pub fn extra(mut self, extra: impl AsRef<str>) -> Self {
+        self.config.extra = Some(extra.as_ref().to_owned());
         self
     }
 
@@ -635,6 +637,7 @@ mod tests {
         OpenOptions,
     };
 
+    use test_compat::test_path;
     use time::{
         macros::datetime,
         Duration,
@@ -647,6 +650,19 @@ mod tests {
         CompressKind,
         EZLogConfigBuilder,
     };
+
+    /// test config isvalid
+    #[test]
+    fn test_config_is_valid() {
+        let config = EZLogConfigBuilder::default().build();
+        assert!(!config.is_valid());
+        let config = EZLogConfigBuilder::default()
+            .dir_path(test_path().join("ezlog"))
+            .name("test")
+            .file_suffix("log")
+            .build();
+        assert!(config.is_valid());
+    }
 
     #[test]
     fn test_config_rotate_time() {
@@ -713,9 +729,7 @@ mod tests {
 
     #[test]
     fn test_read_file_name_as_date() {
-        let config = EZLogConfigBuilder::default()
-            .name("test".to_string())
-            .build();
+        let config = EZLogConfigBuilder::default().name("test").build();
 
         assert!(config.read_file_name_as_date("test2019_06_13.log").is_err());
         assert!(config.read_file_name_as_date("test_201_06_13.log").is_err());

@@ -60,13 +60,8 @@ fn test_ezlog_init() {
 fn test_logger_create() {
     ezlog::InitBuilder::new().debug(true).init();
     let config = EZLogConfigBuilder::new()
-        .dir_path(
-            test_compat::test_path()
-                .into_os_string()
-                .into_string()
-                .expect("dir path error"),
-        )
-        .name("test".to_string())
+        .dir_path(test_compat::test_path().join("ezlog"))
+        .name("test")
         .build();
     ezlog::create_log(config);
 }
@@ -74,7 +69,7 @@ fn test_logger_create() {
 #[test]
 fn test_ezlog_log() {
     test_logger_create();
-    let record = EZRecord::builder().log_name("test".to_string()).build();
+    let record = EZRecord::builder().log_name("test").build();
     ezlog::log(record);
 }
 

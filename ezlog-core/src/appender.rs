@@ -739,13 +739,13 @@ mod tests {
         let result = logger
             .append(
                 EZRecord::builder()
-                    .log_name("oversize".to_string())
+                    .log_name("oversize")
                     .content(content)
                     .build(),
             )
             .unwrap();
 
-        assert!(matches!(result, AppendSuccess::RotatedAndRetried { .. }));
+        assert!(matches!(result, AppendSuccess::RotatedAndRetried));
         std::fs::remove_dir_all(test_compat::test_path().join("oversize")).unwrap();
     }
 }
