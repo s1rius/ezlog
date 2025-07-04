@@ -93,7 +93,7 @@ pub fn decode_record(vec: &[u8]) -> Result<crate::EZRecord> {
                 // two square brackets and one space
                 if record_str.len() > header.len() + 3 {
                     let content = &record_str[header.len() + 3..];
-                    record_builder.content(content.to_string());
+                    record_builder.content(content);
                 }
             }
         }

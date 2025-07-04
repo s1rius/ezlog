@@ -306,7 +306,7 @@ mod tests {
         event!(Event::CreateLogger, desc);
 
         // Error event without description
-        let err = LogError::IoError(std::io::Error::new(std::io::ErrorKind::Other, "test"));
+        let err = LogError::IoError(std::io::Error::other("test"));
         event!(!Event::CreateLoggerError; &err);
 
         // Error event with formatted description
