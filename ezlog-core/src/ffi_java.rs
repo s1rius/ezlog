@@ -89,7 +89,7 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeCreateLogger<'local>(
         .map(|s| s.into())
         .unwrap_or_default();
     let log_level: Level = Level::from_usize(j_level as usize).unwrap_or(Level::Trace);
-    let log_dir = env
+    let log_dir: String = env
         .get_string(&j_dir_path)
         .map(|dir| dir.into())
         .unwrap_or_default();
@@ -147,12 +147,12 @@ pub extern "C" fn Java_wtf_s1_ezlog_EZLog_nativeLog<'local>(
 
     let log_level: Level = Level::from_usize(j_level as usize).unwrap_or(Level::Trace);
 
-    let target = env
+    let target: String = env
         .get_string(&j_target)
         .map(|jstr| jstr.into())
         .unwrap_or_default();
 
-    let content = env
+    let content: String = env
         .get_string(&j_content)
         .map(|jstr| jstr.into())
         .unwrap_or_default();
