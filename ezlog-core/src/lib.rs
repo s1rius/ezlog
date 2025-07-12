@@ -341,6 +341,10 @@ fn init_log_channel() -> Sender<EZMsg> {
                         let name = config.name().to_string();
                         match EZLogger::new(config) {
                             Ok(log) => {
+                                // if auto trim is enabled, trim the log
+                                #[cfg(feature = "auto_trim")]
+                                log.trim();
+
                                 LOG_SERVICE.get().map_or_else(
                                     || {
                                         event!(Event::CreateLoggerError, "log service not init");
