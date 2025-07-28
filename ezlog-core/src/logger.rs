@@ -426,7 +426,7 @@ impl Header {
             compress: CompressKind::ZLIB,
             cipher: CipherKind::AES128GCM,
             cipher_hash: 0,
-            timestamp: OffsetDateTime::now_utc(),
+            timestamp: OffsetDateTime::now_utc().replace_nanosecond(0).unwrap_or_else(|_| OffsetDateTime::now_utc()),
             rotate_time: None,
         }
     }
@@ -533,10 +533,7 @@ impl Header {
         if version == Version::V2 {
             timestamp = reader.read_i64::<BigEndian>()?
         }
-        let mut recorder_size = reader.read_u32::<BigEndian>()?;
-        if recorder_size < Header::length_compat(&version) as u32 {
-            recorder_size = Header::length_compat(&version) as u32;
-        }
+        let recorder_size = reader.read_u32::<BigEndian>()?;
 
         let compress = reader.read_u8()?;
         let cipher = reader.read_u8()?;
@@ -611,5 +608,127 @@ impl Header {
 
     pub(crate) fn init_record_position(&mut self) {
         self.recorder_position = Self::length_compat(&self.version) as u32;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{sync::mpsc::channel};
+
+    use super::*;
+
+    #[test]
+    fn test_header_encode_decode() {
+        let header = Header::new();
+        let mut buf = Vec::new();
+        header.encode(&mut buf).unwrap();
+        let decoded_header = Header::decode(&mut buf.as_slice()).unwrap();
+        assert_eq!(header, decoded_header);
+    }
+
+    #[test]
+    fn test_header_encode_v2() {
+        let header = Header::create(&EZLogConfig::default());
+        let mut buf = Vec::new();
+        header.encode_v2(&mut buf).unwrap();
+        assert_eq!(buf.len(), V2_LOG_HEADER_SIZE);
+    }
+
+    #[test]
+    fn test_ezlog_trim() {
+        use std::fs;
+        use std::time::Duration;
+
+        use time::OffsetDateTime;
+
+        // Initialize the logger
+        crate::InitBuilder::new().debug(true).init();
+
+        // Create a test log directory
+        let test_dir = test_compat::test_path().join("ezlog_test");
+        if test_dir.exists() {
+            fs::remove_dir_all(&test_dir).unwrap();
+        }
+        fs::create_dir_all(&test_dir).unwrap();
+
+        let (tx, rx) = channel::<()>();
+
+        // Create a config with a shorter trim duration for testing
+        let config = crate::EZLogConfigBuilder::new()
+            .dir_path(&test_dir)
+            .name("trim_test")
+            .trim_duration(time::Duration::days(1))
+            .build();
+
+        // Create the logger
+        crate::create_log(config);
+
+        let create_complete = tx.clone();
+
+        crate::post_msg(crate::EZMsg::Action(Box::new(move || {
+           create_complete.send(()).unwrap_or_else(|e| eprintln!("Failed to send message: {:?}", e))
+        })));
+        // Create complete
+        let _ = rx.recv().expect("Failed to receive create message");
+
+        let current_log = test_dir.join("trim_test.mmap");
+        // Create an old log file that will be older than our trim duration
+        let old_log = test_dir.join("trim_test_2021_01_01.mmap");
+        let recent_log = test_dir.join(format!(
+            "trim_test_{}.mmap",
+            OffsetDateTime::now_utc()
+                .format(&time::format_description::well_known::Iso8601::DATE)
+                .unwrap()
+                .replace('-', "_")
+        ));
+
+        // Write some content to the files AFTER logger creation to avoid auto-trimming
+        fs::write(&old_log, "old log content").unwrap();
+        fs::write(&recent_log, "recent log content").unwrap();
+
+        // Sleep to ensure the fs operations complete(windows ci sometimes need a moment to sync)
+        std::thread::sleep(Duration::from_millis(1000));
+
+        // Verify files exist before trimming
+        assert!(current_log.exists(), "Current log file should exist");
+        assert!(old_log.exists(), "Old log file should exist before trimming");
+        assert!(recent_log.exists(), "Recent log file should exist");
+
+        // Wait a bit to ensure trim duration passes
+        std::thread::sleep(Duration::from_millis(10));
+
+        // Perform the trim operation
+        crate::trim();
+        
+        crate::post_msg(crate::EZMsg::Action(Box::new(move || {
+           tx.send(()).unwrap_or_else(|e| eprintln!("Failed to send message: {:?}", e))
+        })));
+
+        rx.recv().unwrap_or_else(|e| eprintln!("Failed to receive message: {:?}", e));
+
+        // Sleep to ensure the fs operations complete(windows ci sometimes need a moment to sync)
+        std::thread::sleep(Duration::from_millis(1000));
+
+        // Verify the results:
+        // - Current log file should still exist (it's the active log)
+        // - Old log file should be removed (it's out of date)
+        // - Recent log file should still exist (it's not out of date)
+        assert!(
+            current_log.exists(),
+            "Current log file should still exist after trim"
+        );
+        assert!(
+            !old_log.exists(),
+            "Old log file should be removed after trim"
+        );
+        assert!(
+            recent_log.exists(),
+            "Recent log file should still exist after trim"
+        );
+
+        // Clean up
+        if test_dir.exists() {
+            fs::remove_dir_all(&test_dir).unwrap();
+        }
     }
 }
