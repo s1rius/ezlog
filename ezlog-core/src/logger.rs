@@ -682,7 +682,7 @@ mod tests {
 
         // Verify files exist before trimming
         assert!(current_log.exists(), "Current log file should exist");
-        assert!(!old_log.exists(), "Old log file should not exist");
+        assert!(old_log.exists(), "Old log file should exist");
         assert!(recent_log.exists(), "Recent log file should exist");
 
         // Wait a bit to ensure trim duration passes
