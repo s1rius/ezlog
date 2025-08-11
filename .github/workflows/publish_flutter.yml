@@ -12,7 +12,7 @@ jobs:
       run:
         working-directory: ./ezlog_flutter
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dart-lang/setup-dart@v1
       - name: Install dependencies
         run: flutter pub get
